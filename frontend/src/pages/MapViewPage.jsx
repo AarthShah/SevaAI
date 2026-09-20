@@ -57,15 +57,15 @@ export const MapViewPage = () => {
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
           }`}>
             <Radio className={`w-3.5 h-3.5 ${isOfficial ? 'text-indigo-400' : 'text-emerald-600'} animate-pulse`} />
-            <span>{isOfficial ? 'Autonomous Geospatial Intelligence & Fleet Radar' : 'Live Neighborhood Civic Map'}</span>
+            <span>{isOfficial ? 'Municipal operations map' : 'Community service map'}</span>
           </div>
           <h1 className={`text-2xl sm:text-3xl font-bold font-heading mt-1 ${isOfficial ? 'text-white' : 'text-slate-900'}`}>
-            {isOfficial ? 'Municipal Dispatch Radar & Grievance Map' : 'Neighborhood Community Grievance Map'}
+            {isOfficial ? 'Municipal operations map' : 'Community map'}
           </h1>
           <p className={`text-xs sm:text-sm mt-0.5 ${isOfficial ? 'text-slate-400' : 'text-slate-600'}`}>
             {isOfficial
-              ? 'Real-time geospatial visualization of active neighborhood dockets and closest available field engineers for autonomous task assignment.'
-              : 'Explore public civic repairs happening around your area. Check ongoing work orders for potholes, garbage, water leaks, and streetlights.'}
+              ? 'Review active complaints, field officers, and service activity by location.'
+              : 'Explore public complaints and service activity in your area.'}
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export const MapViewPage = () => {
             className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-2 self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Report Defect Here</span>
+            <span>Submit complaint</span>
           </Link>
         )}
       </div>
@@ -106,7 +106,7 @@ export const MapViewPage = () => {
         <div className="lg:col-span-8 bg-white p-3 rounded-3xl border border-slate-200 shadow-sm min-h-[580px] space-y-3">
           <div className="flex items-center justify-between px-2 pt-1">
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-bold text-slate-700">Severity Pins:</span>
+              <span className="font-bold text-slate-700">Priority:</span>
               <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span> High / Critical
               </span>
@@ -124,7 +124,7 @@ export const MapViewPage = () => {
               className="text-xs text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh Map</span>
+              <span>Refresh</span>
             </button>
           </div>
 
@@ -146,9 +146,9 @@ export const MapViewPage = () => {
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
                 <Filter className="w-4 h-4 text-emerald-600" />
-                <span>Geospatial Filters</span>
+                <span>Map filters</span>
               </h4>
-              <span className="text-[11px] text-slate-400">{complaints.length} Dockets Mapped</span>
+              <span className="text-[11px] text-slate-400">{complaints.length} complaints mapped</span>
             </div>
 
             <div className="space-y-3">
@@ -197,7 +197,7 @@ export const MapViewPage = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Dockets ({complaints.length})
+                Complaints ({complaints.length})
               </button>
               <button
                 type="button"
@@ -208,12 +208,12 @@ export const MapViewPage = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Field Squads ({officers.length})
+                Field officers ({officers.length})
               </button>
             </div>
           ) : (
             <div className="px-2 font-bold text-xs text-slate-700">
-              <span>Neighborhood Reports ({complaints.length})</span>
+              <span>Complaints ({complaints.length})</span>
             </div>
           )}
 
@@ -230,7 +230,7 @@ export const MapViewPage = () => {
                     <h5 className="font-semibold text-slate-800 mt-0.5">
                       {c.issue_type?.replace('_', ' ') || c.category?.replace('_', ' ')}
                     </h5>
-                    <p className="text-[11px] text-slate-500 line-clamp-1">📍 {c.address}</p>
+                    <p className="text-[11px] text-slate-500 line-clamp-1">{c.address}</p>
 
                     {c.assigned_officer_name && (
                       <div className="mt-1 p-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-900 flex items-center justify-between">
@@ -247,7 +247,7 @@ export const MapViewPage = () => {
                     <div className="flex items-center justify-between mt-2 text-[11px]">
                       <StatusBadge status={c.status} />
                       <Link to={`/track/${c.id}`} className="text-emerald-700 font-bold hover:underline">
-                        Track Details →
+                        Track details
                       </Link>
                     </div>
                   </div>
@@ -281,7 +281,7 @@ export const MapViewPage = () => {
 
                     <div className="flex items-center justify-between text-[11px] pt-0.5">
                       <span className="text-slate-400 font-mono text-[10px]">
-                        📍 {off.current_address?.split(',')[0]}
+                        {off.current_address?.split(',')[0]}
                       </span>
                       <a
                         href={`tel:${off.phone}`}

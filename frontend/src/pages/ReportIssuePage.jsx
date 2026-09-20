@@ -348,14 +348,14 @@ export const ReportIssuePage = () => {
       {/* Friendly Page Header */}
       <div className="text-center max-w-xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
-          <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
-          <span>Autonomous Geo-Proximity Dispatch Active</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-600" />
+          <span>Municipal complaint submission</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
           Report a Civic Issue
         </h1>
         <p className="text-xs sm:text-sm text-slate-600">
-          Upload a photo or speak. Our Vision AI detects the defect, auto-checks the department, finds the closest free field squad, and dispatches the task with zero friction.
+          Provide a description, supporting photo, and location. The complaint will be reviewed and forwarded to the responsible municipal department.
         </p>
       </div>
 
@@ -372,7 +372,7 @@ export const ReportIssuePage = () => {
             }`}
           >
             <Camera className="w-4 h-4 text-emerald-600" />
-            <span>📸 Zero-Click Photo Mode</span>
+            <span>Photo submission</span>
           </button>
           <button
             type="button"
@@ -384,7 +384,7 @@ export const ReportIssuePage = () => {
             }`}
           >
             <Mic className="w-4 h-4 text-blue-600" />
-            <span>📝 Voice & Text Mode</span>
+            <span>Guided submission</span>
           </button>
         </div>
       </div>
@@ -392,7 +392,7 @@ export const ReportIssuePage = () => {
       {/* 1-Click Quick Scenario Presets */}
       <div className="bg-slate-100/90 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 border border-slate-200">
         <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span>✨ 1-Click Test Scenarios:</span>
+          <span>Sample cases:</span>
         </span>
         <div className="flex flex-wrap gap-1.5">
           <button
@@ -400,7 +400,7 @@ export const ReportIssuePage = () => {
             onClick={() => loadPreset('pothole', true)}
             className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
           >
-            <span>🚧 Road Pothole</span>
+            <span>Road damage</span>
             <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
           </button>
           <button
@@ -408,7 +408,7 @@ export const ReportIssuePage = () => {
             onClick={() => loadPreset('garbage', true)}
             className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
           >
-            <span>🗑️ Garbage Dump</span>
+            <span>Waste collection</span>
             <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
           </button>
           <button
@@ -416,7 +416,7 @@ export const ReportIssuePage = () => {
             onClick={() => loadPreset('streetlight', true)}
             className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
           >
-            <span>💡 Dark Streetlight</span>
+            <span>Street lighting</span>
             <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
           </button>
           <button
@@ -424,7 +424,7 @@ export const ReportIssuePage = () => {
             onClick={() => loadPreset('water', true)}
             className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
           >
-            <span>🚰 Water Pipe Burst</span>
+            <span>Water supply</span>
             <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
           </button>
         </div>
@@ -444,18 +444,18 @@ export const ReportIssuePage = () => {
             <div className="space-y-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Autonomously Dispatched & Squad Assigned</span>
+                <span>Complaint registered and assigned</span>
               </span>
               <h2 className="text-2xl font-black text-slate-900 font-heading">
                 Docket #{autoDispatchResult.complaint_id} Created!
               </h2>
               <p className="text-xs text-slate-500">
-                CivicSeva AI diagnosed the defect, auto-routed to {autoDispatchResult.department}, and matched the closest free field squad.
+                Your complaint was routed to {autoDispatchResult.department} and assigned for municipal follow-up.
               </p>
             </div>
 
             <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-center flex-shrink-0">
-              <span className="text-[10px] uppercase font-bold text-emerald-800 block">AI Match Confidence</span>
+              <span className="text-[10px] uppercase font-bold text-emerald-800 block">Assessment confidence</span>
               <span className="text-2xl font-black text-emerald-600">
                 {Math.round((autoDispatchResult.confidence || 0.92) * 100)}%
               </span>
@@ -464,14 +464,14 @@ export const ReportIssuePage = () => {
 
           {/* Assigned Officer & Geo-Proximity Highlight Card */}
           {autoDispatchResult.assigned_officer && (
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 rounded-2xl p-5 border border-emerald-200 space-y-3">
+            <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-4 h-4 text-emerald-600" />
                   <span>Assigned Field Officer (Closest Squad)</span>
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-bold text-[10px]">
-                  ⭐ 4.9 Rating &bull; Available
+                  Available
                 </span>
               </div>
 
@@ -511,7 +511,7 @@ export const ReportIssuePage = () => {
               <div className="pt-2 border-t border-emerald-200/60 text-[11px] text-slate-600 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0" />
                 <span>
-                  <strong>AI Match Explanation:</strong> Matched {autoDispatchResult.assigned_officer.name} because they are closest to your coordinates ({autoDispatchResult.assigned_officer.distance_km} km) with zero backlog.
+                  <strong>Assignment details:</strong> {autoDispatchResult.assigned_officer.name} is the nearest available officer ({autoDispatchResult.assigned_officer.distance_km} km).
                 </span>
               </div>
             </div>
@@ -524,9 +524,9 @@ export const ReportIssuePage = () => {
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <strong className="block text-white">48-Hour Municipal Service SLA Guarantee</strong>
+                <strong className="block text-white">Municipal service target</strong>
                 <span className="text-slate-400 text-[11px]">
-                  Autonomous Watchdog will trigger statutory escalations if not resolved within window.
+                  The complaint remains monitored until the responsible department records a resolution.
                 </span>
               </div>
             </div>
@@ -556,7 +556,7 @@ export const ReportIssuePage = () => {
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-800 flex items-center gap-1.5">
                 <Share2 className="w-4 h-4 text-emerald-600" />
-                <span>Official Citizen WhatsApp / SMS Receipt Card</span>
+                <span>Complaint receipt</span>
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -565,14 +565,14 @@ export const ReportIssuePage = () => {
                   className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-[11px] transition flex items-center gap-1"
                 >
                   {copiedSlip ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSlip ? 'Copied!' : 'Copy Slip'}</span>
+                  <span>{copiedSlip ? 'Copied' : 'Copy receipt'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleShareWhatsApp}
                   className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition flex items-center gap-1"
                 >
-                  <span>📲 Share on WhatsApp</span>
+                  <span>Share receipt</span>
                 </button>
               </div>
             </div>
@@ -613,10 +613,10 @@ export const ReportIssuePage = () => {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
           <div className="text-center max-w-md mx-auto space-y-1">
             <h3 className="text-lg font-bold text-slate-900">
-              Drop Photo & Done (Zero Typing)
+              Submit a photo
             </h3>
             <p className="text-xs text-slate-500">
-              Upload or snap an image. Our Vision AI identifies the issue, grabs your GPS, matches the closest field officer, and dispatches immediately.
+              Upload a photograph of the issue. Add the location and the service team will review the complaint.
             </p>
           </div>
 
@@ -624,7 +624,7 @@ export const ReportIssuePage = () => {
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-xs">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
-              <span className="font-bold text-emerald-900">Instant Auto-Dispatch upon Photo Select</span>
+              <span className="font-bold text-emerald-900">Process photo automatically after selection</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -656,10 +656,10 @@ export const ReportIssuePage = () => {
                   <Camera className="w-7 h-7" />
                 </div>
                 <strong className="text-sm font-bold text-slate-900 block">
-                  Click to Upload or Drag Photo Here
+                  Select or drag a photo here
                 </strong>
                 <span className="text-xs text-slate-500 mt-0.5">
-                  Potholes, trash piles, streetlights, leaks &bull; Auto-detects GPS coordinates
+                  JPG or PNG image &bull; Location will be attached when available
                 </span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
@@ -681,22 +681,22 @@ export const ReportIssuePage = () => {
               type="button"
               onClick={() => handlePhotoInstantDispatch(imageFile)}
               disabled={isAutoDispatching}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2.5 disabled:opacity-75"
+              className="w-full py-4 px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base transition flex items-center justify-center gap-2.5 disabled:opacity-75"
             >
               {isAutoDispatching ? (
                 <div className="flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   <span>
-                    {autoDispatchStep === 1 && '📸 Step 1/4: Analyzing Image with Multimodal Vision AI...'}
-                    {autoDispatchStep === 2 && '🏛️ Step 2/4: Auto-checking Responsible Department...'}
-                    {autoDispatchStep === 3 && '🛰️ Step 3/4: Locating Closest Free Field Officer...'}
-                    {autoDispatchStep >= 4 && '🚀 Step 4/4: Task Dispatched to Officer!'}
+                    {autoDispatchStep === 1 && 'Step 1 of 4: Reviewing the image...'}
+                    {autoDispatchStep === 2 && 'Step 2 of 4: Identifying the responsible department...'}
+                    {autoDispatchStep === 3 && 'Step 3 of 4: Checking officer availability...'}
+                    {autoDispatchStep >= 4 && 'Step 4 of 4: Registering the complaint...'}
                   </span>
                 </div>
               ) : (
                 <>
                   <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                  <span>⚡ Instant Photo Auto-Dispatch (Zero Manual Work)</span>
+                  <span>Submit photo complaint</span>
                 </>
               )}
             </button>
@@ -711,9 +711,9 @@ export const ReportIssuePage = () => {
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">1</span>
-                <span>Describe the issue (Voice or Text)</span>
+                <span>Describe the issue</span>
               </label>
-              <span className="text-[11px] text-slate-400">Speak or write in natural language</span>
+              <span className="text-[11px] text-slate-400">Use your own words</span>
             </div>
 
             <textarea
@@ -796,22 +796,22 @@ export const ReportIssuePage = () => {
               type="button"
               onClick={handleAutoDispatch}
               disabled={isAutoDispatching || isAnalyzing}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2.5 disabled:opacity-75"
+              className="w-full py-4 px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base transition flex items-center justify-center gap-2.5 disabled:opacity-75"
             >
               {isAutoDispatching ? (
                 <div className="flex items-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   <span>
                     {autoDispatchStep === 1 && '🧠 Step 1/4: Analyzing Grievance...'}
-                    {autoDispatchStep === 2 && '🏛️ Step 2/4: Checking Department...'}
-                    {autoDispatchStep === 3 && '⚖️ Step 3/4: Matching Closest Officer...'}
-                    {autoDispatchStep >= 4 && '🚀 Step 4/4: Dispatched!'}
+                    {autoDispatchStep === 2 && 'Step 2 of 4: Checking the department...'}
+                    {autoDispatchStep === 3 && 'Step 3 of 4: Checking officer availability...'}
+                    {autoDispatchStep >= 4 && 'Step 4 of 4: Registering complaint...'}
                   </span>
                 </div>
               ) : (
                 <>
                   <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                  <span>⚡ 1-Click AI Auto-Dispatch (Zero Manual Work)</span>
+                  <span>Submit complaint for review</span>
                 </>
               )}
             </button>

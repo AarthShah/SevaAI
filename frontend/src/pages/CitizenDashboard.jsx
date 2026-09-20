@@ -50,7 +50,7 @@ export const CitizenDashboard = () => {
       {/* Official Mode Notice (if official views citizen dashboard) */}
       {isOfficial && (
         <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between text-xs text-indigo-900">
-          <span>🏛️ You are currently viewing the <strong>Citizen Grievance View</strong> as an official.</span>
+          <span>You are viewing the <strong>citizen service view</strong> as an official user.</span>
           <Link
             to="/authority"
             className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-1"
@@ -61,17 +61,16 @@ export const CitizenDashboard = () => {
         </div>
       )}
 
-      {/* Friendly Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl p-6 sm:p-7 border border-slate-200 app-surface">
         <div>
           <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            Citizen Grievance Portal
+            Citizen services
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 mt-2">
-            My Neighborhood Grievances
+            My complaints
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Monitor the status of issues you reported, check assigned field officers, and view repair progress.
+            Review submitted complaints, assigned departments, and resolution progress.
           </p>
         </div>
 
@@ -80,35 +79,35 @@ export const CitizenDashboard = () => {
           className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-2 self-start sm:self-auto"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Report New Issue</span>
+          <span>Submit complaint</span>
         </Link>
       </div>
 
       {/* 4 Clean Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 app-surface">
           <span className="text-xs text-slate-400 font-bold block">Total Reported</span>
           <div className="text-2xl font-black font-heading text-slate-900 mt-1">{total}</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 app-surface">
           <span className="text-xs text-blue-600 font-bold block">Being Repaired</span>
           <div className="text-2xl font-black font-heading text-blue-600 mt-1">{active}</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 app-surface">
           <span className="text-xs text-emerald-600 font-bold block">Resolved & Fixed</span>
           <div className="text-2xl font-black font-heading text-emerald-600 mt-1">{resolved}</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 app-surface">
           <span className="text-xs text-rose-600 font-bold block">Escalated Priority</span>
           <div className="text-2xl font-black font-heading text-rose-600 mt-1">{escalated}</div>
         </div>
       </div>
 
       {/* Search & Filter */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="bg-white rounded-xl p-4 border border-slate-200 app-surface flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -138,7 +137,7 @@ export const CitizenDashboard = () => {
       </div>
 
       {/* Clean Complaints Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 app-surface overflow-hidden">
         {loading ? (
           <div className="p-10 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
@@ -146,7 +145,7 @@ export const CitizenDashboard = () => {
           </div>
         ) : complaints.length === 0 ? (
           <div className="p-10 text-center text-slate-400 text-xs">
-            No complaints found. Click 'Report New Issue' to log your first one!
+            No complaints found. Submit a complaint to begin tracking a civic issue.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -185,7 +184,7 @@ export const CitizenDashboard = () => {
                             <span>{c.assigned_officer_name}</span>
                           </strong>
                           <span className="text-[11px] text-emerald-700 font-mono">
-                            📍 {c.officer_distance_km ? `${c.officer_distance_km} km` : '0.8 km'} &bull; ETA {c.officer_eta_minutes || 15}m
+                            {c.officer_distance_km ? `${c.officer_distance_km} km` : '0.8 km'} &bull; ETA {c.officer_eta_minutes || 15}m
                           </span>
                         </div>
                       ) : (
@@ -203,7 +202,7 @@ export const CitizenDashboard = () => {
                         to={`/track/${c.id}`}
                         className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-bold transition inline-block"
                       >
-                        Track Details →
+                        Track details
                       </Link>
                     </td>
                   </tr>

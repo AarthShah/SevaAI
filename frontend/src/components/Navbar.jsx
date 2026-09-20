@@ -202,7 +202,7 @@ export const Navbar = () => {
             <button
               onClick={handleToggleRole}
               title={isOfficial ? "Switch back to Citizen View" : "Switch to Municipal Officer Command Center"}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm border ${
+              className={`hidden sm:flex px-3 py-1.5 rounded-full text-xs font-bold transition items-center gap-1.5 shadow-sm border ${
                 isOfficial
                   ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60 hover:bg-indigo-900 hover:text-white'
                   : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
@@ -214,7 +214,9 @@ export const Navbar = () => {
               </span>
             </button>
 
-            <NotificationBell />
+            <div className="hidden sm:block">
+              <NotificationBell />
+            </div>
 
             {user ? (
               <div className={`flex items-center space-x-2 pl-2 border-l ${
@@ -238,7 +240,7 @@ export const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="hidden sm:flex items-center space-x-2">
                 <Link
                   to="/login"
                   className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"

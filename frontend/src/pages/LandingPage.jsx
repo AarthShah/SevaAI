@@ -15,14 +15,14 @@ export const LandingPage = () => {
   return (
     <div className="space-y-20 pb-20">
       <section className="civic-hero relative pt-14 pb-20 sm:pt-20 sm:pb-24 border-b border-emerald-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 grid lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.8fr)] gap-10 items-center">
           <div className="max-w-3xl space-y-7">
             <div className="inline-flex items-center gap-2 text-emerald-800 text-xs font-bold uppercase tracking-[0.14em]">
               <span className="w-2 h-2 rounded-full bg-emerald-600" />
               <span>Municipal grievance redressal portal</span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-950 leading-[1.04]">
+            <h1 className="text-4xl sm:text-6xl lg:text-[4.25rem] font-extrabold tracking-tight text-slate-950 leading-[1.04]">
               Report a civic issue.<br />
               <span className="text-emerald-700">Follow its resolution.</span>
             </h1>
@@ -54,8 +54,6 @@ export const LandingPage = () => {
               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-600" /> Status notifications</span>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-blue-600" /> Department accountability</span>
             </div>
-          </div>
-
           <div className="pt-10 max-w-2xl">
             <div className="bg-white/80 backdrop-blur rounded-2xl p-4 border border-white shadow-sm space-y-2.5">
               <span className="text-xs font-bold text-slate-600 flex items-center justify-center gap-1.5">
@@ -93,6 +91,37 @@ export const LandingPage = () => {
               </div>
             </div>
           </div>
+          </div>
+
+          <aside className="hidden lg:block border-l border-emerald-200 pl-10 py-5">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">Service pathway</p>
+            <h2 className="mt-3 text-2xl font-bold font-heading text-slate-950 leading-tight">
+              One clear record from report to resolution.
+            </h2>
+            <div className="mt-8 space-y-6">
+              <div className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white">01</span>
+                <div>
+                  <strong className="block text-sm text-slate-900">Your request is registered</strong>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">A docket number gives you a permanent reference for every update.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white text-sm font-bold text-emerald-800">02</span>
+                <div>
+                  <strong className="block text-sm text-slate-900">The right department responds</strong>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">Your complaint is directed to the municipal team responsible for the service.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white text-sm font-bold text-emerald-800">03</span>
+                <div>
+                  <strong className="block text-sm text-slate-900">You can follow the outcome</strong>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">Status history and assigned officers remain visible as work progresses.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </section>
 

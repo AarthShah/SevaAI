@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, ArrowRight, AlertCircle, Zap } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage = () => {
@@ -39,21 +39,19 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-14">
+      <div className="max-w-lg w-full space-y-8 bg-white p-8 sm:p-10 rounded-2xl border border-slate-200 app-surface">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-500/20">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-500/20">
             <Shield className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-bold font-heading text-slate-900">Sign in to CivicSeva</h2>
           <p className="text-xs text-slate-500">Access citizen grievance tracking and authority triage portals</p>
         </div>
 
-        {/* Hackathon Fast One-Click Demo Personas */}
         <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 space-y-2">
           <span className="text-xs font-bold text-emerald-900 flex items-center gap-1">
-            <Zap className="w-3.5 h-3.5 text-amber-500 fill-current" />
-            Hackathon Instant Demo Personas:
+            Service access options:
           </span>
           <div className="grid grid-cols-3 gap-1.5 pt-1">
             <button

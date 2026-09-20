@@ -63,7 +63,7 @@ export const TrackComplaintPage = () => {
     setFollowupMsg(null);
     try {
       const res = await complaintApi.autoInquireComplaint(complaint.id);
-      setFollowupMsg(`🤖 Autonomous Status Inquest dispatched to ${res.department}! Work order queue updated.`);
+      setFollowupMsg(`Status update request sent to ${res.department}. The complaint record has been refreshed.`);
       await fetchComplaint(complaint.id);
     } catch (err) {
       setError(err.message || 'Failed to dispatch autonomous status inquiry.');
@@ -98,13 +98,13 @@ export const TrackComplaintPage = () => {
         <div className="text-center max-w-md mx-auto space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
             <Radio className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-            <span>Autonomous SLA Watchdog Online</span>
+            <span>Complaint status service</span>
           </div>
           <h1 className="text-2xl font-bold font-heading text-slate-900">
-            Track Grievance Status
+            Track complaint status
           </h1>
           <p className="text-xs text-slate-500">
-            Enter your Docket Number to check live repairs, autonomous department routing, and automated inquiries.
+            Enter your docket number to view the latest status, department, and resolution updates.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export const TrackComplaintPage = () => {
 
         {/* Quick Demo Chips */}
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-slate-500">
-          <span>Click to view demo:</span>
+          <span>Sample docket numbers:</span>
           {['CS1001', 'CS1002', 'CS1005', 'CS1008'].map((cid) => (
             <button
               key={cid}
@@ -172,7 +172,7 @@ export const TrackComplaintPage = () => {
                 {complaint.issue_type?.replace('_', ' ') || complaint.category?.replace('_', ' ')}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                📍 {complaint.address || 'Location on map'} &bull; Dispatched on {new Date(complaint.created_at).toLocaleDateString()}
+                {complaint.address || 'Location on map'} &bull; Submitted on {new Date(complaint.created_at).toLocaleDateString()}
               </p>
             </div>
 
@@ -182,17 +182,17 @@ export const TrackComplaintPage = () => {
                 type="button"
                 onClick={handleAutoInquire}
                 disabled={isFollowingUp}
-                className="px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition flex items-center gap-2 self-start sm:self-auto disabled:opacity-60"
+                className="px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition flex items-center gap-2 self-start sm:self-auto disabled:opacity-60"
               >
                 {isFollowingUp ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Dispatching Inquest Notice...</span>
+                    <span>Requesting status update...</span>
                   </>
                 ) : (
                   <>
-                    <Zap className="w-4 h-4 text-amber-200 fill-amber-200" />
-                    <span>🤖 Auto-Ask Department for Status Update ({complaint.follow_up_count || 0})</span>
+                    <MessageSquare className="w-4 h-4 text-amber-100" />
+                    <span>Request department update ({complaint.follow_up_count || 0})</span>
                   </>
                 )}
               </button>
@@ -206,16 +206,16 @@ export const TrackComplaintPage = () => {
                 <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
               </div>
               <div>
-                <strong className="text-white block">Autonomous SLA Watchdog Active</strong>
+                <strong className="text-white block">Service monitoring active</strong>
                 <span className="text-slate-400 text-[11px]">
-                  Monitors SLA limits continuously. Automatically triggers department status queries upon SLA delay.
+                  Status monitoring continues while the complaint is open. Updates are recorded in the complaint history.
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-auto font-mono text-[11px]">
               <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-amber-400 font-bold border border-slate-700">
-                Auto-Inquiries Sent: {complaint.follow_up_count || 0}
+                Updates Requested: {complaint.follow_up_count || 0}
               </span>
             </div>
           </div>
@@ -260,21 +260,21 @@ export const TrackComplaintPage = () => {
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
               <span>
-                <strong>Autonomous Vigilance Escalation Executed:</strong> This docket exceeded SLA thresholds without field resolution. The autonomous agent escalated the file directly to Level 1 Ward Vigilance and the Zonal Commissioner.
+                <strong>Complaint escalated:</strong> This complaint has exceeded the expected service period and has been referred for further departmental review.
               </span>
             </div>
           )}
 
           {/* Assigned Municipal Field Officer Card */}
           {complaint.assigned_officer_name && (
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 rounded-2xl p-5 border border-emerald-200 space-y-3">
+            <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-4 h-4 text-emerald-600" />
                   <span>Assigned Municipal Field Officer</span>
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-bold text-[10px]">
-                  Squad On-Duty &bull; ⭐ 4.9
+                  On duty
                 </span>
               </div>
 
@@ -292,7 +292,7 @@ export const TrackComplaintPage = () => {
                       className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 mt-1"
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      <span>Direct Squad Line: {complaint.assigned_officer_phone}</span>
+                      <span>Contact: {complaint.assigned_officer_phone}</span>
                     </a>
                   )}
                 </div>
@@ -324,10 +324,10 @@ export const TrackComplaintPage = () => {
               <Layers className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
                 <strong className="block text-amber-950 font-bold">
-                  🔗 Clustered with Neighborhood Incident #{complaint.cluster_id || 'Cluster-Master'}
+                  Related neighbourhood reports: #{complaint.cluster_id || 'group'}
                 </strong>
                 <span>
-                  Multiple citizens reported this civic issue within a 50m radius. Work order priority was automatically elevated to CRITICAL to expedite field remediation.
+                  Other residents have reported a related issue nearby. The department can review these reports together.
                 </span>
               </div>
             </div>
@@ -358,7 +358,7 @@ export const TrackComplaintPage = () => {
               onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
               className="w-full px-4 py-3.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition"
             >
-              <span>View Full Autonomous Decision Steps, Department Inquiries & Audit Trail</span>
+              <span>View processing details and audit history</span>
               {showTechnicalDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
@@ -369,7 +369,7 @@ export const TrackComplaintPage = () => {
                 {complaint.history && complaint.history.length > 0 && (
                   <div className="space-y-3">
                     <h5 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                      Official Status Transitions & Department Telemetry
+                      Status history and department updates
                     </h5>
                     <div className="divide-y divide-slate-100 text-xs">
                       {complaint.history.map((h, idx) => (
