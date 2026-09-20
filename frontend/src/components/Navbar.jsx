@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, PlusCircle, Search, Map, BarChart3, Bot, User, LogOut, ChevronDown, CheckCircle2, Building2, Users, Radio, Menu, X, ArrowRightLeft, Sparkles, Camera } from 'lucide-react';
+import { Shield, Search, Map, BarChart3, Bot, LogOut, Building2, Users, Menu, X, ArrowRightLeft, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
 
@@ -24,19 +24,19 @@ export const Navbar = () => {
   };
 
   return (
-    <header className={`sticky top-0 z-40 backdrop-blur-md border-b shadow-sm transition-colors duration-300 ${
+    <header className={`app-nav sticky top-0 z-40 backdrop-blur-md border-b transition-colors duration-300 ${
       isOfficial
         ? 'bg-slate-900/95 border-slate-800 text-slate-100'
         : 'bg-white/95 border-slate-200 text-slate-900'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-[4.5rem]">
           {/* Brand Logo & Mode Indicator */}
           <Link to={isOfficial ? "/authority" : "/"} className="flex items-center space-x-3 group">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105 ${
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105 ${
               isOfficial
-                ? 'bg-gradient-to-tr from-indigo-600 to-blue-500 shadow-indigo-500/25'
-                : 'bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-emerald-500/20'
+                ? 'bg-indigo-700 shadow-indigo-500/25'
+                : 'bg-emerald-700 shadow-emerald-500/20'
             }`}>
               {isOfficial ? <Building2 className="w-5 h-5" /> : <Shield className="w-6 h-6" />}
             </div>
@@ -52,12 +52,12 @@ export const Navbar = () => {
                 {isOfficial ? (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                    <span>Municipal Command Center</span>
+                    <span>Municipal administration</span>
                   </>
                 ) : (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>Citizen Grievance Portal</span>
+                    <span>Citizen services</span>
                   </>
                 )}
               </p>
@@ -78,7 +78,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <Shield className="w-4 h-4 text-indigo-300" />
-                  <span>Triage & Dispatch</span>
+                  <span>Complaint queue</span>
                 </Link>
 
                 <Link
@@ -90,7 +90,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <Users className="w-4 h-4 text-indigo-300" />
-                  <span>Field Crew Radar</span>
+                  <span>Field officers</span>
                 </Link>
 
                 <Link
@@ -103,7 +103,7 @@ export const Navbar = () => {
                 >
                   <Camera className="w-4 h-4 text-rose-400 animate-pulse" />
                   <span className="flex items-center gap-1">
-                    CCTV AI Vision
+                    CCTV monitoring
                     <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-rose-500/30 text-rose-300 border border-rose-500/40">LIVE</span>
                   </span>
                 </Link>
@@ -117,7 +117,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <Map className="w-4 h-4 text-indigo-300" />
-                  <span>Operations Map</span>
+                  <span>Operations map</span>
                 </Link>
 
                 <Link
@@ -129,7 +129,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <BarChart3 className="w-4 h-4 text-indigo-300" />
-                  <span>Civic Analytics</span>
+                  <span>Service analytics</span>
                 </Link>
 
                 <Link
@@ -141,7 +141,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <Bot className="w-4 h-4 text-purple-400" />
-                  <span>AI Benchmarks</span>
+                  <span>System evaluation</span>
                 </Link>
               </>
             ) : (
@@ -151,12 +151,11 @@ export const Navbar = () => {
                   to="/report"
                   className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 font-bold ${
                     isActive('/report')
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-emerald-700 text-white shadow-sm'
                       : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Report Issue (Instant AI)</span>
+                  <span>Submit complaint</span>
                 </Link>
 
                 <Link
@@ -179,7 +178,7 @@ export const Navbar = () => {
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <span>My Grievances</span>
+                  <span>My complaints</span>
                 </Link>
 
                 <Link
@@ -209,9 +208,9 @@ export const Navbar = () => {
                   : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
               }`}
             >
-              <span>{isOfficial ? '🏛️ Official Mode' : '👤 Citizen Mode'}</span>
+              <span>{isOfficial ? 'Official view' : 'Citizen view'}</span>
               <span className="text-[10px] opacity-75 hidden sm:inline">
-                ({isOfficial ? 'Switch to Citizen ➔' : 'Switch to Official ➔'})
+                ({isOfficial ? 'Citizen view' : 'Official view'})
               </span>
             </button>
 
@@ -248,7 +247,7 @@ export const Navbar = () => {
                 </Link>
                 <Link
                   to="/register"
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm transition"
                 >
                   Register
                 </Link>
@@ -279,21 +278,21 @@ export const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
                 >
-                  📋 Triage & Dispatch Queue
+                  Complaint queue
                 </Link>
                 <Link
                   to="/authority?tab=OFFICERS"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
                 >
-                  👷 Field Crew Proximity Radar
+                  Field officers
                 </Link>
                 <Link
                   to="/cctv"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-bold text-rose-300 hover:bg-slate-800 flex items-center justify-between"
                 >
-                  <span>📹 CCTV AI Vision Grid</span>
+                  <span>CCTV monitoring</span>
                   <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500/30 text-rose-300 border border-rose-500/40">LIVE</span>
                 </Link>
                 <Link
@@ -301,21 +300,21 @@ export const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
                 >
-                  🗺️ Operations Map
+                  Operations map
                 </Link>
                 <Link
                   to="/analytics"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
                 >
-                  📊 Civic Analytics
+                  Service analytics
                 </Link>
                 <Link
                   to="/evaluation"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
                 >
-                  🧪 AI Benchmarks
+                  System evaluation
                 </Link>
               </>
             ) : (
@@ -325,28 +324,28 @@ export const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-800"
                 >
-                  📸 Report Issue (Instant AI Photo)
+                  Submit complaint
                 </Link>
                 <Link
                   to="/track"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
-                  🔍 Track Complaint
+                  Track complaint
                 </Link>
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
-                  📋 My Grievances
+                  My complaints
                 </Link>
                 <Link
                   to="/map"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
-                  🗺️ Community Map
+                  Community map
                 </Link>
               </>
             )}
@@ -356,7 +355,7 @@ export const Navbar = () => {
                 onClick={() => { handleToggleRole(); setMobileMenuOpen(false); }}
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-400 hover:bg-slate-800 flex items-center justify-between"
               >
-                <span>{isOfficial ? 'Switch to 👤 Citizen Mode' : 'Switch to 🏛️ Official Mode'}</span>
+                <span>{isOfficial ? 'Switch to citizen view' : 'Switch to official view'}</span>
                 <ArrowRightLeft className="w-3.5 h-3.5" />
               </button>
             </div>
