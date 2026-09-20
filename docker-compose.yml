@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: civicseva_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-civicseva}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-civicseva123}
+      POSTGRES_DB: ${POSTGRES_DB:-civicsevadb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civicseva -d civicsevadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  aiml:
+    build:
+      context: ./aiml
+      dockerfile: Dockerfile
+    container_name: civicseva_aiml
+    ports:
+      - "8001:8001"
+    environment:
+      - AIML_PORT=8001
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - VISION_API_KEY=${VISION_API_KEY:-}
+    volumes:
+      - ./aiml:/app
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civicseva_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://civicseva:civicseva123@database:5432/civicsevadb
+      - JWT_SECRET=${JWT_SECRET:-civicseva_hackathon_demo_secret_key_2026}
+      - AIML_SERVICE_URL=http://aiml:8001
+      - SLA_HIGH_HOURS=${SLA_HIGH_HOURS:-24}
+      - SLA_MEDIUM_HOURS=${SLA_MEDIUM_HOURS:-48}
+      - SLA_LOW_HOURS=${SLA_LOW_HOURS:-72}
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    depends_on:
+      database:
+        condition: service_healthy
+      aiml:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: civicseva_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:
