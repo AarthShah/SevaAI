@@ -11,8 +11,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Fallback to local SQLite if PostgreSQL DATABASE_URL is not set or empty
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if not DATABASE_URL:
-    SQLITE_PATH = BASE_DIR / "civicseva.db"
-    DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
+    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME") or not os.access(str(BASE_DIR), os.W_OK))
+    if is_serverless:
+        tmp_db = Path("/tmp/civicseva.db")
+        src_db = BASE_DIR / "civicseva.db"
+        if src_db.exists() and not tmp_db.exists():
+            import shutil
+            try:
+                shutil.copyfile(src_db, tmp_db)
+            except Exception:
+                pass
+        DATABASE_URL = f"sqlite:///{tmp_db}"
+    else:
+        SQLITE_PATH = BASE_DIR / "civicseva.db"
+        DATABASE_URL = f"sqlite:///{SQLITE_PATH}"
 
 # Security
 JWT_SECRET = os.getenv("JWT_SECRET", "civicseva_hackathon_demo_secret_key_2026")
@@ -23,8 +35,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440
 AIML_SERVICE_URL = os.getenv("AIML_SERVICE_URL", "http://localhost:8001")
 
 # File Upload Storage
-UPLOAD_DIR = BASE_DIR / "uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME") or not os.access(str(BASE_DIR), os.W_OK))
+if is_serverless:
+    UPLOAD_DIR = Path("/tmp/uploads")
+else:
+    UPLOAD_DIR = BASE_DIR / "uploads"
+
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    UPLOAD_DIR = Path("/tmp/uploads")
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
 
 # Allowed CORS Origins

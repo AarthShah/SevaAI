@@ -5,7 +5,15 @@ autonomous agentic workflows, SLA tracking, and analytics.
 """
 
 import os
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
+
+# Guarantee backend directory is in sys.path so aiml and internal modules resolve
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -35,10 +43,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+# CORS Middleware - Permissive for Hackathon demo & dynamic Vercel preview domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Hackathon permissive mode
+    allow_origins=ALLOWED_ORIGINS + ["*"],
+    allow_origin_regex=r"^https?:\/\/.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

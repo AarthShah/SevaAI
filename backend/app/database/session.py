@@ -19,7 +19,27 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+_db_initialized = False
+
+def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            from .base import Base as AppBase
+            from .seed_data import seed_database
+            AppBase.metadata.create_all(bind=engine)
+            db = SessionLocal()
+            try:
+                seed_database(db)
+            finally:
+                db.close()
+        except Exception as e:
+            print("DB auto-init notice:", e)
+        finally:
+            _db_initialized = True
+
 def get_db():
+    ensure_db_initialized()
     db = SessionLocal()
     try:
         yield db

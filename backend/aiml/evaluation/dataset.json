@@ -1,0 +1,202 @@
+[
+  {
+    "id": "EVAL_01",
+    "text": "Deep pothole on the main road near the college gate causing severe traffic jam.",
+    "expected_issue": "POTHOLE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "HIGH",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_02",
+    "text": "Multiple large potholes near station square, two scooters skidded yesterday.",
+    "expected_issue": "POTHOLE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "HIGH",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_03",
+    "text": "Small asphalt depression and crater on inner residential society lane.",
+    "expected_issue": "POTHOLE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "MEDIUM",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_04",
+    "text": "Massive uncollected garbage dump rotting outside the secondary school gate attracting stray dogs.",
+    "expected_issue": "GARBAGE",
+    "expected_category": "waste_management",
+    "expected_severity": "HIGH",
+    "expected_dept": "Waste Management & Sanitation Department"
+  },
+  {
+    "id": "EVAL_05",
+    "text": "Overflowing public waste bin on 4th cross road with plastic waste spilled on the footpath.",
+    "expected_issue": "GARBAGE",
+    "expected_category": "waste_management",
+    "expected_severity": "MEDIUM",
+    "expected_dept": "Waste Management & Sanitation Department"
+  },
+  {
+    "id": "EVAL_06",
+    "text": "Illegal trash dumping behind commercial shopping complex creating foul smell.",
+    "expected_issue": "GARBAGE",
+    "expected_category": "waste_management",
+    "expected_severity": "MEDIUM",
+    "expected_dept": "Waste Management & Sanitation Department"
+  },
+  {
+    "id": "EVAL_07",
+    "text": "Streetlight pole has exposed wire sparking near children park, fatal electrocution danger!",
+    "expected_issue": "STREETLIGHT",
+    "expected_category": "electrical_street_lighting",
+    "expected_severity": "CRITICAL",
+    "expected_dept": "Electrical & Street Lighting Department"
+  },
+  {
+    "id": "EVAL_08",
+    "text": "Entire dark stretch of five streetlights not working on outer bypass road for 3 days.",
+    "expected_issue": "STREETLIGHT",
+    "expected_category": "electrical_street_lighting",
+    "expected_severity": "HIGH",
+    "expected_dept": "Electrical & Street Lighting Department"
+  },
+  {
+    "id": "EVAL_09",
+    "text": "Single street lamp bulb flickering intermittently in front of house number 42.",
+    "expected_issue": "STREETLIGHT",
+    "expected_category": "electrical_street_lighting",
+    "expected_severity": "LOW",
+    "expected_dept": "Electrical & Street Lighting Department"
+  },
+  {
+    "id": "EVAL_10",
+    "text": "Major drinking water pipeline burst near central market, clean potable water gushing on the road.",
+    "expected_issue": "WATER_LEAKAGE",
+    "expected_category": "water_supply",
+    "expected_severity": "HIGH",
+    "expected_dept": "Water Supply & Sewerage Board"
+  },
+  {
+    "id": "EVAL_11",
+    "text": "Underground pipe burst flooding the residential basement with clean supply water.",
+    "expected_issue": "WATER_LEAKAGE",
+    "expected_category": "water_supply",
+    "expected_severity": "HIGH",
+    "expected_dept": "Water Supply & Sewerage Board"
+  },
+  {
+    "id": "EVAL_12",
+    "text": "Minor valve leak from municipal supply pipe along pedestrian walkway.",
+    "expected_issue": "WATER_LEAKAGE",
+    "expected_category": "water_supply",
+    "expected_severity": "MEDIUM",
+    "expected_dept": "Water Supply & Sewerage Board"
+  },
+  {
+    "id": "EVAL_13",
+    "text": "Open manhole cover missing on busy market street, lethal accident risk for vehicles and pedestrians!",
+    "expected_issue": "DRAINAGE",
+    "expected_category": "drainage_sanitation",
+    "expected_severity": "CRITICAL",
+    "expected_dept": "Drainage & Stormwater Department"
+  },
+  {
+    "id": "EVAL_14",
+    "text": "Sewage drain overflowing with black stagnant water and unbearable stench outside government dispensary.",
+    "expected_issue": "DRAINAGE",
+    "expected_category": "drainage_sanitation",
+    "expected_severity": "HIGH",
+    "expected_dept": "Drainage & Stormwater Department"
+  },
+  {
+    "id": "EVAL_15",
+    "text": "Clogged storm drain gutter causing water logging after evening rains.",
+    "expected_issue": "DRAINAGE",
+    "expected_category": "drainage_sanitation",
+    "expected_severity": "HIGH",
+    "expected_dept": "Drainage & Stormwater Department"
+  },
+  {
+    "id": "EVAL_16",
+    "text": "Road caved in near river bridge, half of the asphalt collapsed into the embankment.",
+    "expected_issue": "ROAD_DAMAGE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "CRITICAL",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_17",
+    "text": "Broken concrete road divider and collapsed curb stones scattered across the lane.",
+    "expected_issue": "ROAD_DAMAGE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "HIGH",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_18",
+    "text": "Speed breaker broken with exposed iron rebar damaging car bumpers.",
+    "expected_issue": "ROAD_DAMAGE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "HIGH",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_19",
+    "text": "Dangerous crater and huge potholes near railway station entrance.",
+    "expected_issue": "POTHOLE",
+    "expected_category": "road_infrastructure",
+    "expected_severity": "HIGH",
+    "expected_dept": "Municipal Road Department"
+  },
+  {
+    "id": "EVAL_20",
+    "text": "Sanitary waste and plastic garbage bags piled up near temple pond.",
+    "expected_issue": "GARBAGE",
+    "expected_category": "waste_management",
+    "expected_severity": "MEDIUM",
+    "expected_dept": "Waste Management & Sanitation Department"
+  },
+  {
+    "id": "EVAL_21",
+    "text": "Broken electric pole leaning dangerously over footpath with hanging wires.",
+    "expected_issue": "STREETLIGHT",
+    "expected_category": "electrical_street_lighting",
+    "expected_severity": "CRITICAL",
+    "expected_dept": "Electrical & Street Lighting Department"
+  },
+  {
+    "id": "EVAL_22",
+    "text": "Broken water supply line leaking drinking water into the drainage ditch.",
+    "expected_issue": "WATER_LEAKAGE",
+    "expected_category": "water_supply",
+    "expected_severity": "HIGH",
+    "expected_dept": "Water Supply & Sewerage Board"
+  },
+  {
+    "id": "EVAL_23",
+    "text": "Choked sewage pipe causing human waste to back up onto the street.",
+    "expected_issue": "DRAINAGE",
+    "expected_category": "drainage_sanitation",
+    "expected_severity": "HIGH",
+    "expected_dept": "Drainage & Stormwater Department"
+  },
+  {
+    "id": "EVAL_24",
+    "text": "General inquiry regarding property tax receipt and birth certificate office timings.",
+    "expected_issue": "OTHER",
+    "expected_category": "public_safety_other",
+    "expected_severity": "LOW",
+    "expected_dept": "General Civic Administration"
+  },
+  {
+    "id": "EVAL_25",
+    "text": "Need guidance on civic garden tree pruning permission.",
+    "expected_issue": "OTHER",
+    "expected_category": "public_safety_other",
+    "expected_severity": "LOW",
+    "expected_dept": "General Civic Administration"
+  }
+]
