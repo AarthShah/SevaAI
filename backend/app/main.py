@@ -27,14 +27,12 @@ from .api import auth, complaints, departments, analytics, agent, upload, notifi
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database tables
-    Base.metadata.create_all(bind=engine)
-    # Seed standard demo data
-    db = SessionLocal()
+    # Safely initialize database tables and seed data without crashing on unreachable DB
     try:
-        seed_database(db)
-    finally:
-        db.close()
+        from .database.session import ensure_db_initialized
+        ensure_db_initialized()
+    except Exception as e:
+        print(f"[WARNING] Lifespan database initialization: {e}")
     yield
 
 app = FastAPI(
