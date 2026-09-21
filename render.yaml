@@ -1,0 +1,40 @@
+services:
+  # ============================================================
+  # 1. CivicSeva FastAPI Backend Web Service
+  # ============================================================
+  - type: web
+    name: civicseva-backend
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+
+  # ============================================================
+  # 2. CivicSeva React Vite Frontend Static Site
+  # ============================================================
+  - type: static
+    name: civicseva-frontend
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: civicseva-backend
+          envVarKey: RENDER_EXTERNAL_URL
