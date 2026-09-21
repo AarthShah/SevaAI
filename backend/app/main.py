@@ -14,7 +14,8 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -56,6 +57,30 @@ app.add_middleware(
 # Static file serving for uploads
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
+@app.middleware("http")
+async def normalize_api_path(request: Request, call_next):
+    """
+    Ensures routes match regardless of whether Vercel rewrites forward /api or strip it.
+    """
+    path = request.scope.get("path", "")
+    if not path.startswith("/api") and not path.startswith("/docs") and not path.startswith("/openapi.json") and not path.startswith("/uploads") and path not in ("/", "/health"):
+        request.scope["path"] = f"/api{path}"
+    return await call_next(request)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    err_trace = traceback.format_exc()
+    print(f"Error on {request.method} {request.url.path}: {exc}\n{err_trace}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "error_type": type(exc).__name__,
+            "path": request.url.path
+        }
+    )
+
 # Include Routers
 app.include_router(auth.router)
 app.include_router(complaints.router)
@@ -68,6 +93,7 @@ app.include_router(upload.router)
 app.include_router(notifications.router)
 
 @app.get("/")
+@app.get("/api")
 def root():
     return {
         "service": "CivicSeva Backend Core API",
@@ -78,6 +104,7 @@ def root():
     }
 
 @app.get("/health")
+@app.get("/api/health")
 def health():
     return {"status": "healthy", "service": "CivicSeva Backend"}
 
