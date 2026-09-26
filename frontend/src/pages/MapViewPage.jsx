@@ -7,7 +7,7 @@ import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export const MapViewPage = () => {
+export const MapViewPage = ({ isEmbedded = false }) => {
   const { user } = useAuth();
   const isOfficial = user?.role === 'authority' || user?.role === 'admin';
 
@@ -43,15 +43,17 @@ export const MapViewPage = () => {
   }, [selectedCategory, selectedSeverity, isOfficial]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 bg-white min-h-[calc(100vh-64px)]">
+    <div className={isEmbedded ? "space-y-6" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 bg-white min-h-[calc(100vh-64px)]"}>
       {/* Breadcrumb */}
-      <div className="text-xs text-slate-400 flex items-center gap-1.5">
-        <Link to="/" className="hover:text-slate-600">Home</Link>
-        <span>&rsaquo;</span>
-        <Link to="/authority" className="hover:text-slate-600">Command Center</Link>
-        <span>&rsaquo;</span>
-        <span className="text-slate-700 font-medium">Operations Map</span>
-      </div>
+      {!isEmbedded && (
+        <div className="text-xs text-slate-400 flex items-center gap-1.5">
+          <Link to="/" className="hover:text-slate-600">Home</Link>
+          <span>&rsaquo;</span>
+          <Link to="/authority" className="hover:text-slate-600">Command Center</Link>
+          <span>&rsaquo;</span>
+          <span className="text-slate-700 font-medium">Operations Map</span>
+        </div>
+      )}
 
       {/* Clean White Header */}
       <div className="rounded-md p-6 border border-slate-200 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">

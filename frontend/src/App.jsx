@@ -11,22 +11,19 @@ import { ReportIssuePage } from './pages/ReportIssuePage';
 import { TrackComplaintPage } from './pages/TrackComplaintPage';
 import { CitizenDashboard } from './pages/CitizenDashboard';
 import { AuthorityDashboard } from './pages/AuthorityDashboard';
-import { MapViewPage } from './pages/MapViewPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
 import { EvaluationPage } from './pages/EvaluationPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { CCTVVisionPage } from './pages/CCTVVisionPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 
-const AppShell = () => {
+const AppContent = () => {
   const location = useLocation();
   const isAuthority = location.pathname.startsWith('/authority');
 
   return (
     <div className={`flex flex-col min-h-screen ${isAuthority ? 'bg-[#F8FAFC]' : 'bg-white'} text-slate-900`}>
-      {!isAuthority && <Navbar />}
+      <Navbar />
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -36,8 +33,8 @@ const AppShell = () => {
           <Route path="/dashboard" element={<CitizenDashboard />} />
           <Route path="/authority" element={<AuthorityDashboard />} />
           <Route path="/map" element={<Navigate to="/authority?tab=MAP" replace />} />
-          <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
           <Route path="/analytics" element={<Navigate to="/authority?tab=ANALYTICS" replace />} />
+          <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
           <Route path="/evaluation" element={<EvaluationPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -56,7 +53,7 @@ export const App = () => {
     <AuthProvider>
       <NotificationProvider>
         <Router>
-          <AppShell />
+          <AppContent />
         </Router>
       </NotificationProvider>
     </AuthProvider>
