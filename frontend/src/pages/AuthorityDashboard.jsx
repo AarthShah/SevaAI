@@ -102,7 +102,7 @@ const DEFAULT_ISSUES = [
     reportedBy: 'Citizen (via Web)',
     description: 'Large pothole on the main road causing vehicle damage and safety risk.',
     image: '/sample_evidence/pothole.jpg',
-    evidenceGallery: ['/sample_evidence/pothole.jpg', '/sample_evidence/pothole.jpg', '/sample_evidence/pothole.jpg'],
+    evidenceGallery: ['/sample_evidence/pothole.jpg', '/sample_evidence/manhole.jpg', '/sample_evidence/drainage.jpg'],
     extraEvidenceCount: 2,
     aiDistanceKm: 0.8,
     aiConfidence: '94%',
@@ -123,7 +123,7 @@ const DEFAULT_ISSUES = [
     reportedBy: 'Citizen (via Mobile)',
     description: 'Uncollected domestic and commercial waste accumulating on pedestrian sidewalk.',
     image: '/sample_evidence/garbage.jpg',
-    evidenceGallery: ['/sample_evidence/garbage.jpg'],
+    evidenceGallery: ['/sample_evidence/garbage.jpg', '/sample_evidence/drainage.jpg'],
     extraEvidenceCount: 1,
     aiDistanceKm: 1.2,
     aiConfidence: '91%',
@@ -165,7 +165,7 @@ const DEFAULT_ISSUES = [
     reportedBy: 'Resident Report',
     description: 'Drinking water pipeline burst with heavy stream flooding street for past 24 hours.',
     image: '/sample_evidence/water_leak.jpg',
-    evidenceGallery: ['/sample_evidence/water_leak.jpg'],
+    evidenceGallery: ['/sample_evidence/water_leak.jpg', '/sample_evidence/drainage.jpg'],
     extraEvidenceCount: 1,
     aiDistanceKm: 2.1,
     aiConfidence: '89%',
@@ -185,9 +185,9 @@ const DEFAULT_ISSUES = [
     createdOnTime: '03:20 PM',
     reportedBy: 'Traffic Police Patrol',
     description: 'Missing sewer cover creating life-threatening hazard on high speed vehicular lane.',
-    image: '/sample_evidence/pothole.jpg',
-    evidenceGallery: ['/sample_evidence/pothole.jpg'],
-    extraEvidenceCount: 3,
+    image: '/sample_evidence/manhole.jpg',
+    evidenceGallery: ['/sample_evidence/manhole.jpg', '/sample_evidence/pothole.jpg'],
+    extraEvidenceCount: 2,
     aiDistanceKm: 0.5,
     aiConfidence: '98%',
     aiReasoning: 'Critical pedestrian and vehicle life safety alert. Auto-escalated to Level 2 supervisor.'
@@ -206,9 +206,9 @@ const DEFAULT_ISSUES = [
     createdOnTime: '02:44 PM',
     reportedBy: 'Citizen (via Web)',
     description: 'Monsoon catch basin choked with plastic debris causing local street waterlogging.',
-    image: '/sample_evidence/water_leak.jpg',
-    evidenceGallery: ['/sample_evidence/water_leak.jpg'],
-    extraEvidenceCount: 0,
+    image: '/sample_evidence/drainage.jpg',
+    evidenceGallery: ['/sample_evidence/drainage.jpg', '/sample_evidence/water_leak.jpg'],
+    extraEvidenceCount: 1,
     aiDistanceKm: 1.8,
     aiConfidence: '93%',
     aiReasoning: 'Stormwater catchment choke pattern matched to Scheme 78 culvert drainage grid.'
@@ -288,6 +288,7 @@ export const AuthorityDashboard = () => {
 
   const [activeNav, setActiveNav] = useState(getInitialView());
   const [activeTab, setActiveTab] = useState('All Issues');
+  const [drawerTab, setDrawerTab] = useState('Overview'); // 'Overview' | 'Timeline' | 'Location' | 'Work Orders'
 
   // Issues and details drawer state
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
@@ -1440,121 +1441,280 @@ export const AuthorityDashboard = () => {
 
             {/* Drawer Sub-Tabs */}
             <div className="flex items-center space-x-4 border-b border-slate-200 text-xs">
-              <button className="pb-2 font-semibold text-blue-800 border-b-2 border-blue-800">
-                Overview
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Timeline
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Location
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Work Orders
-              </button>
+              {['Overview', 'Timeline', 'Location', 'Work Orders'].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setDrawerTab(tab)}
+                  className={`pb-2 transition font-medium ${
+                    drawerTab === tab
+                      ? 'font-semibold text-blue-800 border-b-2 border-blue-800'
+                      : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
-            {/* Metadata List */}
-            <div className="space-y-3 text-xs pt-1">
-              {/* Location */}
-              <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Location</span>
-                  <span className="text-slate-800 font-medium block leading-tight">
-                    {currentIssue.location}
-                  </span>
-                  <Link to="/map" className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block">
-                    View on Map
-                  </Link>
-                </div>
-              </div>
-
-              {/* Department */}
-              <div className="flex items-start gap-3">
-                <Building className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Department</span>
-                  <span className="text-slate-800 font-semibold block">
-                    {currentIssue.department}
-                  </span>
-                </div>
-              </div>
-
-              {/* Reported On */}
-              <div className="flex items-start gap-3">
-                <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Reported On</span>
-                  <span className="text-slate-800 font-medium block">
-                    {currentIssue.createdOnDate}, {currentIssue.createdOnTime}
-                  </span>
-                </div>
-              </div>
-
-              {/* Reported By */}
-              <div className="flex items-start gap-3">
-                <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Reported By</span>
-                  <span className="text-slate-800 font-medium block">
-                    {currentIssue.reportedBy}
-                  </span>
-                </div>
-              </div>
-
-              {/* Assigned To */}
-              <div className="flex items-start gap-3">
-                <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Assigned To</span>
-                  <span className="text-slate-800 font-semibold block">
-                    {currentIssue.assignedTo || 'Unassigned'}
-                  </span>
-                  {currentIssue.squad && (
-                    <span className="text-[11px] text-slate-400 block">
-                      {currentIssue.squad}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Current Status */}
-              <div className="flex items-center gap-3 pt-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ml-1"></span>
-                <span className="text-slate-700 text-xs">
-                  Current Status <strong className="text-blue-900 ml-1">{currentIssue.status}</strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
-              <span className="font-semibold text-slate-900 block">Description</span>
-              <p className="text-slate-600 leading-relaxed">
-                {currentIssue.description}
-              </p>
-            </div>
-
-            {/* Evidence Gallery */}
-            <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
-              <span className="font-semibold text-slate-900 block">Evidence</span>
-              <div className="grid grid-cols-4 gap-2">
-                {currentIssue.evidenceGallery?.slice(0, 3).map((imgUrl, i) => (
-                  <img
-                    key={i}
-                    src={imgUrl}
-                    alt="Evidence thumbnail"
-                    className="w-full h-14 object-cover rounded border border-slate-200"
-                  />
-                ))}
-                {currentIssue.extraEvidenceCount > 0 && (
-                  <div className="w-full h-14 rounded bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold flex items-center justify-center">
-                    +{currentIssue.extraEvidenceCount}
+            {/* TAB 1: OVERVIEW */}
+            {drawerTab === 'Overview' && (
+              <div className="space-y-4">
+                {/* Metadata List */}
+                <div className="space-y-3 text-xs pt-1">
+                  {/* Location */}
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Location</span>
+                      <span className="text-slate-800 font-medium block leading-tight">
+                        {currentIssue.location}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerTab('Location')}
+                        className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block"
+                      >
+                        View on Map
+                      </button>
+                    </div>
                   </div>
-                )}
+
+                  {/* Department */}
+                  <div className="flex items-start gap-3">
+                    <Building className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Department</span>
+                      <span className="text-slate-800 font-semibold block">
+                        {currentIssue.department}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reported On */}
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Reported On</span>
+                      <span className="text-slate-800 font-medium block">
+                        {currentIssue.createdOnDate}, {currentIssue.createdOnTime}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reported By */}
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Reported By</span>
+                      <span className="text-slate-800 font-medium block">
+                        {currentIssue.reportedBy}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Assigned To */}
+                  <div className="flex items-start gap-3">
+                    <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Assigned To</span>
+                      <span className="text-slate-800 font-semibold block">
+                        {currentIssue.assignedTo || 'Unassigned'}
+                      </span>
+                      {currentIssue.squad && (
+                        <span className="text-[11px] text-slate-400 block">
+                          {currentIssue.squad}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Current Status */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ml-1"></span>
+                    <span className="text-slate-700 text-xs">
+                      Current Status <strong className="text-blue-900 ml-1">{currentIssue.status}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
+                  <span className="font-semibold text-slate-900 block">Description</span>
+                  <p className="text-slate-600 leading-relaxed">
+                    {currentIssue.description}
+                  </p>
+                </div>
+
+                {/* Evidence Gallery */}
+                <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
+                  <span className="font-semibold text-slate-900 block">Evidence Photos</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {currentIssue.evidenceGallery?.map((imgUrl, i) => (
+                      <img
+                        key={i}
+                        src={imgUrl}
+                        alt="Evidence photo"
+                        className="w-full h-16 object-cover rounded border border-slate-200 shadow-xs"
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* TAB 2: TIMELINE */}
+            {drawerTab === 'Timeline' && (
+              <div className="space-y-4 text-xs pt-1">
+                <div className="relative pl-5 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                  {/* Step 1 */}
+                  <div className="relative">
+                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                    <strong className="text-slate-900 block font-semibold">Grievance Registered</strong>
+                    <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
+                    <p className="text-slate-600 text-[11px] mt-0.5">Citizen logged report via CivicSeva portal with GPS coordinates and evidence.</p>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="relative">
+                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+                    <strong className="text-slate-900 block font-semibold">AI Defect Detection & Verification</strong>
+                    <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
+                    <p className="text-slate-600 text-[11px] mt-0.5">
+                      Edge Computer Vision model classified defect as <strong>{currentIssue.title}</strong> with {currentIssue.aiConfidence || '94%'} confidence. Severity categorized as <strong>{currentIssue.priority}</strong>.
+                    </p>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="relative">
+                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+                    <strong className="text-slate-900 block font-semibold">Department Jurisdiction Assigned</strong>
+                    <span className="text-[11px] text-slate-500 block">Routed to {currentIssue.department}</span>
+                    <p className="text-slate-600 text-[11px] mt-0.5">Autonomous routing matched issue category to primary municipal division queue.</p>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="relative">
+                    <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.assignedTo ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
+                    <strong className="text-slate-900 block font-semibold">Field Crew Dispatch Designation</strong>
+                    <span className="text-[11px] text-slate-500 block">
+                      {currentIssue.assignedTo ? `${currentIssue.assignedTo} (${currentIssue.squad || 'Field Unit'})` : 'Awaiting Squad Confirmation'}
+                    </span>
+                    <p className="text-slate-600 text-[11px] mt-0.5">
+                      {currentIssue.assignedTo 
+                        ? `Assigned to nearest squad (${currentIssue.aiDistanceKm || 0.8} km away via Haversine calculation).`
+                        : 'Currently pending supervisory officer designation.'}
+                    </p>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="relative">
+                    <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.status === 'Resolved' ? 'bg-emerald-600' : currentIssue.status === 'In Progress' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
+                    <strong className="text-slate-900 block font-semibold">Remediation Status</strong>
+                    <span className="text-[11px] text-slate-500 block font-medium text-blue-800">{currentIssue.status}</span>
+                    <p className="text-slate-600 text-[11px] mt-0.5">
+                      {currentIssue.status === 'Resolved'
+                        ? 'Defect resolved and verified by municipal field inspector.'
+                        : currentIssue.status === 'In Progress'
+                        ? 'Field unit actively on-site performing remediation repairs.'
+                        : 'Scheduled for prompt on-site execution.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: LOCATION */}
+            {drawerTab === 'Location' && (
+              <div className="space-y-4 text-xs pt-1">
+                {/* Visual Map Pin Box */}
+                <div className="relative h-36 bg-slate-100 rounded-md overflow-hidden border border-slate-200 flex items-center justify-center">
+                  <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#1E3A8A_1px,transparent_1px)] [background-size:12px_12px]"></div>
+                  <div className="relative flex flex-col items-center">
+                    <span className="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center shadow-lg animate-bounce">
+                      <MapPin className="w-4 h-4" />
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-800 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded shadow mt-1">
+                      {currentIssue.location}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 bg-slate-50 p-3.5 rounded border border-slate-200">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Street Address:</span>
+                    <span className="font-semibold text-slate-900 text-right">{currentIssue.location}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Municipal Zone:</span>
+                    <span className="font-medium text-slate-800">Zone 3 &bull; Ward 42</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">GPS Coordinates:</span>
+                    <span className="font-mono text-slate-800">22.7196° N, 75.8577° E</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Nearest Fleet:</span>
+                    <span className="font-semibold text-blue-900">📍 {currentIssue.aiDistanceKm || 0.8} km away</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveNav('map'); setSearchParams({ tab: 'MAP' }); }}
+                  className="w-full py-2 rounded bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 font-medium text-xs transition flex items-center justify-center gap-1.5"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span>Open in Full Operations Map</span>
+                </button>
+              </div>
+            )}
+
+            {/* TAB 4: WORK ORDERS */}
+            {drawerTab === 'Work Orders' && (
+              <div className="space-y-4 text-xs pt-1">
+                <div className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
+                  <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
+                    <div>
+                      <span className="text-[10px] font-mono text-slate-400 font-semibold block">DIRECTIVE ID</span>
+                      <strong className="text-sm font-bold text-blue-900">WO-{currentIssue.id.replace('#', '')}-R1</strong>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                      {currentIssue.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-slate-600">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Assigned Squad:</span>
+                      <strong className="text-slate-800">{currentIssue.assignedTo || 'Unassigned'} {currentIssue.squad ? `(${currentIssue.squad})` : ''}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Target SLA:</span>
+                      <span className="font-medium text-slate-800">24 Hours (Standard Municipal SLA)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Allocated Materials:</span>
+                      <span className="font-medium text-slate-800">Cold Asphalt Patch / Heavy Tamper</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">Operational Directive:</span>
+                      <p className="text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200 leading-relaxed">
+                        {currentIssue.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsUpdateModalOpen(true)}
+                    className="w-full py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
+                  >
+                    Update Work Order Status
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons at bottom of Drawer */}

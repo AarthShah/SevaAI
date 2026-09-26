@@ -33,6 +33,7 @@ class CctvVisionDetector:
             "address": "Shivajinagar Major Intersection, Pune",
             "primary_focus": "Traffic & Road Infrastructure",
             "sample_snapshot": "/sample_evidence/pothole.jpg",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
             "default_defect": "POTHOLE",
             "resolution": "1080p 60fps",
             "status": "LIVE_MONITORING"
@@ -46,8 +47,9 @@ class CctvVisionDetector:
             "address": "Mandai Wholesale Market Perimeter, Pune",
             "primary_focus": "Solid Waste & Sanitation",
             "sample_snapshot": "/sample_evidence/garbage.jpg",
+            "video_url": "/sample_evidence/cctv_feed_2.mp4",
             "default_defect": "GARBAGE_ACCUMULATION",
-            "resolution": "4K 30fps",
+            "resolution": "1080p 30fps",
             "status": "LIVE_MONITORING"
         },
         {
@@ -59,6 +61,7 @@ class CctvVisionDetector:
             "address": "River Road Main Pipeline Sluice, Pune",
             "primary_focus": "Water Infrastructure & Sewerage",
             "sample_snapshot": "/sample_evidence/water_leak.jpg",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
             "default_defect": "WATER_PIPELINE_BURST",
             "resolution": "1080p 60fps",
             "status": "LIVE_MONITORING"
@@ -72,6 +75,7 @@ class CctvVisionDetector:
             "address": "Katraj Bypass Flyover Approach, Pune",
             "primary_focus": "Streetlighting & Electrical Grid",
             "sample_snapshot": "/sample_evidence/streetlight.jpg",
+            "video_url": "/sample_evidence/cctv_feed_2.mp4",
             "default_defect": "STREETLIGHT_OUTAGE",
             "resolution": "1080p IR NightVision",
             "status": "LIVE_MONITORING"
@@ -84,9 +88,10 @@ class CctvVisionDetector:
             "longitude": 73.8350,
             "address": "Swargate Bus Depot North Gate, Pune",
             "primary_focus": "Drainage & Pedestrian Safety",
-            "sample_snapshot": "/sample_evidence/pothole.jpg",
+            "sample_snapshot": "/sample_evidence/manhole.jpg",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
             "default_defect": "OPEN_DRAINAGE_HAZARD",
-            "resolution": "4K 60fps",
+            "resolution": "1080p 60fps",
             "status": "LIVE_MONITORING"
         }
     ]
