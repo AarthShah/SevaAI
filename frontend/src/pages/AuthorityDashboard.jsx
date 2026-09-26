@@ -617,7 +617,7 @@ export const AuthorityDashboard = () => {
       [cleanId]: [dispatchNote, ...(prev[cleanId] || [])]
     }));
 
-    showToast(`Approved AI assignment for #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`);
+    showToast(`Approved AI assignment for issue #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`);
   };
 
   // Re-run AI Analysis
