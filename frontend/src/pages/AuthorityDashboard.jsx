@@ -6,7 +6,8 @@ import {
   Filter, MoreVertical, X, Check, MapPin, Building, User, 
   ChevronDown, CheckCircle2, AlertCircle, ArrowUpRight, Search, 
   RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ArrowRight, 
-  Phone, Eye, Clock, Copy, Printer, Sparkles, Send, Wrench, RotateCcw
+  Phone, Eye, Clock, Copy, Printer, Sparkles, Send, Wrench, RotateCcw,
+  FastForward, CheckCheck
 } from 'lucide-react';
 import { CivicLogo } from '../components/CivicLogo';
 import { MapViewPage } from './MapViewPage';
@@ -254,13 +255,13 @@ const DEFAULT_ISSUES = [
   }
 ];
 
-const AVAILABLE_SQUADS = [
-  { name: 'Er. Rajesh Patil', squad: 'Field Squad A', dept: 'Road Department' },
-  { name: 'Priya Deshmukh', squad: 'Field Squad B', dept: 'Sanitation Department' },
-  { name: 'Vikram Shinde', squad: 'Field Squad A', dept: 'Electricity Department' },
-  { name: 'Sneha Jagtap', squad: 'Field Squad B', dept: 'Sanitation Department' },
-  { name: 'Amit More', squad: 'Field Squad A', dept: 'Sanitation Department' },
-  { name: 'Kiran Desai', squad: 'Field Squad C', dept: 'Road Department' }
+const INITIAL_SQUADS = [
+  { id: 'sq-1', name: 'Er. Rajesh Patil', squad: 'Field Squad A', dept: 'Road Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Utility Truck 1' },
+  { id: 'sq-2', name: 'Priya Deshmukh', squad: 'Field Squad B', dept: 'Sanitation Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Compactor 4' },
+  { id: 'sq-3', name: 'Vikram Shinde', squad: 'Field Squad A', dept: 'Electricity Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Tower Truck 2' },
+  { id: 'sq-4', name: 'Sneha Jagtap', squad: 'Field Squad B', dept: 'Sanitation Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Sanitation Van 1' },
+  { id: 'sq-5', name: 'Amit More', squad: 'Field Squad A', dept: 'Sanitation Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Sweeper Unit 3' },
+  { id: 'sq-6', name: 'Kiran Desai', squad: 'Field Squad C', dept: 'Road Department', status: 'AVAILABLE', activeTicket: null, vehicle: 'Asphalt Roller 1' }
 ];
 
 export const AuthorityDashboard = () => {
@@ -288,8 +289,11 @@ export const AuthorityDashboard = () => {
   const [drawerTab, setDrawerTab] = useState('Overview'); // 'Overview' | 'Timeline' | 'Location' | 'Work Orders'
   const [isDrawerOpenMobile, setIsDrawerOpenMobile] = useState(false);
 
-  // Issues & Selection
+  // Issues, Squads & Active Remediation Timers
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
+  const [squads, setSquads] = useState(INITIAL_SQUADS);
+  const [activeJobs, setActiveJobs] = useState({}); // { [issueId]: { remainingSeconds: 60, officerName, squad } }
+
   const [selectedIssueId, setSelectedIssueId] = useState('CS1039');
   const [selectedRows, setSelectedRows] = useState(['CS1039']);
   const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
@@ -326,7 +330,7 @@ export const AuthorityDashboard = () => {
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   // Sync with searchParams
@@ -347,6 +351,117 @@ export const AuthorityDashboard = () => {
       setSearchQuery(searchParams.get('search'));
     }
   }, [searchParams]);
+
+  // ============================================================
+  // 1-MINUTE REMEDIATION COUNTDOWN ENGINE (60 Seconds Work Simulation)
+  // When an issue AI assignment is approved:
+  // - Officer is marked BUSY on-site
+  // - After 1 minute (60s), status automatically becomes RESOLVED
+  // - Officer is marked back to AVAILABLE
+  // ============================================================
+  useEffect(() => {
+    const jobKeys = Object.keys(activeJobs);
+    if (jobKeys.length === 0) return;
+
+    const timer = setInterval(() => {
+      setActiveJobs((prev) => {
+        const next = { ...prev };
+        let anyCompleted = false;
+
+        jobKeys.forEach((key) => {
+          const item = next[key];
+          if (!item) return;
+
+          if (item.remainingSeconds <= 1) {
+            // FINISHED 1 MINUTE OF ON-SITE REMEDIATION!
+            delete next[key];
+            anyCompleted = true;
+
+            // 1. Mark issue as Resolved
+            setIssues((prevIssues) =>
+              prevIssues.map((iss) =>
+                iss.id.replace('#', '') === key
+                  ? { ...iss, status: 'Resolved' }
+                  : iss
+              )
+            );
+
+            // 2. Mark officer back to AVAILABLE
+            setSquads((prevSquads) =>
+              prevSquads.map((sq) =>
+                sq.name === item.officerName
+                  ? { ...sq, status: 'AVAILABLE', activeTicket: null }
+                  : sq
+              )
+            );
+
+            // 3. Add timeline resolution entry
+            const completionNote = {
+              text: `Remediation completed and verified on-site by ${item.officerName} (${item.squad || 'Field Squad'}). Road asphalt surface restored and verified safe.`,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              date: 'Today',
+              author: item.officerName
+            };
+            setTimelineNotes((prevNotes) => ({
+              ...prevNotes,
+              [key]: [completionNote, ...(prevNotes[key] || [])]
+            }));
+
+            // 4. Alert user
+            showToast(`🎉 Work Complete! Issue #${key} marked as RESOLVED. Officer ${item.officerName} is now AVAILABLE.`);
+          } else {
+            next[key] = { ...item, remainingSeconds: item.remainingSeconds - 1 };
+          }
+        });
+
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeJobs]);
+
+  // Fast forward / Mark done immediately (skip 60s wait)
+  const handleFastForwardJob = (issueId) => {
+    const cleanId = issueId.replace('#', '');
+    const job = activeJobs[cleanId];
+    if (!job) return;
+
+    setActiveJobs((prev) => {
+      const next = { ...prev };
+      delete next[cleanId];
+      return next;
+    });
+
+    setIssues((prev) =>
+      prev.map((iss) =>
+        iss.id.replace('#', '') === cleanId
+          ? { ...iss, status: 'Resolved' }
+          : iss
+      )
+    );
+
+    setSquads((prev) =>
+      prev.map((sq) =>
+        sq.name === job.officerName
+          ? { ...sq, status: 'AVAILABLE', activeTicket: null }
+          : sq
+      )
+    );
+
+    const completionNote = {
+      text: `Remediation completed and verified on-site by ${job.officerName} (${job.squad || 'Field Squad'}). Road surface restored and verified safe.`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: 'Today',
+      author: job.officerName
+    };
+    setTimelineNotes((prev) => ({
+      ...prev,
+      [cleanId]: [completionNote, ...(prev[cleanId] || [])]
+    }));
+
+    showToast(`🎉 Work Complete! Issue #${cleanId} marked as RESOLVED. Officer ${job.officerName} is now AVAILABLE.`);
+  };
 
   // Currently selected issue
   const currentIssue = issues.find((i) => i.id === selectedIssueId || i.id === `#${selectedIssueId}`) || issues[0];
@@ -453,14 +568,56 @@ export const AuthorityDashboard = () => {
     showToast(`Updated ${selectedRows.length} selected tickets to "${status}".`);
   };
 
-  // AI Approval
+  // ============================================================
+  // APPROVE AI DISPATCH & 1-MINUTE REMEDIATION START
+  // ============================================================
   const handleApproveAiDispatch = (issueId) => {
+    const cleanId = issueId.replace('#', '');
+    const issue = issues.find((i) => i.id.replace('#', '') === cleanId);
+    const officerName = issue?.assignedTo || 'Er. Rajesh Patil';
+    const squadName = issue?.squad || 'Field Squad A';
+
+    // 1. Mark issue as In Progress
     setIssues((prev) =>
       prev.map((i) =>
-        i.id === issueId ? { ...i, status: 'Assigned' } : i
+        i.id.replace('#', '') === cleanId
+          ? { ...i, status: 'In Progress', assignedTo: officerName, squad: squadName }
+          : i
       )
     );
-    showToast(`Approved AI assignment for issue #${issueId}. Work order dispatched.`);
+
+    // 2. Mark officer as BUSY (ON SITE)
+    setSquads((prev) =>
+      prev.map((sq) =>
+        sq.name === officerName
+          ? { ...sq, status: 'BUSY (ON SITE)', activeTicket: cleanId }
+          : sq
+      )
+    );
+
+    // 3. Start 60-second active job timer (1 minute countdown)
+    setActiveJobs((prev) => ({
+      ...prev,
+      [cleanId]: {
+        remainingSeconds: 60,
+        officerName,
+        squad: squadName
+      }
+    }));
+
+    // 4. Add dispatch note to timeline
+    const dispatchNote = {
+      text: `Approved AI assignment. Work order dispatched to ${officerName} (${squadName}). Field squad deployed on-site. Status marked BUSY for 1-minute remediation repair.`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: 'Today',
+      author: 'AI Operations Director'
+    };
+    setTimelineNotes((prev) => ({
+      ...prev,
+      [cleanId]: [dispatchNote, ...(prev[cleanId] || [])]
+    }));
+
+    showToast(`Approved AI assignment for #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`);
   };
 
   // Re-run AI Analysis
@@ -541,6 +698,8 @@ export const AuthorityDashboard = () => {
     showToast('Filters reset to default view.');
   };
 
+  const activeJobForCurrent = activeJobs[currentIssue?.id?.replace('#', '')];
+
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] bg-[#F8FAFC]">
       {/* Toast Notification Banner */}
@@ -597,14 +756,21 @@ export const AuthorityDashboard = () => {
             <button
               type="button"
               onClick={() => { setActiveNav('crew'); setSearchParams({ tab: 'CREW' }); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'crew'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Users className={`w-4 h-4 ${activeNav === 'crew' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>Field Crew</span>
+              <div className="flex items-center gap-2.5">
+                <Users className={`w-4 h-4 ${activeNav === 'crew' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>Field Crew</span>
+              </div>
+              {Object.keys(activeJobs).length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  {Object.keys(activeJobs).length} Busy
+                </span>
+              )}
             </button>
 
             {/* Departments */}
@@ -674,14 +840,19 @@ export const AuthorityDashboard = () => {
             <button
               type="button"
               onClick={() => { setActiveNav('ai_review'); setSearchParams({ tab: 'AI_REVIEW' }); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'ai_review'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Cpu className={`w-4 h-4 ${activeNav === 'ai_review' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>AI Dispatch Review</span>
+              <div className="flex items-center gap-2.5">
+                <Cpu className={`w-4 h-4 ${activeNav === 'ai_review' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>AI Dispatch Review</span>
+              </div>
+              {Object.keys(activeJobs).length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              )}
             </button>
           </div>
 
@@ -759,7 +930,7 @@ export const AuthorityDashboard = () => {
               <div className="flex items-center gap-2.5">
                 <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-xs text-xs">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:45 PM</span>
+                  <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:50 PM</span>
                 </div>
 
                 <button
@@ -942,7 +1113,9 @@ export const AuthorityDashboard = () => {
                       </tr>
                     ) : (
                       paginatedIssues.map((issue) => {
-                        const isSelected = selectedIssueId === issue.id.replace('#', '');
+                        const cleanId = issue.id.replace('#', '');
+                        const isSelected = selectedIssueId === cleanId;
+                        const job = activeJobs[cleanId];
 
                         return (
                           <tr
@@ -955,8 +1128,8 @@ export const AuthorityDashboard = () => {
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
-                                checked={selectedRows.includes(issue.id.replace('#', ''))}
-                                onChange={() => handleSelectRow(issue.id)}
+                                checked={selectedRows.includes(cleanId)}
+                                onChange={() => handleSelectRow(cleanId)}
                                 className="rounded border-slate-300 text-blue-800 focus:ring-blue-700"
                               />
                             </td>
@@ -1000,39 +1173,56 @@ export const AuthorityDashboard = () => {
                             </td>
 
                             <td className="px-3 py-3">
-                              {issue.status === 'Assigned' && (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                  Assigned
+                              {job ? (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5 shadow-xs animate-pulse">
+                                  <Clock className="w-3 h-3 text-amber-700 animate-spin" />
+                                  <span>Busy ({job.remainingSeconds}s)</span>
                                 </span>
-                              )}
-                              {issue.status === 'In Progress' && (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                  In Progress
-                                </span>
-                              )}
-                              {issue.status === 'Under Review' && (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                  Under Review
-                                </span>
-                              )}
-                              {issue.status === 'Escalated' && (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                                  Escalated
-                                </span>
-                              )}
-                              {issue.status === 'Resolved' && (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                  Resolved
-                                </span>
+                              ) : (
+                                <>
+                                  {issue.status === 'Assigned' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                      Assigned
+                                    </span>
+                                  )}
+                                  {issue.status === 'In Progress' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                      In Progress
+                                    </span>
+                                  )}
+                                  {issue.status === 'Under Review' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                      Under Review
+                                    </span>
+                                  )}
+                                  {issue.status === 'Escalated' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                      Escalated
+                                    </span>
+                                  )}
+                                  {issue.status === 'Resolved' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>Resolved</span>
+                                    </span>
+                                  )}
+                                </>
                               )}
                             </td>
 
                             <td className="px-3 py-3">
                               {issue.assignedTo ? (
                                 <div className="leading-tight">
-                                  <span className="font-semibold text-slate-900 block truncate max-w-[130px]">
-                                    {issue.assignedTo}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-slate-900 block truncate max-w-[130px]">
+                                      {issue.assignedTo}
+                                    </span>
+                                    {job && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                                        BUSY
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-[10px] text-slate-400 block truncate">
                                     {issue.squad || 'Field Squad'}
                                   </span>
@@ -1051,7 +1241,7 @@ export const AuthorityDashboard = () => {
                               className="px-2 py-3 text-slate-400 hover:text-slate-700" 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
-                                setSelectedIssueId(issue.id.replace('#', ''));
+                                setSelectedIssueId(cleanId);
                                 setIsUpdateModalOpen(true); 
                               }}
                             >
@@ -1247,94 +1437,132 @@ export const AuthorityDashboard = () => {
 
             {/* AI Review Queue Cards */}
             <div className="space-y-4">
-              {issues.map((item) => (
-                <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
-                          <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                          }`}>
-                            {item.priority} Priority
-                          </span>
+              {issues.map((item) => {
+                const cleanId = item.id.replace('#', '');
+                const job = activeJobs[cleanId];
+
+                return (
+                  <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
+                            <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                            }`}>
+                              {item.priority} Priority
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
                         </div>
-                        <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
+                      </div>
+
+                      <div className="text-right flex items-center gap-2">
+                        <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
+                        <span className={`px-2.5 py-1 rounded text-xs font-semibold border ${
+                          job ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse' :
+                          item.status === 'Resolved' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                          'bg-blue-50 text-blue-800 border-blue-200'
+                        }`}>
+                          {job ? `Busy (${job.remainingSeconds}s)` : item.status}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
-                      <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200">
-                        {item.status}
+                    {/* AI Matching Analysis Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <strong className="text-slate-900 text-sm block">
+                            {item.assignedTo || 'Pending Assignment'}
+                          </strong>
+                          {job && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                              BUSY ON-SITE
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-slate-500 text-[11px] block">{item.squad || 'Squad unassigned'}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
+                        <strong className="text-blue-900 block mt-0.5">
+                          📍 {item.aiDistanceKm || 0.8} km away (Haversine GPS)
+                        </strong>
+                        <span className="text-slate-500 text-[11px] block">Current Active Queue: {job ? '1 active job (BUSY)' : 'Available'}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
+                        <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
+                          {item.aiReasoning || 'Nearest unencumbered municipal squad in primary department.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Supervisor Oversight Actions */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
                       </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedIssueId(cleanId);
+                            setIsAssignModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
+                        >
+                          Override & Reassign
+                        </button>
+
+                        {job ? (
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-700 animate-spin" />
+                              <span>Remediating ({job.remainingSeconds}s)</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleFastForwardJob(item.id)}
+                              className="px-3.5 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1"
+                            >
+                              <FastForward className="w-3.5 h-3.5" />
+                              <span>Mark Done Now</span>
+                            </button>
+                          </div>
+                        ) : item.status === 'Resolved' ? (
+                          <span className="px-3 py-1.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1">
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Work Completed & Verified</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveAiDispatch(item.id)}
+                            className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-xs"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Approve AI Assignment & Dispatch (60s Timer)</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  {/* AI Matching Analysis Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
-                      <strong className="text-slate-900 text-sm block mt-0.5">
-                        {item.assignedTo || 'Pending Assignment'}
-                      </strong>
-                      <span className="text-slate-500 text-[11px] block">{item.squad || 'Squad unassigned'}</span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
-                      <strong className="text-blue-900 block mt-0.5">
-                        📍 {item.aiDistanceKm || 0.8} km away (Haversine GPS)
-                      </strong>
-                      <span className="text-slate-500 text-[11px] block">Current Active Queue: 2 tickets</span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
-                      <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
-                        {item.aiReasoning || 'Nearest unencumbered municipal squad in primary department.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Supervisor Oversight Actions */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                    <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedIssueId(item.id.replace('#', ''));
-                          setIsAssignModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
-                      >
-                        Override & Reassign
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleApproveAiDispatch(item.id)}
-                        className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Approve AI Assignment</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1406,44 +1634,55 @@ export const AuthorityDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {issues.map((it, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-mono font-semibold text-blue-800">
-                        WO-{it.id.replace('#', '')}
-                      </td>
-                      <td className="py-3 px-4 font-medium text-slate-900">
-                        {it.title} &bull; <span className="text-slate-500 text-[11px]">{it.location}</span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">{it.department}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          it.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                        }`}>
-                          {it.priority}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-800 font-medium">
-                        {it.assignedTo || 'Pending Assignment'} {it.squad ? `(${it.squad})` : ''}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium text-[11px]">
-                          {it.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedIssueId(it.id.replace('#', ''));
-                            setIsUpdateModalOpen(true);
-                          }}
-                          className="text-blue-800 hover:underline font-semibold"
-                        >
-                          Update Status
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {issues.map((it, idx) => {
+                    const cleanId = it.id.replace('#', '');
+                    const job = activeJobs[cleanId];
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-4 font-mono font-semibold text-blue-800">
+                          WO-{cleanId}
+                        </td>
+                        <td className="py-3 px-4 font-medium text-slate-900">
+                          {it.title} &bull; <span className="text-slate-500 text-[11px]">{it.location}</span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">{it.department}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            it.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}>
+                            {it.priority}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-800 font-medium">
+                          {it.assignedTo || 'Pending Assignment'} {it.squad ? `(${it.squad})` : ''}
+                        </td>
+                        <td className="py-3 px-4">
+                          {job ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] animate-pulse">
+                              Busy ({job.remainingSeconds}s)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium text-[11px]">
+                              {it.status}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIssueId(cleanId);
+                              setIsUpdateModalOpen(true);
+                            }}
+                            className="text-blue-800 hover:underline font-semibold"
+                          >
+                            Update Status
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1473,56 +1712,93 @@ export const AuthorityDashboard = () => {
 
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
-                  6 Units Online
+                  {squads.filter(s => s.status === 'AVAILABLE').length} Available
                 </span>
+                {squads.filter(s => s.status !== 'AVAILABLE').length > 0 && (
+                  <span className="px-2.5 py-1 rounded bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300 animate-pulse">
+                    {squads.filter(s => s.status !== 'AVAILABLE').length} Busy On-Site
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {AVAILABLE_SQUADS.map((sq, idx) => (
-                <div key={idx} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
-                  <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                    <div>
-                      <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">{sq.squad}</span>
-                      <h2 className="text-sm font-bold text-slate-900">{sq.name}</h2>
-                      <span className="text-xs text-slate-500">{sq.dept}</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Available
-                    </span>
-                  </div>
+              {squads.map((sq, idx) => {
+                const isBusy = sq.status !== 'AVAILABLE';
+                const jobInfo = sq.activeTicket ? activeJobs[sq.activeTicket] : null;
 
-                  <div className="space-y-1.5 text-xs text-slate-600">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Response Vehicle:</span>
-                      <span className="font-medium text-slate-800">Utility Truck {idx + 1}</span>
+                return (
+                  <div key={sq.id || idx} className={`bg-white border rounded-md p-5 shadow-xs space-y-4 transition ${
+                    isBusy ? 'border-amber-300 ring-1 ring-amber-300' : 'border-slate-200'
+                  }`}>
+                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">{sq.squad}</span>
+                        <h2 className="text-sm font-bold text-slate-900">{sq.name}</h2>
+                        <span className="text-xs text-slate-500">{sq.dept}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        isBusy 
+                          ? 'bg-amber-100 text-amber-900 border border-amber-400 animate-pulse' 
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        {sq.status}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Assigned Zone:</span>
-                      <span className="font-medium text-slate-800">Ward {12 + idx * 8} &bull; Indore</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Active Queue:</span>
-                      <span className="font-semibold text-blue-800">{idx % 2 === 0 ? '1 Ticket' : '2 Tickets'}</span>
-                    </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (currentIssue) {
-                        handleAssignSquad(sq);
-                      } else {
-                        setActiveNav('triage');
-                        setSearchParams({});
-                      }
-                    }}
-                    className="w-full py-2 rounded border border-blue-800 text-blue-800 hover:bg-blue-50 text-xs font-medium transition"
-                  >
-                    Assign to Active Issue ({currentIssue ? `#${currentIssue.id}` : 'Select Issue'})
-                  </button>
-                </div>
-              ))}
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Response Vehicle:</span>
+                        <span className="font-medium text-slate-800">{sq.vehicle || `Utility Truck ${idx + 1}`}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Assigned Zone:</span>
+                        <span className="font-medium text-slate-800">Ward {12 + idx * 8} &bull; Indore</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Active Task:</span>
+                        <span className={`font-semibold ${isBusy ? 'text-amber-800' : 'text-slate-700'}`}>
+                          {isBusy ? `Remediation #${sq.activeTicket}` : 'Standby / Ready'}
+                        </span>
+                      </div>
+                      {jobInfo && (
+                        <div className="flex justify-between items-center pt-1 border-t border-amber-100">
+                          <span className="text-amber-800 font-medium">Time to Completion:</span>
+                          <span className="font-mono font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">
+                            {jobInfo.remainingSeconds}s
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {isBusy ? (
+                      <button
+                        type="button"
+                        onClick={() => handleFastForwardJob(sq.activeTicket)}
+                        className="w-full py-2 rounded bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <FastForward className="w-3.5 h-3.5" />
+                        <span>Complete Work Now (Free Officer)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (currentIssue) {
+                            handleAssignSquad(sq);
+                          } else {
+                            setActiveNav('triage');
+                            setSearchParams({});
+                          }
+                        }}
+                        className="w-full py-2 rounded border border-blue-800 text-blue-800 hover:bg-blue-50 text-xs font-medium transition"
+                      >
+                        Assign to Active Issue ({currentIssue ? `#${currentIssue.id}` : 'Select Issue'})
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1659,7 +1935,6 @@ export const AuthorityDashboard = () => {
 
       {/* ============================================================ */}
       {/* 3. RIGHT DETAILS DRAWER ("Issue Details") */}
-      {/* On desktop: sticky sidebar. On mobile: slide-over overlay */}
       {/* ============================================================ */}
       {currentIssue && activeNav === 'triage' && (
         <>
@@ -1730,6 +2005,40 @@ export const AuthorityDashboard = () => {
                   {currentIssue.priority} Priority
                 </span>
               </div>
+
+              {/* ACTIVE 1-MINUTE REMEDIATION LIVE BANNER IF BUSY */}
+              {activeJobForCurrent && (
+                <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs space-y-2 animate-in fade-in shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                      <Clock className="w-4 h-4 text-amber-700 animate-spin" />
+                      <span>Field Squad Active On-Site</span>
+                    </div>
+                    <span className="font-mono font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded text-[11px]">
+                      {activeJobForCurrent.remainingSeconds}s remaining
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 leading-tight">
+                    <strong>{activeJobForCurrent.officerName}</strong> is actively remediating this defect on-site. Squad status is marked <strong>BUSY</strong>.
+                  </p>
+                  <div className="w-full bg-amber-200 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className="bg-amber-700 h-1.5 rounded-full transition-all duration-1000"
+                      style={{ width: `${((60 - activeJobForCurrent.remainingSeconds) / 60) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between pt-1 text-[11px]">
+                    <span className="text-amber-700">Auto-marks Resolved at 0s</span>
+                    <button
+                      type="button"
+                      onClick={() => handleFastForwardJob(currentIssue.id)}
+                      className="text-amber-950 font-bold hover:underline bg-white px-2 py-0.5 rounded border border-amber-300 shadow-xs"
+                    >
+                      Fast Forward / Mark Done &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Drawer Sub-Tabs: Overview, Timeline, Location, Work Orders */}
               <div className="grid grid-cols-4 border-b border-slate-200 text-xs text-center select-none">
@@ -1810,9 +2119,16 @@ export const AuthorityDashboard = () => {
                       <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                       <div>
                         <span className="text-slate-400 block text-[11px]">Assigned Squad</span>
-                        <span className="text-slate-800 font-semibold block">
-                          {currentIssue.assignedTo || 'Unassigned — Pending Dispatch'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-800 font-semibold block">
+                            {currentIssue.assignedTo || 'Unassigned — Pending Dispatch'}
+                          </span>
+                          {activeJobForCurrent && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                              BUSY ON-SITE
+                            </span>
+                          )}
+                        </div>
                         {currentIssue.squad && (
                           <span className="text-[11px] text-slate-400 block">
                             {currentIssue.squad}
@@ -1823,9 +2139,14 @@ export const AuthorityDashboard = () => {
 
                     {/* Current Status */}
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        currentIssue.status === 'Resolved' ? 'bg-emerald-600' :
+                        activeJobForCurrent ? 'bg-amber-500 animate-ping' :
+                        'bg-blue-600'
+                      }`}></span>
                       <span className="text-slate-700 text-xs">
                         Current Status: <strong className="text-blue-900 ml-1">{currentIssue.status}</strong>
+                        {activeJobForCurrent && <span className="ml-1 text-amber-700 font-bold">({activeJobForCurrent.remainingSeconds}s remaining)</span>}
                       </span>
                     </div>
                   </div>
@@ -1920,21 +2241,27 @@ export const AuthorityDashboard = () => {
                       </span>
                       <p className="text-slate-600 text-[11px] mt-0.5">
                         {currentIssue.assignedTo 
-                          ? `Assigned to nearest squad (${currentIssue.aiDistanceKm || 0.8} km away via Haversine calculation).`
+                          ? `Assigned to squad (${currentIssue.aiDistanceKm || 0.8} km away). Squad actively deployed on-site.`
                           : 'Currently pending supervisory officer designation.'}
                       </p>
                     </div>
 
                     {/* Step 5 */}
                     <div className="relative">
-                      <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.status === 'Resolved' ? 'bg-emerald-600' : currentIssue.status === 'In Progress' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
+                      <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${
+                        currentIssue.status === 'Resolved' ? 'bg-emerald-600' : 
+                        activeJobForCurrent ? 'bg-amber-500 animate-ping' : 
+                        'bg-slate-300'
+                      }`}></span>
                       <strong className="text-slate-900 block font-semibold">Remediation Status</strong>
-                      <span className="text-[11px] text-slate-500 block font-medium text-blue-800">{currentIssue.status}</span>
+                      <span className="text-[11px] text-slate-500 block font-medium text-blue-800">
+                        {currentIssue.status} {activeJobForCurrent && `(${activeJobForCurrent.remainingSeconds}s remaining)`}
+                      </span>
                       <p className="text-slate-600 text-[11px] mt-0.5">
                         {currentIssue.status === 'Resolved'
                           ? 'Defect resolved and verified by municipal field inspector.'
-                          : currentIssue.status === 'In Progress'
-                          ? 'Field unit actively on-site performing remediation repairs.'
+                          : activeJobForCurrent
+                          ? 'Field crew is actively on-site conducting repair remediation. 1-minute work timer active.'
                           : 'Scheduled for prompt on-site execution.'}
                       </p>
                     </div>
@@ -2087,23 +2414,51 @@ export const AuthorityDashboard = () => {
 
             {/* Action Buttons at bottom of Drawer */}
             <div className="p-5 border-t border-slate-200 bg-white space-y-2">
-              <button
-                type="button"
-                onClick={() => setIsUpdateModalOpen(true)}
-                className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center justify-center gap-2"
-              >
-                <span>Update Complaint Status</span>
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
+              {/* PRIMARY 1-MINUTE REMEDIATION ACTION */}
+              {activeJobForCurrent ? (
+                <button
+                  type="button"
+                  onClick={() => handleFastForwardJob(currentIssue.id)}
+                  className="w-full py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2"
+                >
+                  <FastForward className="w-4 h-4" />
+                  <span>Mark Work Done Now ({activeJobForCurrent.remainingSeconds}s remaining)</span>
+                </button>
+              ) : currentIssue.status !== 'Resolved' ? (
+                <button
+                  type="button"
+                  onClick={() => handleApproveAiDispatch(currentIssue.id)}
+                  className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Approve AI Assignment & Dispatch (60s Timer)</span>
+                </button>
+              ) : (
+                <div className="w-full py-2 text-center text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded flex items-center justify-center gap-1.5">
+                  <CheckCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Work Completed & Verified on Site</span>
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setIsAssignModalOpen(true)}
-                className="w-full py-2.5 rounded border border-blue-800 text-blue-900 hover:bg-blue-50 font-medium text-xs transition flex items-center justify-center gap-2"
-              >
-                <Users className="w-3.5 h-3.5 text-blue-800" />
-                <span>Assign / Reassign Squad</span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="flex-1 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition flex items-center justify-center gap-1"
+                >
+                  <span>Update Status</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAssignModalOpen(true)}
+                  className="flex-1 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition flex items-center justify-center gap-1"
+                >
+                  <Users className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Reassign</span>
+                </button>
+              </div>
             </div>
           </aside>
         </>
@@ -2161,14 +2516,22 @@ export const AuthorityDashboard = () => {
               Select an available municipal field squad for dispatch to {currentIssue.location}:
             </p>
             <div className="space-y-2 text-xs max-h-72 overflow-y-auto">
-              {AVAILABLE_SQUADS.map((sq, idx) => (
+              {squads.map((sq, idx) => (
                 <div
-                  key={idx}
+                  key={sq.id || idx}
                   onClick={() => handleAssignSquad(sq)}
                   className="p-3 border border-slate-200 hover:border-blue-700 hover:bg-blue-50/50 rounded cursor-pointer transition flex items-center justify-between"
                 >
                   <div>
-                    <strong className="text-slate-900 block font-semibold">{sq.name}</strong>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-slate-900 block font-semibold">{sq.name}</strong>
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                        sq.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                        'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}>
+                        {sq.status}
+                      </span>
+                    </div>
                     <span className="text-slate-500 text-[11px] block">{sq.squad} &bull; {sq.dept}</span>
                   </div>
                   <button type="button" className="px-3 py-1 bg-blue-800 text-white rounded text-[11px] font-medium">
