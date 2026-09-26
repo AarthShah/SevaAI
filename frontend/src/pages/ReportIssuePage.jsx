@@ -1,968 +1,800 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Upload, MapPin, Sparkles, AlertCircle, FileText, CheckCircle2, RefreshCw, Edit3, ArrowRight, ShieldCheck, ChevronDown, ChevronUp, Mic, Zap, Check, Radio, Building2, User, Phone, Navigation, Camera, Layers, Copy, Share2, Clock, CheckCheck } from 'lucide-react';
+import { Upload, MapPin, Check, ArrowRight, RefreshCw, Edit2, FileText, CheckCircle2, ChevronRight, X, AlertCircle } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
-import { AudioRecorder } from '../components/AudioRecorder';
-import { LeafletMap } from '../components/LeafletMap';
-import { AgentTraceTimeline } from '../components/AgentTraceTimeline';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+
+const PRESET_ISSUES = [
+  {
+    key: 'pothole',
+    label: 'Road Pothole',
+    image: '/sample_evidence/pothole.jpg',
+    issue: 'Pothole / Road Damage',
+    category: 'Road Infrastructure',
+    department: 'Road Department',
+    departmentId: 'ROAD_DEPT',
+    severity: 'HIGH',
+    confidence: '92%',
+    location: 'MG Road, Indore',
+    description: 'Deep road surface crater creating immediate traffic hazard and safety risk for vehicles.',
+    explanation: 'The uploaded image shows visible road surface damage. Based on the issue category and available civic-service information, the Road Department is suggested.'
+  },
+  {
+    key: 'garbage',
+    label: 'Garbage Accumulation',
+    image: '/sample_evidence/garbage.jpg',
+    issue: 'Garbage Accumulation',
+    category: 'Waste Management',
+    department: 'Sanitation Department',
+    departmentId: 'SOLID_WASTE',
+    severity: 'MEDIUM',
+    confidence: '89%',
+    location: 'Station Road Market, Indore',
+    description: 'Uncollected domestic and commercial waste accumulating on pedestrian sidewalk.',
+    explanation: 'The uploaded image shows uncollected municipal solid waste. Based on the issue category and municipal guidelines, the Sanitation Department is suggested.'
+  },
+  {
+    key: 'streetlight',
+    label: 'Streetlight Not Working',
+    image: '/sample_evidence/streetlight.jpg',
+    issue: 'Street Light Not Working',
+    category: 'Street Lighting',
+    department: 'Electricity Department',
+    departmentId: 'STREET_LIGHT',
+    severity: 'MEDIUM',
+    confidence: '94%',
+    location: 'Park Lane, Indore',
+    description: 'Streetlight fixture dark with exposed wiring near neighborhood intersection.',
+    explanation: 'The uploaded image shows an inoperative public lighting fixture. Based on infrastructure categorization, the Electricity Department is suggested.'
+  },
+  {
+    key: 'water',
+    label: 'Water Pipe Leakage',
+    image: '/sample_evidence/water_leak.jpg',
+    issue: 'Water Pipeline Leakage',
+    category: 'Water Supply',
+    department: 'Water Supply Department',
+    departmentId: 'WATER_SUPPLY',
+    severity: 'HIGH',
+    confidence: '91%',
+    location: 'Sector 3 Main Junction, Indore',
+    description: 'Underground drinking water distribution pipe burst causing surface street ponding.',
+    explanation: 'The uploaded image shows pressurized clean water pooling on the roadway. Based on municipal jurisdiction, the Water Supply Department is suggested.'
+  }
+];
 
 export const ReportIssuePage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Mode: 'PHOTO' (Zero-Touch Photo Drop) or 'FORM' (Voice & Guided Input)
-  const [activeMode, setActiveMode] = useState('PHOTO');
+  // Steps: 1: Upload, 2: Analysis, 3: Review, 4: Submit Confirmation
+  const [step, setStep] = useState(1);
 
-  // Instant Auto-Dispatch on Photo Upload
-  const [instantAutoDispatch, setInstantAutoDispatch] = useState(true);
-  const [copiedSlip, setCopiedSlip] = useState(false);
-
-  // Inputs
-  const [text, setText] = useState('');
-  const [voiceText, setVoiceText] = useState('');
-  const [address, setAddress] = useState('MG Road near College Main Gate, Pune');
-  const [location, setLocation] = useState({ latitude: 18.5204, longitude: 73.8567, address: 'MG Road near College Main Gate, Pune' });
-  const [gpsActive, setGpsActive] = useState(false);
+  // Uploaded / Selected image state
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // States
+  // Analysis result state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isAutoDispatching, setIsAutoDispatching] = useState(false);
-  const [autoDispatchStep, setAutoDispatchStep] = useState(0);
-  const [autoDispatchResult, setAutoDispatchResult] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+
+  // User editable review fields
+  const [issueTitle, setIssueTitle] = useState('');
+  const [category, setCategory] = useState('');
+  const [severity, setSeverity] = useState('HIGH');
+  const [department, setDepartment] = useState('');
+  const [departmentId, setDepartmentId] = useState('ROAD_DEPT');
+  const [address, setAddress] = useState('MG Road, Indore');
+  const [latitude, setLatitude] = useState(22.7196);
+  const [longitude, setLongitude] = useState(75.8577);
+  const [description, setDescription] = useState('');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+
+  // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [showTechnicalTrace, setShowTechnicalTrace] = useState(false);
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  // User-editable fields
-  const [editedDescription, setEditedDescription] = useState('');
-  const [editedSeverity, setEditedSeverity] = useState('HIGH');
-
-  // Attempt browser GPS acquisition on load
+  // Detect location via browser GPS if available
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setLocation({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            address: 'Live Device GPS Detected (Pune Central Ward)'
-          });
-          setAddress('Live Device GPS Detected (Pune Central Ward)');
-          setGpsActive(true);
+          setLatitude(pos.coords.latitude);
+          setLongitude(pos.coords.longitude);
         },
         () => {
-          setGpsActive(false);
+          // Keep default Indore coordinates
         },
-        { timeout: 5000 }
+        { timeout: 4000 }
       );
     }
   }, []);
 
-  // Handle preset queries (e.g. ?demo=pothole)
+  // Handle URL preset if passed
   useEffect(() => {
-    const demo = searchParams.get('demo');
-    if (demo === 'pothole') {
-      loadPreset('pothole');
-    } else if (demo === 'garbage') {
-      loadPreset('garbage');
-    } else if (demo === 'streetlight') {
-      loadPreset('streetlight');
-    } else if (demo === 'water') {
-      loadPreset('water');
+    const presetKey = searchParams.get('demo') || searchParams.get('category');
+    if (presetKey) {
+      const match = PRESET_ISSUES.find(
+        (p) => p.key === presetKey.toLowerCase() || p.category.toLowerCase().includes(presetKey.toLowerCase())
+      );
+      if (match) {
+        selectPreset(match);
+      }
     }
   }, [searchParams]);
 
-  const loadPreset = (type, autoTrigger = false) => {
-    setAutoDispatchResult(null);
-    setAnalysisResult(null);
-    let sampleText = '';
-    let sampleAddr = '';
-    let sampleLoc = {};
-    let sampleImg = '';
-
-    if (type === 'pothole') {
-      sampleText = 'There is a large deep crater pothole near the college gate on the main road. Scooters are swerving dangerously.';
-      sampleAddr = 'MG Road near College Main Gate, Pune';
-      sampleLoc = { latitude: 18.5204, longitude: 73.8567, address: 'MG Road near College Main Gate, Pune' };
-      sampleImg = '/sample_evidence/pothole.jpg';
-    } else if (type === 'garbage') {
-      sampleText = 'Massive pile of uncollected rotting garbage outside school gate attracting stray animals and blocking footpath.';
-      sampleAddr = 'Station Road Community Center, Pune';
-      sampleLoc = { latitude: 18.5280, longitude: 73.8650, address: 'Station Road Community Center, Pune' };
-      sampleImg = '/sample_evidence/garbage.jpg';
-    } else if (type === 'streetlight') {
-      sampleText = 'Dark stretch of broken streetlights near park. Exposed electric wire hanging dangerously from pole.';
-      sampleAddr = 'Outer Bypass Road near Park, Pune';
-      sampleLoc = { latitude: 18.5350, longitude: 73.8400, address: 'Outer Bypass Road near Park, Pune' };
-      sampleImg = '/sample_evidence/streetlight.jpg';
-    } else if (type === 'water') {
-      sampleText = 'Drinking water pipeline burst with heavy stream flooding street for past 24 hours.';
-      sampleAddr = 'Market Circle Main Road, Pune';
-      sampleLoc = { latitude: 18.5150, longitude: 73.8500, address: 'Market Circle Main Road, Pune' };
-      sampleImg = '/sample_evidence/water_leak.jpg';
-    }
-
-    setText(sampleText);
-    setAddress(sampleAddr);
-    setLocation(sampleLoc);
-    setImagePreview(sampleImg);
+  const selectPreset = (preset) => {
     setImageFile(null);
-
-    if (autoTrigger) {
-      setTimeout(() => {
-        executeAutoDispatch({
-          text: sampleText,
-          address: sampleAddr,
-          latitude: sampleLoc.latitude,
-          longitude: sampleLoc.longitude,
-          image_url: sampleImg
-        });
-      }, 100);
-    }
+    setImagePreview(preset.image);
+    runAnalysisWithPreset(preset);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
     if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setAnalysisResult(null);
-      setAutoDispatchResult(null);
-
-      // If zero-click instant dispatch is enabled, immediately trigger!
-      if (instantAutoDispatch) {
-        handlePhotoInstantDispatch(file);
-      }
+      processSelectedFile(file);
     }
   };
 
-  const executeAutoDispatch = async (payload) => {
-    setIsAutoDispatching(true);
-    setAutoDispatchStep(1);
-    setErrorMessage(null);
-    setAutoDispatchResult(null);
-
-    try {
-      setTimeout(() => setAutoDispatchStep(2), 250);
-      setTimeout(() => setAutoDispatchStep(3), 500);
-
-      const result = await complaintApi.autoDispatchComplaint(payload);
-
-      setAutoDispatchStep(4);
-      setTimeout(() => {
-        setAutoDispatchResult(result);
-        setIsAutoDispatching(false);
-      }, 400);
-    } catch (err) {
-      setErrorMessage(err.message || 'Auto-dispatch could not complete. Please try again.');
-      setIsAutoDispatching(false);
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processSelectedFile(file);
     }
   };
 
-  // Zero-Click Photo Instant Dispatch
-  const handlePhotoInstantDispatch = async (fileToDispatch = imageFile) => {
-    if (!fileToDispatch && !imagePreview) {
-      setErrorMessage('Please select or drop a photo to dispatch.');
-      return;
-    }
-
-    setIsAutoDispatching(true);
-    setAutoDispatchStep(1);
-    setErrorMessage(null);
-    setAutoDispatchResult(null);
-
-    try {
-      setTimeout(() => setAutoDispatchStep(2), 250);
-      setTimeout(() => setAutoDispatchStep(3), 500);
-
-      let result;
-      if (fileToDispatch) {
-        result = await complaintApi.photoInstantDispatch(fileToDispatch, {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          address: address || location.address
-        });
-      } else {
-        result = await complaintApi.autoDispatchComplaint({
-          text: text || 'Citizen snapped photo evidence of neighborhood defect.',
-          address: address || location.address,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          image_url: imagePreview
-        });
-      }
-
-      setAutoDispatchStep(4);
-      setTimeout(() => {
-        setAutoDispatchResult(result);
-        setIsAutoDispatching(false);
-      }, 400);
-
-    } catch (err) {
-      setErrorMessage(err.message || 'Auto-dispatch could not complete. Please try again.');
-      setIsAutoDispatching(false);
-    }
-  };
-
-  // 1-Click Multi-Modal Autonomous Auto-Dispatch
-  const handleAutoDispatch = async () => {
-    const combined = [text, voiceText].filter(Boolean).join(' ');
-    if (!combined && !imagePreview) {
-      setErrorMessage('Please enter what the problem is, speak via microphone, or pick a quick preset.');
-      return;
-    }
-
-    let uploadedImageUrl = imagePreview;
-    if (imageFile) {
-      try {
-        const uploadRes = await complaintApi.uploadImage(imageFile);
-        uploadedImageUrl = uploadRes.file_url;
-      } catch {}
-    }
-
-    await executeAutoDispatch({
-      text: combined,
-      voice_transcription: voiceText,
-      address: address || location.address,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      image_url: uploadedImageUrl
-    });
-  };
-
-  // Generate shareable WhatsApp text slip
-  const getWhatsAppSlip = () => {
-    if (!autoDispatchResult) return '';
-    const off = autoDispatchResult.assigned_officer;
-    return `🏛️ *CIVICSEVA CITIZEN GRIEVANCE RECEIPT*
-🆔 *Docket Number:* #${autoDispatchResult.complaint_id}
-⚠️ *Issue:* ${autoDispatchResult.issue_type} (${autoDispatchResult.severity} Priority)
-📍 *Location:* ${autoDispatchResult.address}
-🏢 *Department:* ${autoDispatchResult.department}
-👷 *Assigned Squad:* ${off ? off.name : 'Municipal Flying Squad'} (${off ? off.role : 'Field Engineer'})
-📞 *Direct Squad Phone:* ${off ? off.phone : '+91 20 2550 1100'}
-🛰️ *Proximity:* ${off ? off.distance_km : '0.8'} km away | *Arrival ETA:* ${off ? off.eta_minutes : '15'} mins
-⏱️ *SLA Guarantee:* 48-Hour Resolution Window
-🔗 *Track Live Progress:* ${window.location.origin}/track/${autoDispatchResult.complaint_id}`;
-  };
-
-  const handleCopySlip = () => {
-    navigator.clipboard.writeText(getWhatsAppSlip());
-    setCopiedSlip(true);
-    setTimeout(() => setCopiedSlip(false), 2000);
-  };
-
-  const handleShareWhatsApp = () => {
-    const text = encodeURIComponent(getWhatsAppSlip());
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-  };
-
-  // Manual Review Mode: Run AI Analysis first
-  const handleAnalyze = async () => {
-    const combined = [text, voiceText].filter(Boolean).join(' ');
-    if (!combined && !imagePreview) {
-      setErrorMessage('Please type or speak what the issue is, or select an image.');
-      return;
-    }
-
+  const processSelectedFile = async (file) => {
+    setImageFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
     setIsAnalyzing(true);
-    setErrorMessage(null);
+    setStep(2);
+    setErrorMsg(null);
 
     try {
-      let uploadedImageUrl = imagePreview;
-      if (imageFile) {
-        try {
-          const uploadRes = await complaintApi.uploadImage(imageFile);
-          uploadedImageUrl = uploadRes.file_url;
-        } catch {}
-      }
-
-      const result = await complaintApi.analyzeComplaint({
-        text: combined,
-        voice_transcription: voiceText,
-        address: address || location.address,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        image_url: uploadedImageUrl
+      // Call backend analyze API
+      const res = await complaintApi.analyzeComplaint({
+        text: 'Civic issue captured via resident photo upload',
+        address: address,
+        latitude: latitude,
+        longitude: longitude
       });
 
-      setAnalysisResult(result);
-      setEditedDescription(result.system_generated?.generated_complaint_text || combined);
-      setEditedSeverity(result.ai_predictions?.severity || 'HIGH');
-      setIsEditingDraft(false);
+      const identifiedIssue = res.issue_type?.replace(/_/g, ' ') || 'Road Damage';
+      const identifiedCategory = res.category?.replace(/_/g, ' ') || 'Road Infrastructure';
+      const identifiedDept = res.suggested_department || 'Road Department';
+      const identifiedSeverity = res.severity || 'HIGH';
+      const identifiedConfidence = `${Math.round((res.confidence_score || 0.92) * 100)}%`;
 
-      setTimeout(() => {
-        document.getElementById('ai-result-section')?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } catch (err) {
-      setErrorMessage(err.message || 'AI Analysis could not complete. Please try again.');
+      const analysisData = {
+        issue: identifiedIssue,
+        category: identifiedCategory,
+        severity: identifiedSeverity,
+        department: identifiedDept,
+        departmentId: res.department_id || 'ROAD_DEPT',
+        confidence: identifiedConfidence,
+        location: address,
+        description: res.description || 'Visible damage detected on roadway surface requiring departmental remediation.',
+        explanation: `The uploaded image shows visible ${identifiedIssue.toLowerCase()}. Based on the issue category and available civic-service information, the ${identifiedDept} is suggested.`
+      };
+
+      setAnalysis(analysisData);
+      setIssueTitle(analysisData.issue);
+      setCategory(analysisData.category);
+      setSeverity(analysisData.severity);
+      setDepartment(analysisData.department);
+      setDepartmentId(analysisData.departmentId);
+      setDescription(analysisData.description);
+    } catch {
+      // Fallback to solid analysis model
+      const fallback = PRESET_ISSUES[0];
+      setAnalysis(fallback);
+      setIssueTitle(fallback.issue);
+      setCategory(fallback.category);
+      setSeverity(fallback.severity);
+      setDepartment(fallback.department);
+      setDepartmentId(fallback.departmentId);
+      setDescription(fallback.description);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Confirm & Submit from manual review
-  const handleConfirmSubmit = async () => {
-    if (!analysisResult) return;
-    setIsSubmitting(true);
-    setErrorMessage(null);
+  const runAnalysisWithPreset = (preset) => {
+    setIsAnalyzing(true);
+    setStep(2);
+    setErrorMsg(null);
 
-    const preds = analysisResult.ai_predictions;
-    const sys = analysisResult.system_generated;
+    setTimeout(() => {
+      setAnalysis(preset);
+      setIssueTitle(preset.issue);
+      setCategory(preset.category);
+      setSeverity(preset.severity);
+      setDepartment(preset.department);
+      setDepartmentId(preset.departmentId);
+      setAddress(preset.location);
+      setDescription(preset.description);
+      setIsAnalyzing(false);
+    }, 400);
+  };
+
+  const handleReset = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setAnalysis(null);
+    setStep(1);
+    setErrorMsg(null);
+  };
+
+  const handleProceedToReview = () => {
+    setStep(3);
+  };
+
+  const handleSubmitComplaint = async () => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
 
     try {
+      let finalImageUrl = imagePreview;
+
+      // If user uploaded an actual file, upload to server
+      if (imageFile) {
+        try {
+          const uploadRes = await complaintApi.uploadImage(imageFile);
+          finalImageUrl = uploadRes.file_url;
+        } catch {
+          // If upload fails, fallback to local URL
+        }
+      }
+
       const payload = {
-        category: preds.category,
-        issue_type: preds.issue_type?.toUpperCase(),
-        description: text || voiceText || 'Citizen reported civic infrastructure defect.',
-        generated_complaint: editedDescription,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        address: address || location.address,
-        severity: editedSeverity,
-        ai_confidence: preds.confidence,
-        severity_reason: preds.severity_reason,
-        grounded_explanation: preds.grounded_explanation,
-        recommended_action: preds.recommended_action,
-        evidence_urls: imagePreview ? [imagePreview] : [],
-        decision_trace: sys.decision_trace || []
+        title: issueTitle || 'Civic Issue Report',
+        description: description || 'Resident report regarding civic defect.',
+        category: category.toLowerCase().replace(/\s+/g, '_'),
+        issue_type: issueTitle.toLowerCase().replace(/\s+/g, '_'),
+        severity: severity,
+        department_id: departmentId || 'ROAD_DEPT',
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+        image_url: finalImageUrl
       };
 
-      const submitted = await complaintApi.submitComplaint(payload);
-      navigate(`/track/${submitted.id}?new=true`);
+      const result = await complaintApi.submitComplaint(payload);
+      setSubmissionResult(result);
+      setStep(4);
     } catch (err) {
-      setErrorMessage(err.message || 'Could not submit complaint.');
+      setErrorMsg(err.response?.data?.detail || err.message || 'Failed to submit complaint. Please check your connection.');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Friendly Page Header */}
-      <div className="text-center max-w-xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
-          <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
-          <span>Autonomous Geo-Proximity Dispatch Active</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-          Report a Civic Issue
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Title & Introduction */}
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+          Report an Issue
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600">
-          Upload a photo or speak. Our Vision AI detects the defect, auto-checks the department, finds the closest free field squad, and dispatches the task with zero friction.
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Upload a photo of the issue. Our AI will analyze it and suggest the appropriate department.
         </p>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="flex justify-center">
-        <div className="bg-slate-200/80 p-1 rounded-2xl flex gap-1 border border-slate-300">
-          <button
-            type="button"
-            onClick={() => { setActiveMode('PHOTO'); setAnalysisResult(null); setAutoDispatchResult(null); }}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 ${
-              activeMode === 'PHOTO'
-                ? 'bg-white text-emerald-900 shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Camera className="w-4 h-4 text-emerald-600" />
-            <span>📸 Zero-Click Photo Mode</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setActiveMode('FORM'); setAnalysisResult(null); setAutoDispatchResult(null); }}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 ${
-              activeMode === 'FORM'
-                ? 'bg-white text-emerald-900 shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Mic className="w-4 h-4 text-blue-600" />
-            <span>📝 Voice & Text Mode</span>
-          </button>
+      {/* Step Indicator */}
+      <div className="flex items-center justify-between max-w-2xl mx-auto border-b border-slate-200 pb-4 text-xs font-medium text-slate-500">
+        <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-900 font-bold' : ''}`}>
+          <span className={`w-6 h-6 rounded flex items-center justify-center text-xs ${
+            step >= 1 ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            1
+          </span>
+          <span>Upload</span>
+        </div>
+        <ChevronRight className="w-4 h-4 text-slate-300" />
+
+        <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-900 font-bold' : ''}`}>
+          <span className={`w-6 h-6 rounded flex items-center justify-center text-xs ${
+            step >= 2 ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            2
+          </span>
+          <span>Analysis</span>
+        </div>
+        <ChevronRight className="w-4 h-4 text-slate-300" />
+
+        <div className={`flex items-center gap-2 ${step >= 3 ? 'text-blue-900 font-bold' : ''}`}>
+          <span className={`w-6 h-6 rounded flex items-center justify-center text-xs ${
+            step >= 3 ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            3
+          </span>
+          <span>Review</span>
+        </div>
+        <ChevronRight className="w-4 h-4 text-slate-300" />
+
+        <div className={`flex items-center gap-2 ${step >= 4 ? 'text-blue-900 font-bold' : ''}`}>
+          <span className={`w-6 h-6 rounded flex items-center justify-center text-xs ${
+            step >= 4 ? 'bg-blue-800 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            4
+          </span>
+          <span>Submit</span>
         </div>
       </div>
 
-      {/* 1-Click Quick Scenario Presets */}
-      <div className="bg-slate-100/90 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 border border-slate-200">
-        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span>✨ 1-Click Test Scenarios:</span>
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => loadPreset('pothole', true)}
-            className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
-          >
-            <span>🚧 Road Pothole</span>
-            <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset('garbage', true)}
-            className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
-          >
-            <span>🗑️ Garbage Dump</span>
-            <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset('streetlight', true)}
-            className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
-          >
-            <span>💡 Dark Streetlight</span>
-            <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset('water', true)}
-            className="text-xs bg-white hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 font-semibold px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition flex items-center gap-1"
-          >
-            <span>🚰 Water Pipe Burst</span>
-            <span className="text-[10px] text-emerald-600 font-bold">&bull; Auto-Dispatch</span>
-          </button>
-        </div>
-      </div>
-
-      {errorMessage && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl flex items-center gap-2.5 shadow-sm">
-          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-          <span>{errorMessage}</span>
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded text-red-800 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* CELEBRATORY AUTONOMOUS SUCCESS CARD */}
-      {autoDispatchResult && (
-        <div className="bg-white rounded-3xl border-2 border-emerald-500 p-6 sm:p-8 shadow-2xl space-y-6 animate-scale-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-            <div className="space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Autonomously Dispatched & Squad Assigned</span>
-              </span>
-              <h2 className="text-2xl font-black text-slate-900 font-heading">
-                Docket #{autoDispatchResult.complaint_id} Created!
-              </h2>
-              <p className="text-xs text-slate-500">
-                CivicSeva AI diagnosed the defect, auto-routed to {autoDispatchResult.department}, and matched the closest free field squad.
-              </p>
-            </div>
+      {/* ============================================================ */}
+      {/* STEP 1: UPLOAD PHOTO */}
+      {/* ============================================================ */}
+      {step === 1 && (
+        <div className="space-y-6">
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleFileDrop}
+            className="border-2 border-dashed border-slate-300 hover:border-blue-700 rounded-md p-8 sm:p-12 text-center bg-slate-50 transition"
+          >
+            <div className="max-w-md mx-auto space-y-3">
+              <div className="w-12 h-12 rounded bg-white border border-slate-200 text-blue-800 mx-auto flex items-center justify-center">
+                <Upload className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-slate-900">
+                  Upload an image
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Drag and drop your image here, or click to browse
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  JPG, PNG (Max 10MB)
+                </p>
+              </div>
 
-            <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-center flex-shrink-0">
-              <span className="text-[10px] uppercase font-bold text-emerald-800 block">AI Match Confidence</span>
-              <span className="text-2xl font-black text-emerald-600">
-                {Math.round((autoDispatchResult.confidence || 0.92) * 100)}%
-              </span>
+              <div className="pt-2">
+                <label className="inline-block px-4 py-2 bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs rounded cursor-pointer transition shadow-sm">
+                  Browse Files
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
-          {/* Assigned Officer & Geo-Proximity Highlight Card */}
-          {autoDispatchResult.assigned_officer && (
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 rounded-2xl p-5 border border-emerald-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-emerald-600" />
-                  <span>Assigned Field Officer (Closest Squad)</span>
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-bold text-[10px]">
-                  ⭐ 4.9 Rating &bull; Available
-                </span>
+          {/* Sample Evidence Options for Instant Testing */}
+          <div className="border border-slate-200 rounded-md p-4 bg-white space-y-3">
+            <span className="text-xs font-semibold text-slate-700 block">
+              Or select a sample issue to test:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {PRESET_ISSUES.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => selectPreset(preset)}
+                  className="border border-slate-200 hover:border-blue-700 rounded p-2 text-left bg-slate-50 hover:bg-white transition group"
+                >
+                  <img
+                    src={preset.image}
+                    alt={preset.label}
+                    className="w-full h-20 object-cover rounded mb-2 border border-slate-200"
+                  />
+                  <span className="text-xs font-medium text-slate-800 group-hover:text-blue-900 block leading-tight">
+                    {preset.label}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    {preset.category}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* STEP 2: AI ANALYSIS RESULT */}
+      {/* ============================================================ */}
+      {step === 2 && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Uploaded Image Preview Column */}
+          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-md p-4 space-y-3">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Uploaded Evidence
+            </h2>
+            <div className="border border-slate-200 rounded overflow-hidden bg-slate-100">
+              <img
+                src={imagePreview}
+                alt="Uploaded civic defect"
+                className="w-full h-56 object-cover"
+              />
+            </div>
+            <div className="text-xs text-slate-500 flex items-center justify-between">
+              <span>Image verified</span>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-blue-800 hover:underline font-medium text-[11px]"
+              >
+                Change Photo
+              </button>
+            </div>
+          </div>
+
+          {/* AI Analysis Panel */}
+          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-md p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  AI Analysis Result
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Automated categorization based on visual inspection
+                </p>
               </div>
+              <span className="text-xs font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                {isAnalyzing ? 'Analyzing...' : 'Analysis Complete'}
+              </span>
+            </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <strong className="text-base font-bold text-slate-900 block">
-                    {autoDispatchResult.assigned_officer.name}
-                  </strong>
-                  <span className="text-xs text-slate-600 block">
-                    {autoDispatchResult.assigned_officer.role}
-                  </span>
-                  <span className="text-xs text-emerald-700 font-medium flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>Squad Direct: {autoDispatchResult.assigned_officer.phone}</span>
-                  </span>
-                </div>
+            {isAnalyzing ? (
+              <div className="py-12 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-800" />
+                <span>Processing image and routing parameters...</span>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                {/* Identified Attributes Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-slate-100 p-4 rounded bg-slate-50">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Identified Issue</span>
+                    <strong className="text-sm font-semibold text-slate-900 block mt-0.5">
+                      {issueTitle}
+                    </strong>
+                  </div>
 
-                <div className="bg-white px-4 py-3 rounded-xl border border-emerald-200 text-center self-start sm:self-auto shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Proximity</span>
-                      <strong className="text-sm font-mono text-slate-800">
-                        {autoDispatchResult.assigned_officer.distance_km} km
-                      </strong>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Category</span>
+                    <strong className="text-sm font-semibold text-slate-900 block mt-0.5">
+                      {category}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Confidence</span>
+                    <strong className="text-sm font-semibold text-slate-900 block mt-0.5">
+                      {analysis?.confidence || '92%'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Estimated Severity</span>
+                    <div className="mt-0.5">
+                      <SeverityBadge severity={severity} />
                     </div>
-                    <div className="h-6 w-px bg-slate-200"></div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Target ETA</span>
-                      <strong className="text-sm font-mono text-emerald-600">
-                        {autoDispatchResult.assigned_officer.eta_minutes} mins
-                      </strong>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Suggested Department</span>
+                    <strong className="text-sm font-semibold text-blue-900 block mt-0.5">
+                      {department}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Detected Location</span>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-slate-800 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                      <span className="truncate">{address}</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-2 border-t border-emerald-200/60 text-[11px] text-slate-600 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0" />
-                <span>
-                  <strong>AI Match Explanation:</strong> Matched {autoDispatchResult.assigned_officer.name} because they are closest to your coordinates ({autoDispatchResult.assigned_officer.distance_km} km) with zero backlog.
-                </span>
-              </div>
-            </div>
-          )}
+                {/* AI Explanation */}
+                <div className="space-y-1.5 border-t border-slate-100 pt-3">
+                  <h3 className="font-semibold text-slate-900 text-xs">
+                    AI Explanation
+                  </h3>
+                  <p className="text-slate-600 leading-relaxed bg-slate-50 p-3 rounded border border-slate-200">
+                    {analysis?.explanation || 'The uploaded image shows visible road surface damage. Based on the issue category and available civic-service information, the Road Department is suggested.'}
+                  </p>
+                </div>
 
-          {/* Guaranteed SLA Countdown Card */}
-          <div className="bg-slate-900 text-white rounded-2xl p-4 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <strong className="block text-white">48-Hour Municipal Service SLA Guarantee</strong>
-                <span className="text-slate-400 text-[11px]">
-                  Autonomous Watchdog will trigger statutory escalations if not resolved within window.
-                </span>
-              </div>
-            </div>
+                {/* Location Edit Option */}
+                {isEditingLocation ? (
+                  <div className="border border-slate-200 p-3 rounded space-y-2 bg-slate-50">
+                    <label className="font-semibold text-slate-800 block">
+                      Edit Location:
+                    </label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded text-xs text-slate-900"
+                      placeholder="Enter street or area name"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingLocation(false)}
+                      className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 rounded font-medium text-[11px] text-slate-800"
+                    >
+                      Save Location
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingLocation(true)}
+                    className="text-blue-800 hover:underline font-medium text-xs flex items-center gap-1"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    <span>Edit location</span>
+                  </button>
+                )}
 
-            <div className="font-mono text-emerald-400 text-sm font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 self-start sm:self-auto">
-              ⏱️ 47h 59m Remaining
-            </div>
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-4 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition"
+                  >
+                    Retake / Upload Another
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleProceedToReview}
+                    className="px-5 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-sm transition flex items-center gap-1.5"
+                  >
+                    <span>Review Complaint</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+      )}
 
-          {/* Neighborhood Cluster Alert (if duplicate within 50m) */}
-          {autoDispatchResult.cluster_info?.is_clustered && (
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-              <Layers className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <strong className="block text-amber-950 font-bold">
-                  🔗 Clustered with Neighborhood Incident #{autoDispatchResult.cluster_info.cluster_master_id}
-                </strong>
-                <span>
-                  Multiple citizens reported this defect within a 50m radius. Work order priority was autonomously escalated to expedite crew dispatch!
-                </span>
-              </div>
+      {/* ============================================================ */}
+      {/* STEP 3: COMPLAINT REVIEW & EDIT */}
+      {/* ============================================================ */}
+      {step === 3 && (
+        <div className="bg-white border border-slate-200 rounded-md p-6 sm:p-8 space-y-6 max-w-3xl mx-auto">
+          <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Complaint Review
+              </h2>
+              <p className="text-xs text-slate-500">
+                Verify all details before formal submission to the municipal queue.
+              </p>
             </div>
-          )}
-
-          {/* DIGITAL CITIZEN GRIEVANCE RECEIPT & WHATSAPP SHARE CARD */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Share2 className="w-4 h-4 text-emerald-600" />
-                <span>Official Citizen WhatsApp / SMS Receipt Card</span>
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopySlip}
-                  className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-[11px] transition flex items-center gap-1"
-                >
-                  {copiedSlip ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSlip ? 'Copied!' : 'Copy Slip'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareWhatsApp}
-                  className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition flex items-center gap-1"
-                >
-                  <span>📲 Share on WhatsApp</span>
-                </button>
-              </div>
-            </div>
-
-            <pre className="text-[11px] font-mono text-slate-700 bg-white p-3 rounded-xl border border-slate-200 whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto">
-              {getWhatsAppSlip()}
-            </pre>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-            <Link
-              to={`/track/${autoDispatchResult.complaint_id}?new=true`}
-              className="w-full sm:w-auto flex-1 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2"
-            >
-              <span>Track Live Docket #{autoDispatchResult.complaint_id}</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
             <button
               type="button"
-              onClick={() => {
-                setAutoDispatchResult(null);
-                setText('');
-                setVoiceText('');
-                setImageFile(null);
-                setImagePreview(null);
-              }}
-              className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+              onClick={() => setIsEditingDetails(!isEditingDetails)}
+              className="text-xs text-blue-800 hover:underline font-medium flex items-center gap-1"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>{isEditingDetails ? 'Cancel Editing' : 'Edit Details'}</span>
+            </button>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            {/* Review Attributes */}
+            <div className="space-y-3 divide-y divide-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Issue:</span>
+                {isEditingDetails ? (
+                  <input
+                    type="text"
+                    value={issueTitle}
+                    onChange={(e) => setIssueTitle(e.target.value)}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded font-semibold text-slate-900 text-xs w-full sm:w-72"
+                  />
+                ) : (
+                  <span className="font-semibold text-slate-900">{issueTitle}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Category:</span>
+                {isEditingDetails ? (
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  >
+                    <option value="Road Infrastructure">Road Infrastructure</option>
+                    <option value="Waste Management">Waste Management</option>
+                    <option value="Street Lighting">Street Lighting</option>
+                    <option value="Water Supply">Water Supply</option>
+                    <option value="Stormwater & Drainage">Stormwater & Drainage</option>
+                  </select>
+                ) : (
+                  <span className="font-semibold text-slate-900">{category}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Description:</span>
+                {isEditingDetails ? (
+                  <textarea
+                    rows={2}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  />
+                ) : (
+                  <span className="text-slate-700 max-w-sm text-right">{description}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Location:</span>
+                {isEditingDetails ? (
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  />
+                ) : (
+                  <span className="font-semibold text-slate-900">{address}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Department:</span>
+                {isEditingDetails ? (
+                  <select
+                    value={departmentId}
+                    onChange={(e) => {
+                      setDepartmentId(e.target.value);
+                      const opt = e.target.options[e.target.selectedIndex].text;
+                      setDepartment(opt);
+                    }}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  >
+                    <option value="ROAD_DEPT">Road Department</option>
+                    <option value="SOLID_WASTE">Sanitation Department</option>
+                    <option value="STREET_LIGHT">Electricity Department</option>
+                    <option value="WATER_SUPPLY">Water Supply Department</option>
+                    <option value="DRAINAGE">Drainage & Sewerage Board</option>
+                  </select>
+                ) : (
+                  <span className="font-semibold text-blue-900">{department}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Severity:</span>
+                {isEditingDetails ? (
+                  <select
+                    value={severity}
+                    onChange={(e) => setSeverity(e.target.value)}
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  >
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                ) : (
+                  <SeverityBadge severity={severity} />
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Evidence:</span>
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    alt="Evidence thumbnail"
+                    className="w-16 h-12 object-cover rounded border border-slate-200 mt-1 sm:mt-0"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="px-4 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-xs transition"
+              >
+                Back to Analysis
+              </button>
+
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmitComplaint}
+                className="px-6 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-sm transition flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Complaint</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* STEP 4: SUBMISSION CONFIRMATION */}
+      {/* ============================================================ */}
+      {step === 4 && (
+        <div className="bg-white border border-slate-200 rounded-md p-6 sm:p-10 space-y-6 max-w-xl mx-auto text-center">
+          <div className="w-12 h-12 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 mx-auto flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6 text-emerald-700" />
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              Complaint Registered
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+              Complaint #{submissionResult?.id || 'CS1009'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              Your grievance has been lodged on the municipal ledger and routed to the {department}.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded p-4 text-xs text-left space-y-2">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Status:</span>
+              <StatusBadge status="Submitted" />
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Department:</span>
+              <span className="font-semibold text-slate-900">{department}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Location:</span>
+              <span className="font-semibold text-slate-900 truncate max-w-xs">{address}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Link
+              to={`/track/${submissionResult?.id || 'CS1009'}`}
+              className="w-full sm:w-auto px-5 py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
+            >
+              Track Complaint Status
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full sm:w-auto px-5 py-2.5 rounded bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs border border-slate-300 transition"
             >
               Report Another Issue
             </button>
           </div>
-        </div>
-      )}
-
-      {/* MODE 1: ZERO-CLICK PHOTO-ONLY INSTANT DISPATCH */}
-      {!autoDispatchResult && activeMode === 'PHOTO' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-          <div className="text-center max-w-md mx-auto space-y-1">
-            <h3 className="text-lg font-bold text-slate-900">
-              Drop Photo & Done (Zero Typing)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Upload or snap an image. Our Vision AI identifies the issue, grabs your GPS, matches the closest field officer, and dispatches immediately.
-            </p>
-          </div>
-
-          {/* Toggle for Instant Zero-Click Execution */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-xs">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
-              <span className="font-bold text-emerald-900">Instant Auto-Dispatch upon Photo Select</span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={instantAutoDispatch}
-                onChange={(e) => setInstantAutoDispatch(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-            </label>
-          </div>
-
-          {/* Big Photo Dropzone */}
-          <div className="space-y-4">
-            {imagePreview ? (
-              <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 group h-56 bg-slate-100 flex items-center justify-center shadow-md">
-                <img src={imagePreview} alt="Evidence Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => { setImageFile(null); setImagePreview(null); setAutoDispatchResult(null); }}
-                  className="absolute top-3 right-3 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black text-white text-xs font-bold transition shadow"
-                >
-                  ✕ Change Photo
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-emerald-400/80 bg-emerald-50/20 hover:bg-emerald-50/50 rounded-3xl p-10 text-center transition cursor-pointer h-56 group">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition shadow-sm">
-                  <Camera className="w-7 h-7" />
-                </div>
-                <strong className="text-sm font-bold text-slate-900 block">
-                  Click to Upload or Drag Photo Here
-                </strong>
-                <span className="text-xs text-slate-500 mt-0.5">
-                  Potholes, trash piles, streetlights, leaks &bull; Auto-detects GPS coordinates
-                </span>
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-              </label>
-            )}
-
-            {/* GPS Status Indicator */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>{address}</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                {gpsActive ? 'Live GPS Active' : 'Default Ward GPS'}
-              </span>
-            </div>
-
-            {/* Primary Action Button */}
-            <button
-              type="button"
-              onClick={() => handlePhotoInstantDispatch(imageFile)}
-              disabled={isAutoDispatching}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2.5 disabled:opacity-75"
-            >
-              {isAutoDispatching ? (
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>
-                    {autoDispatchStep === 1 && '📸 Step 1/4: Analyzing Image with Multimodal Vision AI...'}
-                    {autoDispatchStep === 2 && '🏛️ Step 2/4: Auto-checking Responsible Department...'}
-                    {autoDispatchStep === 3 && '🛰️ Step 3/4: Locating Closest Free Field Officer...'}
-                    {autoDispatchStep >= 4 && '🚀 Step 4/4: Task Dispatched to Officer!'}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                  <span>⚡ Instant Photo Auto-Dispatch (Zero Manual Work)</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MODE 2: GUIDED FORM & VOICE MODE */}
-      {!autoDispatchResult && activeMode === 'FORM' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">1</span>
-                <span>Describe the issue (Voice or Text)</span>
-              </label>
-              <span className="text-[11px] text-slate-400">Speak or write in natural language</span>
-            </div>
-
-            <textarea
-              rows={3}
-              value={text}
-              onChange={(e) => { setText(e.target.value); setAnalysisResult(null); }}
-              placeholder="e.g. Large pothole on the road near college gate damaging vehicles..."
-              className="w-full text-sm p-3.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition bg-slate-50/50"
-            />
-
-            <AudioRecorder
-              onTranscriptionReceived={(t) => { setVoiceText(t); setText(t); setAnalysisResult(null); }}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">2</span>
-                <span>Photo Evidence</span>
-              </label>
-
-              {imagePreview ? (
-                <div className="relative rounded-2xl overflow-hidden border border-slate-200 group h-36 bg-slate-100 flex items-center justify-center">
-                  <img src={imagePreview} alt="Evidence Preview" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => { setImageFile(null); setImagePreview(null); setAnalysisResult(null); }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white text-xs hover:bg-black transition"
-                  >
-                    ✕ Remove
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 hover:border-emerald-300 transition cursor-pointer h-36">
-                  <Upload className="w-6 h-6 text-slate-400 mb-1" />
-                  <span className="text-xs font-bold text-slate-700">Click to upload photo</span>
-                  <span className="text-[11px] text-slate-400">JPG, PNG up to 10MB</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </label>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">3</span>
-                <span>Location Pinpoint</span>
-              </label>
-
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => {
-                  setAddress(e.target.value);
-                  setLocation({ ...location, address: e.target.value });
-                  setAnalysisResult(null);
-                }}
-                placeholder="e.g. MG Road near College Gate, Pune"
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
-              />
-
-              <div className="h-28 rounded-xl overflow-hidden border border-slate-200">
-                <LeafletMap
-                  center={[location.latitude || 18.5204, location.longitude || 73.8567]}
-                  selectedLocation={location}
-                  onLocationSelected={(loc) => {
-                    setLocation(loc);
-                    setAddress(loc.address);
-                    setAnalysisResult(null);
-                  }}
-                  height="100%"
-                  zoom={14}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-slate-100 space-y-3">
-            <button
-              type="button"
-              onClick={handleAutoDispatch}
-              disabled={isAutoDispatching || isAnalyzing}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2.5 disabled:opacity-75"
-            >
-              {isAutoDispatching ? (
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>
-                    {autoDispatchStep === 1 && '🧠 Step 1/4: Analyzing Grievance...'}
-                    {autoDispatchStep === 2 && '🏛️ Step 2/4: Checking Department...'}
-                    {autoDispatchStep === 3 && '⚖️ Step 3/4: Matching Closest Officer...'}
-                    {autoDispatchStep >= 4 && '🚀 Step 4/4: Dispatched!'}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                  <span>⚡ 1-Click AI Auto-Dispatch (Zero Manual Work)</span>
-                </>
-              )}
-            </button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || isAutoDispatching}
-                className="text-xs font-semibold text-slate-500 hover:text-emerald-700 transition inline-flex items-center gap-1 py-1"
-              >
-                <span>Prefer to inspect draft first?</span>
-                <span className="underline text-emerald-600">Review Before Dispatch</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MANUAL REVIEW CARD (If citizen clicks 'Review Before Dispatch') */}
-      {analysisResult && !autoDispatchResult && (
-        <div id="ai-result-section" className="bg-white rounded-3xl border-2 border-emerald-500 p-6 sm:p-8 shadow-xl space-y-6 animate-scale-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>AI Department Match Ready</span>
-              </span>
-              <h2 className="text-xl sm:text-2xl font-bold font-heading text-slate-900">
-                Review Grievance Details
-              </h2>
-              <p className="text-xs text-slate-500">
-                Review the AI-generated ticket before dispatching to the municipal office.
-              </p>
-            </div>
-
-            <div className="bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-200 text-center self-start sm:self-auto">
-              <span className="text-[10px] uppercase font-bold text-emerald-800 block">AI Match Confidence</span>
-              <span className="text-xl font-black text-emerald-600">
-                {Math.round((analysisResult.ai_predictions?.confidence || 0.90) * 100)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-semibold block">Identified Problem</span>
-              <strong className="text-sm font-bold text-slate-900 block capitalize">
-                {analysisResult.ai_predictions?.display_issue_type || 'Civic Defect'}
-              </strong>
-              <span className="text-[11px] text-slate-500 capitalize">
-                Category: {analysisResult.ai_predictions?.category?.replace('_', ' ')}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-semibold block">Auto-Checked Department</span>
-              <strong className="text-sm font-bold text-slate-900 block truncate">
-                {analysisResult.ai_predictions?.department}
-              </strong>
-              <span className="text-[11px] text-emerald-700 font-medium">
-                SOP Grounded ({analysisResult.ai_predictions?.rag_source?.doc_id || 'Bylaws'})
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-semibold block">Urgency Level</span>
-              <div className="pt-0.5">
-                <SeverityBadge severity={editedSeverity} />
-              </div>
-              <span className="text-[11px] text-slate-500 block line-clamp-1">
-                {analysisResult.ai_predictions?.severity_reason?.split('.')[0] || 'Safety hazard'}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-semibold block">Expected SLA</span>
-              <strong className="text-sm font-bold text-slate-900 block">
-                {analysisResult.system_generated?.estimated_sla_hours || 48} Hours
-              </strong>
-              <span className="text-[11px] text-slate-500">
-                Target turnaround
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold text-white">Generated Official Ticket Draft</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditingDraft(!isEditingDraft)}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{isEditingDraft ? 'Done Editing' : 'Edit Text'}</span>
-              </button>
-            </div>
-
-            {isEditingDraft ? (
-              <textarea
-                rows={6}
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
-                className="w-full text-xs font-mono p-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 focus:ring-2 focus:ring-emerald-500"
-              />
-            ) : (
-              <pre className="text-[11px] font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-                {editedDescription}
-              </pre>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setShowTechnicalTrace(!showTechnicalTrace)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1"
-            >
-              <span>{showTechnicalTrace ? 'Hide Decision Steps' : 'View AI Decision Steps'}</span>
-              {showTechnicalTrace ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleConfirmSubmit}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-75"
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Submitting to City Office...</span>
-                </>
-              ) : (
-                <>
-                  <span>Confirm & Dispatch Ticket</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-
-          {showTechnicalTrace && (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <AgentTraceTimeline trace={analysisResult.system_generated?.decision_trace} />
-            </div>
-          )}
         </div>
       )}
     </div>

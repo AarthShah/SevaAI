@@ -1,55 +1,80 @@
 import React from 'react';
-import { Shield, Phone, Mail, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Mail } from 'lucide-react';
+import { CivicLogo } from './CivicLogo';
 
 export const Footer = () => {
   return (
-    <footer className="bg-slate-900 text-slate-400 text-sm mt-auto border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <footer className="bg-slate-900 text-slate-300 text-xs mt-auto border-t border-slate-800">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2 text-white font-bold text-lg font-heading">
-              <Shield className="w-5 h-5 text-emerald-400" />
-              <span>CIVIC<span className="text-emerald-400">SEVA</span></span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Autonomous AI agent for municipal issue resolution. Understanding citizen grievances, analyzing visual evidence, predicting severity, and routing issues directly to responsible civic departments.
+          {/* Brand & Description */}
+          <div className="space-y-3 md:col-span-2">
+            <CivicLogo
+              className="h-6 w-6 text-blue-400"
+              textClassName="text-base font-bold text-white tracking-tight"
+            />
+            <p className="text-slate-400 max-w-sm leading-relaxed">
+              AI-assisted civic issue reporting and resolution. Helping residents report local infrastructure issues, identify the appropriate municipal department, and track complaints through resolution.
             </p>
           </div>
 
-          <div>
-            <h4 className="text-white font-semibold text-xs uppercase tracking-wider mb-3">Core Capabilities</h4>
-            <ul className="space-y-1.5 text-xs">
-              <li>Multimodal Issue Classification</li>
-              <li>Vision Evidence Extraction</li>
-              <li>Grounded RAG Department Routing</li>
-              <li>AI-estimated Severity Assessment</li>
-              <li>SLA Follow-up & Escalation Engine</li>
+          {/* Service Links */}
+          <div className="space-y-2.5">
+            <h4 className="text-white font-semibold text-xs uppercase tracking-wider">
+              Citizen Services
+            </h4>
+            <ul className="space-y-1.5 text-slate-400">
+              <li>
+                <Link to="/" className="hover:text-white transition">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/report" className="hover:text-white transition">
+                  Report Issue
+                </Link>
+              </li>
+              <li>
+                <Link to="/track" className="hover:text-white transition">
+                  Track Complaint
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard" className="hover:text-white transition">
+                  My Complaints
+                </Link>
+              </li>
             </ul>
           </div>
 
-          <div>
-            <h4 className="text-white font-semibold text-xs uppercase tracking-wider mb-3">Emergency Civic Lines</h4>
-            <ul className="space-y-1.5 text-xs">
-              <li className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-emerald-400" /> 1800-CIVIC-SEVA (24x7)</li>
-              <li className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-emerald-400" /> grievance@civicseva.org</li>
-              <li className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-emerald-400" /> Central Municipal HQ</li>
+          {/* Legal & Contact */}
+          <div className="space-y-2.5">
+            <h4 className="text-white font-semibold text-xs uppercase tracking-wider">
+              Legal & Support
+            </h4>
+            <ul className="space-y-1.5 text-slate-400">
+              <li>
+                <Link to="/terms" className="hover:text-white transition">
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link to="/privacy" className="hover:text-white transition">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li className="pt-2 text-slate-400 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-blue-400" />
+                <span>support@civicseva.org</span>
+              </li>
             </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-semibold text-xs uppercase tracking-wider mb-3">Hackathon Note</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Built for the 24-hour AI Hackathon. Demonstrates autonomous civic agent orchestration, human-in-the-loop governance, and verifiable decision traceability.
-            </p>
-            <div className="mt-3 text-[11px] text-emerald-400 bg-emerald-950/60 p-2 rounded-lg border border-emerald-800/40">
-              ✓ 100% Agentic Traceability &bull; Zero Direct Hallucination
-            </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-          <p>&copy; 2026 CivicSeva. Public Service AI Architecture.</p>
-          <p className="mt-2 sm:mt-0">Report it. We understand it. We route it. We track it.</p>
+        <div className="border-t border-slate-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-slate-500">
+          <p>&copy; {new Date().getFullYear()} CivicSeva. Public Service Digital System.</p>
+          <p className="mt-2 sm:mt-0 text-[11px]">Designed for transparent and accessible municipal service delivery.</p>
         </div>
       </div>
     </footer>

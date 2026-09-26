@@ -1,4 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  <path d="m9 12 2 2 4-4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Triangular Pediment -->
+  <path d="M16 4L3 11H29L16 4Z" fill="#1E3A8A"/>
+  <!-- Upper Architrave -->
+  <rect x="4" y="11.5" width="24" height="2" fill="#1E3A8A"/>
+  <!-- 4 Classical Columns -->
+  <rect x="6" y="14.5" width="3" height="9.5" rx="0.5" fill="#1E3A8A"/>
+  <rect x="11.5" y="14.5" width="3" height="9.5" rx="0.5" fill="#1E3A8A"/>
+  <rect x="17.5" y="14.5" width="3" height="9.5" rx="0.5" fill="#1E3A8A"/>
+  <rect x="23" y="14.5" width="3" height="9.5" rx="0.5" fill="#1E3A8A"/>
+  <!-- Base Foundation Steps -->
+  <rect x="4" y="24.5" width="24" height="2" fill="#1E3A8A"/>
+  <rect x="2" y="27" width="28" height="2.5" rx="0.5" fill="#1E3A8A"/>
 </svg>

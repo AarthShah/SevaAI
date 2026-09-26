@@ -17,13 +17,15 @@ import { EvaluationPage } from './pages/EvaluationPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { CCTVVisionPage } from './pages/CCTVVisionPage';
+import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 
 export const App = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
         <Router>
-          <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
+          <div className="flex flex-col min-h-screen bg-white text-slate-900">
             <Navbar />
             <main className="flex-1">
               <Routes>
@@ -39,6 +41,8 @@ export const App = () => {
                 <Route path="/evaluation" element={<EvaluationPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

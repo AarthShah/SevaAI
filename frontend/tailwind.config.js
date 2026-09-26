@@ -7,21 +7,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#16a34a',
-          600: '#15803d',
-          700: '#166534',
-          800: '#14532d',
-          900: '#052e16',
-        },
         civic: {
-          blue: '#1e3a8a',
-          navy: '#0f172a',
-          amber: '#d97706',
-          danger: '#dc2626'
+          blue: '#1e3a8a',       // Deep civic blue (primary)
+          medium: '#2563eb',     // Medium blue (secondary)
+          navy: '#0f172a',       // Dark navy / charcoal (headings & dark text)
+          charcoal: '#1e293b',   // Body text
+          light: '#f8fafc',      // Very light neutral gray background
+          surface: '#ffffff',    // White card background
+          border: '#e2e8f0',     // Light gray border
+          success: '#166534',    // Muted green
+          warning: '#92400e',    // Muted amber
+          danger: '#991b1b',     // Muted red
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       }
     },
   },

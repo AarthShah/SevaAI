@@ -1,177 +1,319 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, Search, Sparkles, MapPin, Camera, CheckCircle2, Clock, ShieldCheck, ArrowRight, Zap, Building2, HelpCircle, Radio } from 'lucide-react';
-import { AutonomousAgentWidget } from '../components/AutonomousAgentWidget';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { Camera, FileSearch, CheckSquare, Clock, ArrowRight, AlertCircle, Droplets, Lightbulb, Trash2, Construction } from 'lucide-react';
+import { StatusBadge } from '../components/StatusBadge';
+
+const NEIGHBORHOOD_GRIEVANCES_SAMPLE = [
+  {
+    id: 'CVS-2025-00123',
+    issue: 'Pothole on main roadway',
+    approximateArea: 'MG Road area',
+    category: 'Road Infrastructure',
+    reportedDate: 'Reported 2 days ago',
+    status: 'In Progress'
+  },
+  {
+    id: 'CVS-2025-00122',
+    issue: 'Garbage accumulation',
+    approximateArea: 'Market area',
+    category: 'Waste Management',
+    reportedDate: 'Reported 4 days ago',
+    status: 'Resolved'
+  },
+  {
+    id: 'CVS-2025-00121',
+    issue: 'Streetlight not operating',
+    approximateArea: 'Station Road',
+    category: 'Street Lighting',
+    reportedDate: 'Reported 6 days ago',
+    status: 'Under Review'
+  },
+  {
+    id: 'CVS-2025-00120',
+    issue: 'Water supply line leak',
+    approximateArea: 'Sector 4 residential zone',
+    category: 'Water Supply',
+    reportedDate: 'Reported 1 day ago',
+    status: 'In Progress'
+  },
+  {
+    id: 'CVS-2025-00119',
+    issue: 'Blocked storm drainage',
+    approximateArea: 'Civil Lines district',
+    category: 'Stormwater & Drainage',
+    reportedDate: 'Reported 3 days ago',
+    status: 'Submitted'
+  }
+];
+
+const COMMON_ISSUES = [
+  {
+    title: 'Potholes',
+    category: 'Road Infrastructure',
+    icon: Construction,
+    description: 'Road craters, surface cracks, and broken pavers.'
+  },
+  {
+    title: 'Garbage',
+    category: 'Waste Management',
+    icon: Trash2,
+    description: 'Overflowing bins, uncollected waste, and illegal dumping.'
+  },
+  {
+    title: 'Streetlights',
+    category: 'Street Lighting',
+    icon: Lightbulb,
+    description: 'Dark roadway fixtures, damaged poles, and flickering lamps.'
+  },
+  {
+    title: 'Water leakage',
+    category: 'Water Supply',
+    icon: Droplets,
+    description: 'Burst distribution mains and leaking valve junctions.'
+  },
+  {
+    title: 'Drainage',
+    category: 'Stormwater & Drainage',
+    icon: AlertCircle,
+    description: 'Blocked monsoon catch basins and overflowing manholes.'
+  }
+];
 
 export const LandingPage = () => {
-  const { switchDemoRole } = useAuth();
-  const navigate = useNavigate();
-
-  const launchDemo = async (preset) => {
-    await switchDemoRole('citizen');
-    navigate(`/report?demo=${preset}`);
-  };
-
   return (
-    <div className="space-y-16 pb-20">
-      {/* Friendly Hero Banner */}
-      <section className="relative pt-12 pb-16 bg-gradient-to-b from-emerald-50/80 via-white to-slate-50 border-b border-slate-200 overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>AI-Powered Civic Care for Your Neighborhood</span>
-          </div>
+    <div className="space-y-16 pb-16">
+      {/* Short, Dignified Civic Hero */}
+      <section className="bg-slate-50 border-b border-slate-200 py-12 lg:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded">
+                  Municipal Digital Service
+                </span>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
+                  Report civic issues.<br />
+                  Track them to resolution.
+                </h1>
+                <p className="text-base text-slate-600 max-w-xl leading-relaxed">
+                  CivicSeva helps residents report local issues, identify the appropriate department, and track their complaints from submission to resolution.
+                </p>
+              </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            Pothole, garbage, or dark streetlight? <br className="hidden sm:inline" />
-            <span className="text-emerald-600">CivicSeva gets it fixed.</span>
-          </h1>
-
-          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            No confusing paperwork or guessing which municipal office to call. Simply snap a photo or speak what's wrong. Our AI agent figures out the department, alerts the city team, and tracks it until it's repaired.
-          </p>
-
-          {/* Big Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link
-              to="/report"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2.5 hover:scale-[1.02]"
-            >
-              <PlusCircle className="w-5 h-5" />
-              <span>Report an Issue (Takes 1 Min)</span>
-            </Link>
-
-            <Link
-              to="/track"
-              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-base border border-slate-300 shadow-sm transition flex items-center justify-center gap-2"
-            >
-              <Search className="w-5 h-5 text-slate-400" />
-              <span>Track Existing Complaint</span>
-            </Link>
-          </div>
-
-          {/* Instant 1-Click Interactive Demo Card */}
-          <div className="pt-6 max-w-xl mx-auto">
-            <div className="bg-white/90 backdrop-blur rounded-2xl p-4 border border-slate-200 shadow-sm space-y-2.5">
-              <span className="text-xs font-bold text-slate-600 flex items-center justify-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-500 fill-current" />
-                <span>Want to see how it works? Try an instant demo:</span>
-              </span>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => launchDemo('pothole')}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition flex items-center gap-1"
+              {/* Functional Rectangular CTAs */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <Link
+                  to="/report"
+                  className="px-6 py-3 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-sm text-center shadow-sm transition"
                 >
-                  <span>🚧 Road Pothole</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => launchDemo('garbage')}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition flex items-center gap-1"
+                  Report an Issue
+                </Link>
+
+                <Link
+                  to="/track"
+                  className="px-6 py-3 rounded bg-white hover:bg-slate-50 text-slate-800 font-medium text-sm text-center border border-slate-300 shadow-sm transition"
                 >
-                  <span>🗑️ Garbage Pile</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => launchDemo('streetlight')}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition flex items-center gap-1"
-                >
-                  <span>💡 Dark Streetlight</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => launchDemo('water')}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition flex items-center gap-1"
-                >
-                  <span>🚰 Water Pipe Leak</span>
-                </button>
+                  Track Complaint
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Civic Imagery */}
+            <div className="lg:col-span-5">
+              <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
+                <img
+                  src="/civic_hall.jpg"
+                  alt="Municipal Administration City Hall"
+                  className="w-full h-64 sm:h-72 object-cover"
+                />
+                <div className="p-3 bg-white border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
+                  <span>Municipal Operations Administration</span>
+                  <span className="text-[11px] font-mono text-slate-400">Direct Departmental Triage</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Clear 3-Step Guide: How It Works */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-xl mx-auto mb-10 space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900">
-            How CivicSeva Works
+      {/* How CivicSeva Works (4 Simple Steps) */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="border-b border-slate-200 pb-4 mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+            How CivicSeva works
           </h2>
-          <p className="text-sm text-slate-600">
-            Three simple steps from seeing a problem to getting it fixed by the city.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            A structured four-step process connecting residents with municipal services.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Step 1 */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3 relative group hover:border-emerald-500 transition">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-lg">
-              1
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Step 01 */}
+          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-slate-400">01</span>
+              <Camera className="w-5 h-5 text-blue-800" />
             </div>
-            <h3 className="font-heading font-bold text-slate-900 text-lg">
-              Show or Tell Us
+            <h3 className="font-semibold text-slate-900 text-base">
+              Report
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Upload a quick phone picture, tap to speak what happened in plain words, or pinpoint the spot on the interactive map.
+              Upload a photo, describe the issue, or provide a voice report.
             </p>
           </div>
 
-          {/* Step 2 */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3 relative group hover:border-emerald-500 transition">
-            <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-black text-lg">
-              2
+          {/* Step 02 */}
+          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-slate-400">02</span>
+              <FileSearch className="w-5 h-5 text-blue-800" />
             </div>
-            <h3 className="font-heading font-bold text-slate-900 text-lg">
-              AI Inspects & Routes
+            <h3 className="font-semibold text-slate-900 text-base">
+              Review
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Our AI verifies the photo, checks urgency, finds the exact responsible department (Road, Water, Electric, etc.), and writes the formal ticket.
+              CivicSeva analyzes the information and suggests the issue category and responsible department.
             </p>
           </div>
 
-          {/* Step 3 */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3 relative group hover:border-emerald-500 transition">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-lg">
-              3
+          {/* Step 03 */}
+          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-slate-400">03</span>
+              <CheckSquare className="w-5 h-5 text-blue-800" />
             </div>
-            <h3 className="font-heading font-bold text-slate-900 text-lg">
-              Track to Resolution
+            <h3 className="font-semibold text-slate-900 text-base">
+              Submit
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              You stay in control. Review everything before submitting, watch the live timeline, and trigger automated reminders if work is delayed.
+              Review the details and submit the complaint.
+            </p>
+          </div>
+
+          {/* Step 04 */}
+          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold text-slate-400">04</span>
+              <Clock className="w-5 h-5 text-blue-800" />
+            </div>
+            <h3 className="font-semibold text-slate-900 text-base">
+              Track
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Follow the complaint status until resolution.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Autonomous Operations Live Center */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <AutonomousAgentWidget />
+      {/* Common Civic Issues */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="border-b border-slate-200 pb-4 mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+            Common civic issues
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Select a common category to start your report.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {COMMON_ISSUES.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.title}
+                to={`/report?category=${encodeURIComponent(item.category)}`}
+                className="bg-white border border-slate-200 hover:border-blue-700 rounded-md p-4 space-y-2 transition block group"
+              >
+                <div className="w-8 h-8 rounded bg-slate-100 group-hover:bg-blue-50 text-slate-700 group-hover:text-blue-800 flex items-center justify-center transition">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <h3 className="font-semibold text-sm text-slate-900 group-hover:text-blue-900">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-slate-500 leading-normal">
+                  {item.description}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
-      {/* Helpful FAQ / Reassurance */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-slate-100/80 rounded-3xl p-6 sm:p-8 space-y-4 border border-slate-200">
-          <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
-            <HelpCircle className="w-5 h-5 text-emerald-600" />
-            <span>Common Questions</span>
+      {/* Short Explanation of the Service */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-6 sm:p-8 space-y-3">
+          <h2 className="text-lg font-bold text-slate-900">
+            About CivicSeva Service Coordination
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
+            CivicSeva is an AI-assisted civic grievance platform deployed to improve public issue intake and administrative routing. Submitted photographs and descriptions are evaluated against municipal service standards to identify defect severity and route requests directly to responsible field squads. Residents maintain full control to review and edit all details prior to docket submission.
+          </p>
+        </div>
+      </section>
+
+      {/* My Neighborhood Grievances (List-Based View, NO Community Map) */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+                My Neighborhood Grievances
+              </h2>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                Sample neighborhood data
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              View reported civic issues in your neighborhood. Approximate areas are shown to preserve resident privacy.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-700">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <strong className="text-slate-900 block text-sm">Do I need an account to report?</strong>
-              <p className="text-slate-500 leading-relaxed">
-                No! You can report immediately as a citizen guest and receive an instant Docket ID (e.g. #CS1001) to track anytime.
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <strong className="text-slate-900 block text-sm">Can I review what AI generates?</strong>
-              <p className="text-slate-500 leading-relaxed">
-                Always! The AI only prepares a draft. You review the department, severity, and text with final approval before anything is sent.
-              </p>
-            </div>
+          <Link
+            to="/report"
+            className="text-xs font-semibold text-blue-800 hover:text-blue-900 flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>Report a new issue</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="px-5 py-3">Issue</th>
+                  <th className="px-5 py-3">Approximate Area</th>
+                  <th className="px-5 py-3">Category</th>
+                  <th className="px-5 py-3">Reported</th>
+                  <th className="px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {NEIGHBORHOOD_GRIEVANCES_SAMPLE.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 transition">
+                    <td className="px-5 py-3.5 font-medium text-slate-900">
+                      {row.issue}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">
+                      {row.approximateArea}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">
+                      {row.category}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-500">
+                      {row.reportedDate}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>

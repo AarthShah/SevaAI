@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, PlusCircle, Search, Map, BarChart3, Bot, User, LogOut, ChevronDown, CheckCircle2, Building2, Users, Radio, Menu, X, ArrowRightLeft, Sparkles, Camera } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
+import { CivicLogo } from './CivicLogo';
 
 export const Navbar = () => {
   const { user, logout, switchDemoRole } = useAuth();
@@ -24,215 +25,149 @@ export const Navbar = () => {
   };
 
   return (
-    <header className={`sticky top-0 z-40 backdrop-blur-md border-b shadow-sm transition-colors duration-300 ${
-      isOfficial
-        ? 'bg-slate-900/95 border-slate-800 text-slate-100'
-        : 'bg-white/95 border-slate-200 text-slate-900'
-    }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Brand Logo & Mode Indicator */}
-          <Link to={isOfficial ? "/authority" : "/"} className="flex items-center space-x-3 group">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105 ${
-              isOfficial
-                ? 'bg-gradient-to-tr from-indigo-600 to-blue-500 shadow-indigo-500/25'
-                : 'bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-emerald-500/20'
-            }`}>
-              {isOfficial ? <Building2 className="w-5 h-5" /> : <Shield className="w-6 h-6" />}
-            </div>
-            <div>
-              <span className={`font-heading text-xl font-bold tracking-tight flex items-center gap-1.5 ${
-                isOfficial ? 'text-white' : 'text-slate-900'
-              }`}>
-                CIVIC<span className={isOfficial ? 'text-indigo-400' : 'text-emerald-600'}>SEVA</span>
-              </span>
-              <p className={`text-[11px] font-medium flex items-center gap-1 ${
-                isOfficial ? 'text-indigo-300' : 'text-slate-500'
-              }`}>
-                {isOfficial ? (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                    <span>Municipal Command Center</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>Citizen Grievance Portal</span>
-                  </>
-                )}
-              </p>
-            </div>
+          {/* CivicSeva Logo */}
+          <Link to={isOfficial ? "/authority" : "/"} className="flex items-center">
+            <CivicLogo
+              className="h-6 w-6 text-blue-800"
+              textClassName="text-lg font-bold text-slate-900 tracking-tight"
+            />
           </Link>
 
-          {/* DEDICATED ROLE-BASED NAVIGATION */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-medium">
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-1 text-sm font-medium">
             {isOfficial ? (
               /* === OFFICIAL / MUNICIPAL OFFICER NAVIGATION === */
               <>
                 <Link
                   to="/authority"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                    isActive('/authority')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  className={`px-3 py-1.5 rounded transition-colors ${
+                    isActive('/authority') && !location.search.includes('OFFICERS')
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Shield className="w-4 h-4 text-indigo-300" />
-                  <span>Triage & Dispatch</span>
+                  Triage Queue
                 </Link>
 
                 <Link
                   to="/authority?tab=OFFICERS"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     location.search.includes('OFFICERS')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Users className="w-4 h-4 text-indigo-300" />
-                  <span>Field Crew Radar</span>
+                  Field Squads
                 </Link>
 
                 <Link
                   to="/cctv"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     isActive('/cctv')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Camera className="w-4 h-4 text-rose-400 animate-pulse" />
-                  <span className="flex items-center gap-1">
-                    CCTV AI Vision
-                    <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-rose-500/30 text-rose-300 border border-rose-500/40">LIVE</span>
-                  </span>
+                  CCTV Grid
                 </Link>
 
                 <Link
                   to="/map"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     isActive('/map')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Map className="w-4 h-4 text-indigo-300" />
-                  <span>Operations Map</span>
+                  Operations Map
                 </Link>
 
                 <Link
                   to="/analytics"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     isActive('/analytics')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <BarChart3 className="w-4 h-4 text-indigo-300" />
-                  <span>Civic Analytics</span>
-                </Link>
-
-                <Link
-                  to="/evaluation"
-                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                    isActive('/evaluation')
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  <Bot className="w-4 h-4 text-purple-400" />
-                  <span>AI Benchmarks</span>
+                  Analytics
                 </Link>
               </>
             ) : (
               /* === CITIZEN NAVIGATION === */
               <>
                 <Link
-                  to="/report"
-                  className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 font-bold ${
-                    isActive('/report')
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  to="/"
+                  className={`px-3 py-1.5 rounded transition-colors ${
+                    isActive('/')
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Report Issue (Instant AI)</span>
+                  Home
+                </Link>
+
+                <Link
+                  to="/report"
+                  className={`px-3 py-1.5 rounded transition-colors ${
+                    isActive('/report')
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  Report Issue
                 </Link>
 
                 <Link
                   to="/track"
-                  className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     isActive('/track')
-                      ? 'bg-slate-100 text-slate-900 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <span>Track Complaint</span>
+                  Track Complaint
                 </Link>
 
                 <Link
                   to="/dashboard"
-                  className={`px-3 py-2 rounded-xl transition-colors ${
+                  className={`px-3 py-1.5 rounded transition-colors ${
                     isActive('/dashboard')
-                      ? 'bg-slate-100 text-slate-900 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <span>My Grievances</span>
-                </Link>
-
-                <Link
-                  to="/map"
-                  className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
-                    isActive('/map')
-                      ? 'bg-slate-100 text-slate-900 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <Map className="w-4 h-4 text-slate-400" />
-                  <span>Community Map</span>
+                  My Complaints
                 </Link>
               </>
             )}
           </nav>
 
-          {/* Right Action Items & One-Click Mode Switcher */}
-          <div className="flex items-center space-x-2">
-            {/* Direct 1-Click Role Switcher Pill */}
+          {/* Right Action Items & Mode Switcher */}
+          <div className="flex items-center space-x-3">
+            {/* Clean rectangular role switcher */}
             <button
               onClick={handleToggleRole}
-              title={isOfficial ? "Switch back to Citizen View" : "Switch to Municipal Officer Command Center"}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-sm border ${
-                isOfficial
-                  ? 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60 hover:bg-indigo-900 hover:text-white'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-              }`}
+              title={isOfficial ? "Switch to Citizen View" : "Switch to Municipal Officer Portal"}
+              className="px-2.5 py-1 text-xs font-medium border border-slate-300 rounded text-slate-700 bg-white hover:bg-slate-50 transition flex items-center gap-1.5"
             >
-              <span>{isOfficial ? '🏛️ Official Mode' : '👤 Citizen Mode'}</span>
-              <span className="text-[10px] opacity-75 hidden sm:inline">
-                ({isOfficial ? 'Switch to Citizen ➔' : 'Switch to Official ➔'})
-              </span>
+              <ArrowLeftRight className="w-3 h-3 text-slate-500" />
+              <span>{isOfficial ? 'Switch to Citizen' : 'Municipal Portal'}</span>
             </button>
 
             <NotificationBell />
 
             {user ? (
-              <div className={`flex items-center space-x-2 pl-2 border-l ${
-                isOfficial ? 'border-slate-800' : 'border-slate-200'
-              }`}>
-                <span className={`text-xs font-medium hidden lg:inline-block ${
-                  isOfficial ? 'text-slate-300' : 'text-slate-700'
-                }`}>
+              <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+                <span className="text-xs font-medium text-slate-700 hidden sm:inline-block">
                   {user.name.split(' ')[0]}
                 </span>
                 <button
                   onClick={logout}
-                  className={`p-2 rounded-xl transition ${
-                    isOfficial
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                  }`}
+                  className="p-1.5 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -242,13 +177,13 @@ export const Navbar = () => {
               <div className="flex items-center space-x-2">
                 <Link
                   to="/login"
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition"
+                  className="px-3 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
                 >
                   Register
                 </Link>
@@ -258,9 +193,8 @@ export const Navbar = () => {
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`md:hidden p-2 rounded-xl ${
-                isOfficial ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
-              }`}
+              className="md:hidden p-1.5 rounded text-slate-700 hover:bg-slate-100"
+              aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -269,95 +203,85 @@ export const Navbar = () => {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className={`md:hidden border-t py-3 space-y-1.5 ${
-            isOfficial ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
-          }`}>
+          <div className="md:hidden border-t border-slate-200 py-3 space-y-1 bg-white">
             {isOfficial ? (
               <>
                 <Link
                   to="/authority"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  📋 Triage & Dispatch Queue
+                  Triage Queue
                 </Link>
                 <Link
                   to="/authority?tab=OFFICERS"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  👷 Field Crew Proximity Radar
+                  Field Squads
                 </Link>
                 <Link
                   to="/cctv"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-bold text-rose-300 hover:bg-slate-800 flex items-center justify-between"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  <span>📹 CCTV AI Vision Grid</span>
-                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500/30 text-rose-300 border border-rose-500/40">LIVE</span>
+                  CCTV Grid
                 </Link>
                 <Link
                   to="/map"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  🗺️ Operations Map
+                  Operations Map
                 </Link>
                 <Link
                   to="/analytics"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  📊 Civic Analytics
-                </Link>
-                <Link
-                  to="/evaluation"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800"
-                >
-                  🧪 AI Benchmarks
+                  Analytics
                 </Link>
               </>
             ) : (
               <>
                 <Link
+                  to="/"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  Home
+                </Link>
+                <Link
                   to="/report"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-800"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  📸 Report Issue (Instant AI Photo)
+                  Report Issue
                 </Link>
                 <Link
                   to="/track"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  🔍 Track Complaint
+                  Track Complaint
                 </Link>
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  📋 My Grievances
-                </Link>
-                <Link
-                  to="/map"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  🗺️ Community Map
+                  My Complaints
                 </Link>
               </>
             )}
 
-            <div className="pt-2 border-t border-slate-200/50">
+            <div className="pt-2 border-t border-slate-200">
               <button
                 onClick={() => { handleToggleRole(); setMobileMenuOpen(false); }}
-                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-400 hover:bg-slate-800 flex items-center justify-between"
+                className="w-full text-left px-3 py-2 rounded text-xs font-medium text-blue-800 hover:bg-blue-50 flex items-center justify-between"
               >
-                <span>{isOfficial ? 'Switch to 👤 Citizen Mode' : 'Switch to 🏛️ Official Mode'}</span>
-                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>{isOfficial ? 'Switch to Citizen View' : 'Switch to Municipal Portal'}</span>
+                <ArrowLeftRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
