@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, ArrowLeftRight } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
 import { CivicLogo } from './CivicLogo';
@@ -26,7 +26,7 @@ export const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* CivicSeva Logo */}
           <Link to={isOfficial ? "/authority" : "/"} className="flex items-center">
@@ -36,17 +36,17 @@ export const Navbar = () => {
             />
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-1 text-sm font-medium">
+          {/* Navigation Links with Active Bottom-Indicator */}
+          <nav className="hidden md:flex items-center space-x-6 text-sm">
             {isOfficial ? (
               /* === OFFICIAL / MUNICIPAL OFFICER NAVIGATION === */
               <>
                 <Link
                   to="/authority"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/authority') && !location.search.includes('OFFICERS')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-blue-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Triage Queue
@@ -54,10 +54,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/authority?tab=OFFICERS"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     location.search.includes('OFFICERS')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-blue-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Field Squads
@@ -65,10 +65,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/cctv"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/cctv')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-blue-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   CCTV Grid
@@ -76,10 +76,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/map"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/map')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-blue-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Operations Map
@@ -87,10 +87,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/analytics"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/analytics')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-blue-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Analytics
@@ -101,10 +101,10 @@ export const Navbar = () => {
               <>
                 <Link
                   to="/"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-slate-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Home
@@ -112,10 +112,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/report"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/report')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-slate-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Report Issue
@@ -123,10 +123,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/track"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/track')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-slate-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Track Complaint
@@ -134,10 +134,10 @@ export const Navbar = () => {
 
                 <Link
                   to="/dashboard"
-                  className={`px-3 py-1.5 rounded transition-colors ${
+                  className={`py-5 transition-colors border-b-2 font-medium ${
                     isActive('/dashboard')
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'border-blue-800 text-slate-900 font-semibold'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   My Complaints
@@ -162,8 +162,12 @@ export const Navbar = () => {
 
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+                {/* Circular Avatar with Initial */}
+                <div className="w-7 h-7 rounded-full bg-slate-600 text-white text-xs font-semibold flex items-center justify-center">
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                </div>
                 <span className="text-xs font-medium text-slate-700 hidden sm:inline-block">
-                  {user.name.split(' ')[0]}
+                  {user.name ? user.name.split(' ')[0] : 'User'}
                 </span>
                 <button
                   onClick={logout}
@@ -183,7 +187,7 @@ export const Navbar = () => {
                 </Link>
                 <Link
                   to="/register"
-                  className="px-3 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
+                  className="px-3.5 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
                 >
                   Register
                 </Link>

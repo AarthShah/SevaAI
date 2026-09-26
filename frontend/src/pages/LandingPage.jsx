@@ -1,7 +1,67 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, FileSearch, CheckSquare, Clock, ArrowRight, AlertCircle, Droplets, Lightbulb, Trash2, Construction } from 'lucide-react';
+import { ArrowRight, FileText, Search, CheckCircle2, ListChecks, Construction, Trash2, Lightbulb, Droplets, AlertCircle } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
+
+const HOW_IT_WORKS = [
+  {
+    step: '01',
+    title: 'Report',
+    desc: 'Upload a photo, speak or type your issue.',
+    icon: FileText
+  },
+  {
+    step: '02',
+    title: 'AI Analysis',
+    desc: 'We identify the issue and suggest the right department.',
+    icon: Search
+  },
+  {
+    step: '03',
+    title: 'Review & Submit',
+    desc: 'Check the details and confirm before submitting.',
+    icon: CheckCircle2
+  },
+  {
+    step: '04',
+    title: 'Track',
+    desc: 'Follow the status of your complaint in real time.',
+    icon: ListChecks
+  }
+];
+
+const COMMON_ISSUES = [
+  {
+    title: 'Potholes',
+    category: 'Road Infrastructure',
+    icon: Construction,
+    description: 'Road craters, surface cracks, and broken pavers.'
+  },
+  {
+    title: 'Garbage',
+    category: 'Waste Management',
+    icon: Trash2,
+    description: 'Overflowing bins, uncollected waste, and illegal dumping.'
+  },
+  {
+    title: 'Streetlights',
+    category: 'Street Lighting',
+    icon: Lightbulb,
+    description: 'Dark roadway fixtures, damaged poles, and flickering lamps.'
+  },
+  {
+    title: 'Water leakage',
+    category: 'Water Supply',
+    icon: Droplets,
+    description: 'Burst distribution mains and leaking valve junctions.'
+  },
+  {
+    title: 'Drainage',
+    category: 'Stormwater & Drainage',
+    icon: AlertCircle,
+    description: 'Blocked monsoon catch basins and overflowing manholes.'
+  }
+];
 
 const NEIGHBORHOOD_GRIEVANCES_SAMPLE = [
   {
@@ -46,175 +106,100 @@ const NEIGHBORHOOD_GRIEVANCES_SAMPLE = [
   }
 ];
 
-const COMMON_ISSUES = [
-  {
-    title: 'Potholes',
-    category: 'Road Infrastructure',
-    icon: Construction,
-    description: 'Road craters, surface cracks, and broken pavers.'
-  },
-  {
-    title: 'Garbage',
-    category: 'Waste Management',
-    icon: Trash2,
-    description: 'Overflowing bins, uncollected waste, and illegal dumping.'
-  },
-  {
-    title: 'Streetlights',
-    category: 'Street Lighting',
-    icon: Lightbulb,
-    description: 'Dark roadway fixtures, damaged poles, and flickering lamps.'
-  },
-  {
-    title: 'Water leakage',
-    category: 'Water Supply',
-    icon: Droplets,
-    description: 'Burst distribution mains and leaking valve junctions.'
-  },
-  {
-    title: 'Drainage',
-    category: 'Stormwater & Drainage',
-    icon: AlertCircle,
-    description: 'Blocked monsoon catch basins and overflowing manholes.'
-  }
-];
-
 export const LandingPage = () => {
   return (
-    <div className="space-y-16 pb-16">
-      {/* Short, Dignified Civic Hero */}
-      <section className="bg-slate-50 border-b border-slate-200 py-12 lg:py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left Content */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="space-y-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded">
-                  Municipal Digital Service
-                </span>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
-                  Report civic issues.<br />
-                  Track them to resolution.
-                </h1>
-                <p className="text-base text-slate-600 max-w-xl leading-relaxed">
-                  CivicSeva helps residents report local issues, identify the appropriate department, and track their complaints from submission to resolution.
-                </p>
-              </div>
+    <div className="space-y-16 pb-16 bg-white">
+      {/* Hero Section matching exact reference layout */}
+      <section className="pt-8 pb-12 lg:pt-14 lg:pb-16 border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            {/* Left Column: Heading & CTAs */}
+            <div className="lg:col-span-6 space-y-5">
+              <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-bold tracking-tight text-slate-900 leading-[1.12]">
+                Report civic issues.<br />
+                Get them resolved.
+              </h1>
 
-              {/* Functional Rectangular CTAs */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+              <p className="text-base text-slate-600 max-w-lg leading-relaxed">
+                CivicSeva uses AI to understand your complaint, suggest the right department, and help you track it until resolution.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3">
                 <Link
                   to="/report"
-                  className="px-6 py-3 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-sm text-center shadow-sm transition"
+                  className="px-6 py-3 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-sm text-center shadow-sm transition flex items-center justify-center gap-2"
                 >
-                  Report an Issue
+                  <span>Report an Issue</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
 
                 <Link
                   to="/track"
-                  className="px-6 py-3 rounded bg-white hover:bg-slate-50 text-slate-800 font-medium text-sm text-center border border-slate-300 shadow-sm transition"
+                  className="px-6 py-3 rounded-md bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm text-center border border-slate-300 shadow-sm transition"
                 >
                   Track Complaint
                 </Link>
               </div>
             </div>
 
-            {/* Right Civic Imagery */}
-            <div className="lg:col-span-5">
-              <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
+            {/* Right Column: Hero Image matching reference */}
+            <div className="lg:col-span-6">
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
                 <img
                   src="/civic_hall.jpg"
-                  alt="Municipal Administration City Hall"
-                  className="w-full h-64 sm:h-72 object-cover"
+                  alt="City Hall Municipal Boulevard"
+                  className="w-full h-80 sm:h-[380px] lg:h-[400px] object-cover"
                 />
-                <div className="p-3 bg-white border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
-                  <span>Municipal Operations Administration</span>
-                  <span className="text-[11px] font-mono text-slate-400">Direct Departmental Triage</span>
-                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How CivicSeva Works (4 Simple Steps) */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-slate-200 pb-4 mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-            How CivicSeva works
+      {/* How It Works Section matching exact reference design */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-slate-900">
+            How It Works
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            A structured four-step process connecting residents with municipal services.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Step 01 */}
-          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-slate-400">01</span>
-              <Camera className="w-5 h-5 text-blue-800" />
-            </div>
-            <h3 className="font-semibold text-slate-900 text-base">
-              Report
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Upload a photo, describe the issue, or provide a voice report.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          {HOW_IT_WORKS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.step} className="flex items-start gap-3.5">
+                {/* Clean square light-blue icon box */}
+                <div className="w-11 h-11 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-700">
+                  <Icon className="w-5 h-5" />
+                </div>
 
-          {/* Step 02 */}
-          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-slate-400">02</span>
-              <FileSearch className="w-5 h-5 text-blue-800" />
-            </div>
-            <h3 className="font-semibold text-slate-900 text-base">
-              Review
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              CivicSeva analyzes the information and suggests the issue category and responsible department.
-            </p>
-          </div>
-
-          {/* Step 03 */}
-          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-slate-400">03</span>
-              <CheckSquare className="w-5 h-5 text-blue-800" />
-            </div>
-            <h3 className="font-semibold text-slate-900 text-base">
-              Submit
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Review the details and submit the complaint.
-            </p>
-          </div>
-
-          {/* Step 04 */}
-          <div className="bg-white border border-slate-200 rounded-md p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-slate-400">04</span>
-              <Clock className="w-5 h-5 text-blue-800" />
-            </div>
-            <h3 className="font-semibold text-slate-900 text-base">
-              Track
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Follow the complaint status until resolution.
-            </p>
-          </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-slate-400 font-medium">{item.step}</span>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      {item.title}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* Common Civic Issues */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-slate-200 pb-4 mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-            Common civic issues
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="border-b border-slate-200 pb-3 mb-6">
+          <h2 className="text-xl font-bold text-slate-900">
+            Common Civic Issues
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Select a common category to start your report.
+          <p className="text-xs text-slate-500 mt-1">
+            Choose a common defect category to initiate a fast report.
           </p>
         </div>
 
@@ -242,31 +227,19 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* Short Explanation of the Service */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-6 sm:p-8 space-y-3">
-          <h2 className="text-lg font-bold text-slate-900">
-            About CivicSeva Service Coordination
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
-            CivicSeva is an AI-assisted civic grievance platform deployed to improve public issue intake and administrative routing. Submitted photographs and descriptions are evaluated against municipal service standards to identify defect severity and route requests directly to responsible field squads. Residents maintain full control to review and edit all details prior to docket submission.
-          </p>
-        </div>
-      </section>
-
-      {/* My Neighborhood Grievances (List-Based View, NO Community Map) */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4 mb-6">
+      {/* My Neighborhood Grievances (List-based, no map) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900">
                 My Neighborhood Grievances
               </h2>
               <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
                 Sample neighborhood data
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               View reported civic issues in your neighborhood. Approximate areas are shown to preserve resident privacy.
             </p>
           </div>
