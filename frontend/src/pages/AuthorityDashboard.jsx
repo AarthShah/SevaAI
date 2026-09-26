@@ -6,14 +6,18 @@ import {
   Filter, MoreVertical, X, Check, MapPin, Building, User, 
   ChevronDown, CheckCircle2, AlertCircle, ArrowUpRight, Search, 
   RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ArrowRight, 
-  Phone, Eye, Clock
+  Phone, Eye, Clock, Radio, Menu, Bell, LogOut, ArrowLeftRight
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { complaintApi } from '../api/complaintApi';
 import { officerApi } from '../api/officerApi';
 import { departmentApi } from '../api/departmentApi';
+import { cctvApi } from '../api/cctvApi';
+import { analyticsApi } from '../api/analyticsApi';
+import { LeafletMap } from '../components/LeafletMap';
 import { CivicLogo } from '../components/CivicLogo';
 
-// 5 Municipal Departments
+// 5 Municipal Departments Data
 const DEPARTMENTS_DATA = [
   {
     id: 'ROAD_DEPT',
@@ -263,17 +267,26 @@ const AVAILABLE_SQUADS = [
   { name: 'Kiran Desai', squad: 'Field Squad C', dept: 'Road Department' }
 ];
 
+const CCTV_CHANNELS = [
+  { camera_id: 'CCTV-PN-01', location: 'Shivajinagar Junction Arterial Cam', ward: 'Central Ward', sample_snapshot: '/sample_evidence/pothole.jpg' },
+  { camera_id: 'CCTV-PN-02', location: 'Market Central Produce Cam', ward: 'Market Yard', sample_snapshot: '/sample_evidence/garbage.jpg' },
+  { camera_id: 'CCTV-PN-03', location: 'Riverbank Water Distribution Hub', ward: 'Utility Corridor', sample_snapshot: '/sample_evidence/water_leak.jpg' },
+  { camera_id: 'CCTV-PN-04', location: 'Outer Bypass Highway KM 14', ward: 'Highway Sector', sample_snapshot: '/sample_evidence/streetlight.jpg' },
+  { camera_id: 'CCTV-PN-05', location: 'Swargate Multi-Modal Transit Terminal', ward: 'South Hub', sample_snapshot: '/sample_evidence/pothole.jpg' }
+];
+
 export const AuthorityDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Active view: 'triage' | 'departments' | 'ai_review' | 'orders' | 'crew'
+  // Active view: 'triage' | 'departments' | 'ai_review' | 'map' | 'cctv' | 'analytics'
   const tabParam = searchParams.get('tab');
   const getInitialView = () => {
     if (tabParam === 'DEPARTMENTS') return 'departments';
     if (tabParam === 'AI_REVIEW') return 'ai_review';
-    if (tabParam === 'ORDERS') return 'orders';
-    if (tabParam === 'OFFICERS') return 'crew';
+    if (tabParam === 'MAP') return 'map';
+    if (tabParam === 'CCTV') return 'cctv';
+    if (tabParam === 'ANALYTICS') return 'analytics';
     return 'triage';
   };
 
@@ -290,6 +303,10 @@ export const AuthorityDashboard = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
 
+  // CCTV State
+  const [selectedCctv, setSelectedCctv] = useState(CCTV_CHANNELS[0]);
+  const [cctvScanning, setCctvScanning] = useState(false);
+
   // New Work Order form state
   const [newOrderTitle, setNewOrderTitle] = useState('');
   const [newOrderDept, setNewOrderDept] = useState('Road Department');
@@ -297,20 +314,41 @@ export const AuthorityDashboard = () => {
   const [newOrderLocation, setNewOrderLocation] = useState('Indore Central Ward');
   const [newOrderDesc, setNewOrderDesc] = useState('');
 
-  // Sync with searchParams
+  const { user, logout, switchDemoRole } = useAuth();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState(searchParams.get('search') || '');
+
+  // Sync tab param changes
   useEffect(() => {
     const t = searchParams.get('tab');
     if (t === 'DEPARTMENTS') setActiveNav('departments');
     else if (t === 'AI_REVIEW') setActiveNav('ai_review');
-    else if (t === 'ORDERS') setActiveNav('orders');
-    else if (t === 'OFFICERS') setActiveNav('crew');
+    else if (t === 'MAP') setActiveNav('map');
+    else if (t === 'CCTV') setActiveNav('cctv');
+    else if (t === 'ANALYTICS') setActiveNav('analytics');
     else setActiveNav('triage');
   }, [searchParams]);
 
-  // Search filter
-  const searchQuery = searchParams.get('search') || '';
+  // Sync search input when URL param changes
+  useEffect(() => {
+    setSidebarSearch(searchParams.get('search') || '');
+  }, [searchParams]);
 
-  // Currently selected issue for right drawer
+  const handleSidebarSearchSubmit = (e) => {
+    e.preventDefault();
+    if (sidebarSearch.trim()) {
+      setSearchParams({ search: sidebarSearch.trim() });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleToggleToCitizen = async () => {
+    await switchDemoRole('citizen');
+    navigate('/');
+  };
+
+  const searchQuery = searchParams.get('search') || '';
   const currentIssue = issues.find((i) => i.id === selectedIssueId || i.id === `#${selectedIssueId}`) || issues[0];
 
   // Filtered issues
@@ -373,9 +411,7 @@ export const AuthorityDashboard = () => {
 
   const handleApproveAiDispatch = (issueId) => {
     setIssues((prev) =>
-      prev.map((i) =>
-        i.id === issueId ? { ...i, status: 'Assigned' } : i
-      )
+      prev.map((i) => (i.id === issueId ? { ...i, status: 'Assigned' } : i))
     );
   };
 
@@ -384,7 +420,7 @@ export const AuthorityDashboard = () => {
     const newId = `CS10${Math.floor(100 + Math.random() * 900)}`;
     const newEntry = {
       id: `#${newId}`,
-      title: newOrderTitle || 'Pothole Remediation',
+      title: newOrderTitle || 'Road Defect Remediation',
       location: newOrderLocation || 'Indore Urban Ward',
       priority: newOrderPriority,
       department: newOrderDept,
@@ -413,21 +449,110 @@ export const AuthorityDashboard = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] bg-[#F8FAFC]">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#F8FAFC]">
       {/* ============================================================ */}
-      {/* 1. LEFT SIDEBAR (Desktop & Tablet) */}
+      {/* MOBILE COMPACT APP HEADER (Visible only on mobile screens < lg) */}
       {/* ============================================================ */}
-      <aside className="w-full lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex-shrink-0 flex flex-col justify-between py-4 px-3 select-none">
-        <div className="space-y-4 lg:space-y-6">
-          {/* Operations */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
+      <header className="lg:hidden bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-1.5 rounded text-slate-700 hover:bg-slate-100 transition"
+            aria-label="Open Municipal Navigation"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <CivicLogo className="w-5 h-5 text-blue-800" textClassName="text-sm font-bold text-slate-900 tracking-tight" />
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider pl-2 border-l border-slate-200">
+            Command Center
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleToCitizen}
+            className="px-2 py-1 text-[11px] font-medium border border-slate-200 rounded text-slate-600 hover:bg-slate-50 transition flex items-center gap-1"
+            title="Switch to Citizen Public Portal"
+          >
+            <ArrowLeftRight className="w-3 h-3 text-slate-500" />
+            <span className="hidden sm:inline">Citizen</span>
+          </button>
+          <div className="w-7 h-7 rounded-full bg-slate-800 text-white text-[11px] font-bold flex items-center justify-center">
+            {user?.name ? user.name.slice(0, 2).toUpperCase() : 'RP'}
+          </div>
+        </div>
+      </header>
+
+      {/* ============================================================ */}
+      {/* 1. THE SOLE NAVIGATION BAR: LEFT SIDEBAR (Desktop & Mobile Drawer) */}
+      {/* ============================================================ */}
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/40 lg:hidden transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-4 px-3 select-none transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 lg:h-screen lg:sticky lg:top-0 lg:z-30 flex-shrink-0 ${
+          mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
+      >
+        <div className="space-y-3.5 overflow-y-auto">
+          {/* Agency Brand & Mobile Close */}
+          <div className="px-2 pt-0.5 flex items-center justify-between">
+            <Link to="/authority" onClick={() => setMobileSidebarOpen(false)} className="flex items-center gap-2">
+              <CivicLogo className="w-6 h-6 text-blue-800" textClassName="text-base font-bold text-slate-900 tracking-tight" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="lg:hidden p-1 text-slate-400 hover:text-slate-700 rounded"
+              aria-label="Close navigation"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="px-2 -mt-2">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+              Municipal Command Center
+            </span>
+          </div>
+
+          {/* Quick Search */}
+          <form onSubmit={handleSidebarSearchSubmit} className="px-1">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+                placeholder="Search ticket, ward, squad..."
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs pl-8 pr-7 py-1.5 rounded focus:outline-none focus:ring-1 focus:ring-blue-700"
+              />
+              {sidebarSearch && (
+                <button
+                  type="button"
+                  onClick={() => { setSidebarSearch(''); setSearchParams({}); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Operations Navigation */}
+          <div className="space-y-1 pt-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1 block">
               Operations
             </span>
 
             <button
               type="button"
-              onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
+              onClick={() => { setActiveNav('triage'); setSearchParams({}); setMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'triage'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
@@ -438,10 +563,10 @@ export const AuthorityDashboard = () => {
               <span>Triage & Dispatch</span>
             </button>
 
-            {/* AI Dispatch Review Link */}
+            {/* AI Dispatch Review */}
             <button
               type="button"
-              onClick={() => { setActiveNav('ai_review'); setSearchParams({ tab: 'AI_REVIEW' }); }}
+              onClick={() => { setActiveNav('ai_review'); setSearchParams({ tab: 'AI_REVIEW' }); setMobileSidebarOpen(false); }}
               className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'ai_review'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
@@ -452,28 +577,33 @@ export const AuthorityDashboard = () => {
                 <Cpu className={`w-4 h-4 ${activeNav === 'ai_review' ? 'text-blue-800' : 'text-slate-400'}`} />
                 <span>AI Dispatch Review</span>
               </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
                 AI
               </span>
             </button>
 
-            {/* Departments Link */}
+            {/* Departments */}
             <button
               type="button"
-              onClick={() => { setActiveNav('departments'); setSearchParams({ tab: 'DEPARTMENTS' }); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+              onClick={() => { setActiveNav('departments'); setSearchParams({ tab: 'DEPARTMENTS' }); setMobileSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'departments'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Building2 className={`w-4 h-4 ${activeNav === 'departments' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>Departments</span>
+              <div className="flex items-center gap-2.5">
+                <Building2 className={`w-4 h-4 ${activeNav === 'departments' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>Departments</span>
+              </div>
+              <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                5
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setIsNewOrderModalOpen(true)}
+              onClick={() => { setIsNewOrderModalOpen(true); setMobileSidebarOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             >
               <FileText className="w-4 h-4 text-slate-400" />
@@ -482,74 +612,137 @@ export const AuthorityDashboard = () => {
 
             <button
               type="button"
-              onClick={() => setIsAssignModalOpen(true)}
+              onClick={() => { setIsAssignModalOpen(true); setMobileSidebarOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             >
               <Users className="w-4 h-4 text-slate-400" />
               <span>Field Crew Radar</span>
             </button>
 
-            <Link
-              to="/map"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            {/* Operations Map */}
+            <button
+              type="button"
+              onClick={() => { setActiveNav('map'); setSearchParams({ tab: 'MAP' }); setMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'map'
+                  ? 'bg-blue-50 text-blue-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
             >
-              <Map className="w-4 h-4 text-slate-400" />
+              <Map className={`w-4 h-4 ${activeNav === 'map' ? 'text-blue-800' : 'text-slate-400'}`} />
               <span>Operations Map</span>
-            </Link>
-
-            <Link
-              to="/analytics"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-            >
-              <BarChart3 className="w-4 h-4 text-slate-400" />
-              <span>Reports</span>
-            </Link>
+            </button>
           </div>
 
-          {/* Monitoring */}
+          {/* Monitoring Navigation */}
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1 block">
               Monitoring
             </span>
 
-            <Link
-              to="/cctv"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            {/* CCTV & AI Vision */}
+            <button
+              type="button"
+              onClick={() => { setActiveNav('cctv'); setSearchParams({ tab: 'CCTV' }); setMobileSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'cctv'
+                  ? 'bg-blue-50 text-blue-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
             >
-              <Camera className="w-4 h-4 text-slate-400" />
-              <span>CCTV & AI Vision</span>
-            </Link>
+              <div className="flex items-center gap-2.5">
+                <Camera className={`w-4 h-4 ${activeNav === 'cctv' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>CCTV & AI Vision</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE
+              </span>
+            </button>
 
-            <Link
-              to="/analytics"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            {/* Analytics */}
+            <button
+              type="button"
+              onClick={() => { setActiveNav('analytics'); setSearchParams({ tab: 'ANALYTICS' }); setMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'analytics'
+                  ? 'bg-blue-50 text-blue-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
             >
-              <TrendingUp className="w-4 h-4 text-slate-400" />
-              <span>Analytics</span>
-            </Link>
+              <TrendingUp className={`w-4 h-4 ${activeNav === 'analytics' ? 'text-blue-800' : 'text-slate-400'}`} />
+              <span>Analytics & Reports</span>
+            </button>
           </div>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="pt-4 border-t border-slate-100 px-2 space-y-0.5 hidden lg:block">
-          <div className="flex items-center gap-2 text-slate-800 font-semibold text-xs">
-            <CivicLogo className="w-4 h-4 text-blue-800" textClassName="text-xs font-semibold text-slate-800" />
-            <span className="text-[11px] text-slate-700">Indore Municipal Corp</span>
+        {/* Sidebar Footer: Switch Role + Officer Card + Jurisdictional Note */}
+        <div className="pt-3 border-t border-slate-200 px-1 space-y-2.5">
+          {/* Switch to Citizen Button */}
+          <button
+            type="button"
+            onClick={handleToggleToCitizen}
+            className="w-full py-1.5 px-2.5 text-xs font-medium border border-slate-200 rounded text-slate-700 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-between"
+            title="Switch to Citizen Public Portal"
+          >
+            <div className="flex items-center gap-2">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
+              <span>Citizen Portal</span>
+            </div>
+            <span className="text-[10px] text-slate-400">Exit &rsaquo;</span>
+          </button>
+
+          {/* Officer Profile Card */}
+          <div className="p-2 rounded bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-slate-800 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : 'RP'}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-slate-900 block truncate leading-tight">
+                  {user?.name || 'Er. Rajesh Patil'}
+                </span>
+                <span className="text-[10px] text-slate-500 block truncate leading-tight">
+                  {user?.role === 'admin' ? 'Commissioner' : 'Operations Officer'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                type="button"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded relative"
+                title="Notifications"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                title="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-          <p className="text-[10px] text-slate-400 font-mono">CivicSeva v1.0.0</p>
+
+          <div className="text-[10px] text-slate-400 text-center font-mono">
+            Indore Municipal Corp &bull; v1.0.0
+          </div>
         </div>
       </aside>
 
       {/* ============================================================ */}
-      {/* 2. CENTER CONTENT (Triage, Departments, or AI Review View) */}
+      {/* 2. MAIN CONTENT AREA (All views rendered under single layout) */}
       {/* ============================================================ */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-5 overflow-y-auto">
         {/* ============================================================ */}
-        {/* VIEW A: TRIAGE & DISPATCH (Default Table View) */}
+        {/* VIEW 1: TRIAGE & DISPATCH */}
         {/* ============================================================ */}
         {activeNav === 'triage' && (
           <div className="space-y-5">
-            {/* Breadcrumb */}
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
               <Link to="/" className="hover:text-slate-600">Home</Link>
               <span>&rsaquo;</span>
@@ -558,7 +751,6 @@ export const AuthorityDashboard = () => {
               <span className="text-slate-700 font-medium">Triage & Dispatch</span>
             </div>
 
-            {/* Header Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
@@ -757,28 +949,14 @@ export const AuthorityDashboard = () => {
 
               {/* Table Footer */}
               <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                <div>
-                  Showing 1 to {filteredIssues.length} of 39 issues
-                </div>
-
+                <div>Showing 1 to {filteredIssues.length} of 39 issues</div>
                 <div className="flex items-center gap-1">
-                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">
-                    &lsaquo;
-                  </button>
-                  <button type="button" className="px-2.5 py-1 rounded bg-blue-800 text-white font-semibold">
-                    1
-                  </button>
-                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">
-                    2
-                  </button>
-                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">
-                    3
-                  </button>
-                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">
-                    &rsaquo;
-                  </button>
+                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">&lsaquo;</button>
+                  <button type="button" className="px-2.5 py-1 rounded bg-blue-800 text-white font-semibold">1</button>
+                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">2</button>
+                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">3</button>
+                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">&rsaquo;</button>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <span>Rows per page</span>
                   <select className="border border-slate-200 rounded px-2 py-1 text-slate-700 bg-white">
@@ -792,7 +970,137 @@ export const AuthorityDashboard = () => {
         )}
 
         {/* ============================================================ */}
-        {/* VIEW B: DEPARTMENTS OVERVIEW ("the department is not working") */}
+        {/* VIEW 2: AI DISPATCH & ASSIGNMENT REVIEW */}
+        {/* ============================================================ */}
+        {activeNav === 'ai_review' && (
+          <div className="space-y-6">
+            <div className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Link to="/" className="hover:text-slate-600">Home</Link>
+              <span>&rsaquo;</span>
+              <span className="text-slate-500">Operations</span>
+              <span>&rsaquo;</span>
+              <span className="text-slate-700 font-medium">AI Dispatch Review</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 text-xs font-bold mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-800" />
+                  <span>Human-in-the-Loop Municipal Governance</span>
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  AI Autonomous Dispatch & Officer Assignment Review
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Inspect autonomous proximity matching, review AI rationale, and confirm or override field crew designations.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
+                className="px-3.5 py-2 rounded bg-white border border-slate-300 text-slate-700 font-medium text-xs hover:bg-slate-50 transition"
+              >
+                Back to Triage
+              </button>
+            </div>
+
+            {/* AI Review Queue Cards */}
+            <div className="space-y-4">
+              {issues.map((item) => (
+                <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
+                          <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}>
+                            {item.priority} Priority
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
+                      <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200">
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* AI Matching Analysis Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
+                      <strong className="text-slate-900 text-sm block mt-0.5">
+                        {item.assignedTo || 'Pending Assignment'}
+                      </strong>
+                      <span className="text-slate-500 text-[11px] block">{item.squad || 'Squad unassigned'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
+                      <strong className="text-blue-900 block mt-0.5">
+                        📍 {item.aiDistanceKm || 0.8} km away (Haversine GPS)
+                      </strong>
+                      <span className="text-slate-500 text-[11px] block">Current Active Queue: 2 tickets</span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
+                      <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
+                        {item.aiReasoning || 'Nearest unencumbered municipal squad in primary department.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                    <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedIssueId(item.id.replace('#', ''));
+                          setIsAssignModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
+                      >
+                        Override & Reassign
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApproveAiDispatch(item.id)}
+                        className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve AI Assignment</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* VIEW 3: DEPARTMENTS OVERVIEW */}
         {/* ============================================================ */}
         {activeNav === 'departments' && (
           <div className="space-y-6">
@@ -880,29 +1188,25 @@ export const AuthorityDashboard = () => {
         )}
 
         {/* ============================================================ */}
-        {/* VIEW C: AI DISPATCH REVIEW ("check where AI assigned officer") */}
+        {/* VIEW 4: OPERATIONS MAP EMBEDDED UNDER SINGLE SIDEBAR */}
         {/* ============================================================ */}
-        {activeNav === 'ai_review' && (
+        {activeNav === 'map' && (
           <div className="space-y-6">
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
               <Link to="/" className="hover:text-slate-600">Home</Link>
               <span>&rsaquo;</span>
               <span className="text-slate-500">Operations</span>
               <span>&rsaquo;</span>
-              <span className="text-slate-700 font-medium">AI Dispatch & Assignment Review</span>
+              <span className="text-slate-700 font-medium">Operations Map</span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-blue-800 text-xs font-bold mb-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-800" />
-                  <span>Human-in-the-Loop Municipal Governance</span>
-                </div>
                 <h1 className="text-2xl font-bold text-slate-900">
-                  AI Autonomous Dispatch & Officer Assignment Review
+                  Operations Map & Fleet Geospatial Radar
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Inspect autonomous proximity matching, review AI rationale, and confirm or override field crew designations.
+                  Real-time visualization of reported issues and active field squad coordinates across Indore.
                 </p>
               </div>
 
@@ -915,96 +1219,156 @@ export const AuthorityDashboard = () => {
               </button>
             </div>
 
-            {/* AI Review Queue Cards */}
-            <div className="space-y-4">
-              {issues.map((item) => (
-                <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-sm space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
-                          <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                          }`}>
-                            {item.priority} Priority
-                          </span>
-                        </div>
-                        <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
-                      </div>
-                    </div>
+            <div className="bg-white border border-slate-200 rounded-md p-3 shadow-sm">
+              <div className="h-[520px] rounded border border-slate-200 overflow-hidden">
+                <LeafletMap complaints={issues} officers={AVAILABLE_SQUADS} showRadar={true} />
+              </div>
+            </div>
+          </div>
+        )}
 
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
-                      <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200">
-                        {item.status}
-                      </span>
-                    </div>
+        {/* ============================================================ */}
+        {/* VIEW 5: CCTV & AI VISION EMBEDDED UNDER SINGLE SIDEBAR */}
+        {/* ============================================================ */}
+        {activeNav === 'cctv' && (
+          <div className="space-y-6">
+            <div className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Link to="/" className="hover:text-slate-600">Home</Link>
+              <span>&rsaquo;</span>
+              <span className="text-slate-500">Monitoring</span>
+              <span>&rsaquo;</span>
+              <span className="text-slate-700 font-medium">CCTV & AI Vision</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  CCTV Edge AI Vision Grid
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live traffic camera feed inspection with automated computer vision defect classification.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
+                className="px-3.5 py-2 rounded bg-white border border-slate-300 text-slate-700 font-medium text-xs hover:bg-slate-50 transition"
+              >
+                Back to Triage
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-8 bg-white border border-slate-200 rounded-md p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                    <strong className="text-slate-900">{selectedCctv.camera_id}</strong>
+                    <span className="text-slate-400">({selectedCctv.location})</span>
                   </div>
+                  <span className="text-slate-500 font-mono text-[11px]">1080p 60fps &bull; LIVE</span>
+                </div>
 
-                  {/* AI Matching Analysis Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
-                      <strong className="text-slate-900 text-sm block mt-0.5">
-                        {item.assignedTo || 'Pending Assignment'}
-                      </strong>
-                      <span className="text-slate-500 text-[11px] block">{item.squad || 'Squad unassigned'}</span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
-                      <strong className="text-blue-900 block mt-0.5">
-                        📍 {item.aiDistanceKm || 0.8} km away (Haversine GPS)
-                      </strong>
-                      <span className="text-slate-500 text-[11px] block">Current Active Queue: 2 tickets</span>
-                    </div>
-
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
-                      <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
-                        {item.aiReasoning || 'Nearest unencumbered municipal squad in primary department.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Supervisor Oversight Actions */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                    <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
+                <div className="relative rounded overflow-hidden aspect-video bg-slate-900 flex items-center justify-center">
+                  <img
+                    src={selectedCctv.sample_snapshot}
+                    alt={selectedCctv.camera_id}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute border-2 border-red-500 bg-red-500/10 rounded" style={{ top: '35%', left: '30%', width: '40%', height: '35%' }}>
+                    <span className="absolute -top-5 left-0 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                      Defect Detected &bull; 94%
                     </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedIssueId(item.id.replace('#', ''));
-                          setIsAssignModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
-                      >
-                        Override & Reassign
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleApproveAiDispatch(item.id)}
-                        className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Approve AI Assignment</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="lg:col-span-4 bg-white border border-slate-200 rounded-md p-4 shadow-sm space-y-3">
+                <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
+                  Camera Feeds (5 Active)
+                </h3>
+                <div className="space-y-2">
+                  {CCTV_CHANNELS.map((c) => (
+                    <div
+                      key={c.camera_id}
+                      onClick={() => setSelectedCctv(c)}
+                      className={`p-2.5 rounded border cursor-pointer transition flex items-center gap-2.5 ${
+                        selectedCctv.camera_id === c.camera_id
+                          ? 'bg-blue-50 border-blue-700'
+                          : 'bg-white border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <img src={c.sample_snapshot} alt={c.camera_id} className="w-10 h-10 object-cover rounded border border-slate-200" />
+                      <div className="text-xs truncate">
+                        <strong className="text-slate-900 block truncate">{c.camera_id}</strong>
+                        <span className="text-slate-500 text-[11px] block truncate">{c.location}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* VIEW 6: ANALYTICS EMBEDDED UNDER SINGLE SIDEBAR */}
+        {/* ============================================================ */}
+        {activeNav === 'analytics' && (
+          <div className="space-y-6">
+            <div className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Link to="/" className="hover:text-slate-600">Home</Link>
+              <span>&rsaquo;</span>
+              <span className="text-slate-500">Monitoring</span>
+              <span>&rsaquo;</span>
+              <span className="text-slate-700 font-medium">Operations Analytics</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  Municipal Performance Analytics
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Resolution timelines, department distribution, and open caseload benchmarks.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
+                className="px-3.5 py-2 rounded bg-white border border-slate-300 text-slate-700 font-medium text-xs hover:bg-slate-50 transition"
+              >
+                Back to Triage
+              </button>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                <span className="text-[11px] text-slate-500 font-medium">Total Issues</span>
+                <div className="text-2xl font-bold text-slate-900 mt-1">39</div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Recorded this cycle</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                <span className="text-[11px] text-blue-800 font-medium">Active In Progress</span>
+                <div className="text-2xl font-bold text-blue-800 mt-1">18</div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Field crew dispatched</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                <span className="text-[11px] text-emerald-800 font-medium">Resolved</span>
+                <div className="text-2xl font-bold text-emerald-800 mt-1">17</div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Remediation closed</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                <span className="text-[11px] text-amber-800 font-medium">Average SLA</span>
+                <div className="text-2xl font-bold text-amber-800 mt-1">24h</div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Municipal target</span>
+              </div>
             </div>
           </div>
         )}
@@ -1014,132 +1378,83 @@ export const AuthorityDashboard = () => {
       {/* 3. RIGHT DETAILS DRAWER ("Issue Details" - Responsive) */}
       {/* ============================================================ */}
       {currentIssue && activeNav === 'triage' && (
-        <aside className="w-full lg:w-80 xl:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex-shrink-0 flex flex-col justify-between overflow-y-auto lg:h-[calc(100vh-64px)] lg:sticky lg:top-16">
+        <aside className="w-full lg:w-80 xl:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex-shrink-0 flex flex-col justify-between overflow-y-auto lg:h-screen lg:sticky lg:top-0">
           <div className="p-5 space-y-4">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-base font-bold text-slate-900">
-                Issue Details
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelectedIssueId(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded"
-              >
+              <h2 className="text-base font-bold text-slate-900">Issue Details</h2>
+              <button type="button" onClick={() => setSelectedIssueId(null)} className="text-slate-400 hover:text-slate-700 p-1 rounded">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Evidence Photo */}
             <div className="rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-              <img
-                src={currentIssue.image}
-                alt={currentIssue.title}
-                className="w-full h-44 object-cover"
-              />
+              <img src={currentIssue.image} alt={currentIssue.title} className="w-full h-44 object-cover" />
             </div>
 
-            {/* Title & Priority Badge */}
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {currentIssue.title}
-                </h3>
-                <span className="font-mono text-xs text-slate-400 block mt-0.5">
-                  {currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`}
-                </span>
+                <h3 className="text-lg font-bold text-slate-900">{currentIssue.title}</h3>
+                <span className="font-mono text-xs text-slate-400 block mt-0.5">{currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`}</span>
               </div>
               <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                currentIssue.priority === 'High'
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                currentIssue.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
               }`}>
                 {currentIssue.priority} Priority
               </span>
             </div>
 
-            {/* Drawer Sub-Tabs */}
             <div className="flex items-center space-x-4 border-b border-slate-200 text-xs">
-              <button className="pb-2 font-semibold text-blue-800 border-b-2 border-blue-800">
-                Overview
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Timeline
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Location
-              </button>
-              <button className="pb-2 text-slate-400 hover:text-slate-700">
-                Work Orders
-              </button>
+              <button className="pb-2 font-semibold text-blue-800 border-b-2 border-blue-800">Overview</button>
+              <button className="pb-2 text-slate-400 hover:text-slate-700">Timeline</button>
+              <button className="pb-2 text-slate-400 hover:text-slate-700">Location</button>
+              <button className="pb-2 text-slate-400 hover:text-slate-700">Work Orders</button>
             </div>
 
-            {/* Metadata List */}
             <div className="space-y-3 text-xs pt-1">
-              {/* Location */}
               <div className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-slate-400 block text-[11px]">Location</span>
-                  <span className="text-slate-800 font-medium block leading-tight">
-                    {currentIssue.location}
-                  </span>
-                  <Link to="/map" className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block">
+                  <span className="text-slate-800 font-medium block leading-tight">{currentIssue.location}</span>
+                  <button onClick={() => { setActiveNav('map'); setSearchParams({ tab: 'MAP' }); }} className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block">
                     View on Map
-                  </Link>
+                  </button>
                 </div>
               </div>
 
-              {/* Department */}
               <div className="flex items-start gap-3">
                 <Building className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-slate-400 block text-[11px]">Department</span>
-                  <span className="text-slate-800 font-semibold block">
-                    {currentIssue.department}
-                  </span>
+                  <span className="text-slate-800 font-semibold block">{currentIssue.department}</span>
                 </div>
               </div>
 
-              {/* Reported On */}
               <div className="flex items-start gap-3">
                 <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-slate-400 block text-[11px]">Reported On</span>
-                  <span className="text-slate-800 font-medium block">
-                    {currentIssue.createdOnDate}, {currentIssue.createdOnTime}
-                  </span>
+                  <span className="text-slate-800 font-medium block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
                 </div>
               </div>
 
-              {/* Reported By */}
               <div className="flex items-start gap-3">
                 <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-slate-400 block text-[11px]">Reported By</span>
-                  <span className="text-slate-800 font-medium block">
-                    {currentIssue.reportedBy}
-                  </span>
+                  <span className="text-slate-800 font-medium block">{currentIssue.reportedBy}</span>
                 </div>
               </div>
 
-              {/* Assigned To */}
               <div className="flex items-start gap-3">
                 <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <span className="text-slate-400 block text-[11px]">Assigned To</span>
-                  <span className="text-slate-800 font-semibold block">
-                    {currentIssue.assignedTo || 'Unassigned'}
-                  </span>
-                  {currentIssue.squad && (
-                    <span className="text-[11px] text-slate-400 block">
-                      {currentIssue.squad}
-                    </span>
-                  )}
+                  <span className="text-slate-800 font-semibold block">{currentIssue.assignedTo || 'Unassigned'}</span>
+                  {currentIssue.squad && <span className="text-[11px] text-slate-400 block">{currentIssue.squad}</span>}
                 </div>
               </div>
 
-              {/* Current Status */}
               <div className="flex items-center gap-3 pt-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ml-1"></span>
                 <span className="text-slate-700 text-xs">
@@ -1148,25 +1463,16 @@ export const AuthorityDashboard = () => {
               </div>
             </div>
 
-            {/* Description */}
             <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
               <span className="font-semibold text-slate-900 block">Description</span>
-              <p className="text-slate-600 leading-relaxed">
-                {currentIssue.description}
-              </p>
+              <p className="text-slate-600 leading-relaxed">{currentIssue.description}</p>
             </div>
 
-            {/* Evidence Gallery */}
             <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
               <span className="font-semibold text-slate-900 block">Evidence</span>
               <div className="grid grid-cols-4 gap-2">
                 {currentIssue.evidenceGallery?.slice(0, 3).map((imgUrl, i) => (
-                  <img
-                    key={i}
-                    src={imgUrl}
-                    alt="Evidence thumbnail"
-                    className="w-full h-14 object-cover rounded border border-slate-200"
-                  />
+                  <img key={i} src={imgUrl} alt="Evidence thumbnail" className="w-full h-14 object-cover rounded border border-slate-200" />
                 ))}
                 {currentIssue.extraEvidenceCount > 0 && (
                   <div className="w-full h-14 rounded bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold flex items-center justify-center">
@@ -1177,7 +1483,6 @@ export const AuthorityDashboard = () => {
             </div>
           </div>
 
-          {/* Action Buttons at bottom of Drawer */}
           <div className="p-5 border-t border-slate-200 bg-white space-y-2.5">
             <button
               type="button"
@@ -1203,10 +1508,8 @@ export const AuthorityDashboard = () => {
       {/* ============================================================ */}
       {/* 4. MODALS (Update Status / Assign Squad / New Work Order) */}
       {/* ============================================================ */}
-
-      {/* Update Status Modal */}
       {isUpdateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-md border border-slate-200 p-6 max-w-sm w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-sm">Update Complaint Status</h3>
@@ -1238,9 +1541,8 @@ export const AuthorityDashboard = () => {
         </div>
       )}
 
-      {/* Assign Squad Modal */}
       {isAssignModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-md border border-slate-200 p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-sm">Assign Field Squad</h3>
@@ -1272,9 +1574,8 @@ export const AuthorityDashboard = () => {
         </div>
       )}
 
-      {/* New Work Order Modal */}
       {isNewOrderModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-md border border-slate-200 p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-sm">Create New Work Order</h3>
