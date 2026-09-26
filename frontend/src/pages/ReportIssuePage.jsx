@@ -248,28 +248,60 @@ export const ReportIssuePage = () => {
           const uploadRes = await complaintApi.uploadImage(imageFile);
           finalImageUrl = uploadRes.file_url;
         } catch {
-          // If upload fails, fallback to local URL
+          // If upload fails, fallback to local preview
+        }
+      }
+
+      // Map department string to numerical ID if appropriate
+      let resolvedDeptId = departmentId;
+      if (typeof departmentId === 'string') {
+        const deptMap = {
+          'ROAD_DEPT': 1,
+          'WASTE_MGT': 2,
+          'STREET_LIGHT': 3,
+          'WATER_SUPPLY': 4,
+          'DRAINAGE': 5,
+          'PUBLIC_SAFETY': 6
+        };
+        if (deptMap[departmentId]) {
+          resolvedDeptId = deptMap[departmentId];
+        } else if (!isNaN(parseInt(departmentId, 10))) {
+          resolvedDeptId = parseInt(departmentId, 10);
         }
       }
 
       const payload = {
         title: issueTitle || 'Civic Issue Report',
         description: description || 'Resident report regarding civic defect.',
-        category: category.toLowerCase().replace(/\s+/g, '_'),
-        issue_type: issueTitle.toLowerCase().replace(/\s+/g, '_'),
-        severity: severity,
-        department_id: departmentId || 'ROAD_DEPT',
-        address: address,
-        latitude: latitude,
-        longitude: longitude,
-        image_url: finalImageUrl
+        category: (category || 'road_infrastructure').toLowerCase().replace(/\s+/g, '_'),
+        issue_type: (issueTitle || category || 'pothole').toLowerCase().replace(/\s+/g, '_'),
+        severity: (severity || 'MEDIUM').toUpperCase(),
+        department_id: resolvedDeptId || 1,
+        address: address || 'Indore Municipal Ward',
+        latitude: typeof latitude === 'number' ? latitude : 22.7196,
+        longitude: typeof longitude === 'number' ? longitude : 75.8577,
+        image_url: finalImageUrl,
+        evidence_urls: finalImageUrl ? [finalImageUrl] : []
       };
 
       const result = await complaintApi.submitComplaint(payload);
       setSubmissionResult(result);
       setStep(4);
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || err.message || 'Failed to submit complaint. Please check your connection.');
+      let message = 'Failed to submit complaint. Please check your connection.';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map((d) => d.msg || `${d.loc?.slice(-1)[0] || 'field'}: invalid`).join('; ');
+        } else if (typeof detail === 'object') {
+          message = JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+      setErrorMsg(message);
     } finally {
       setIsSubmitting(false);
     }

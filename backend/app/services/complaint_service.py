@@ -53,8 +53,40 @@ class ComplaintService:
 
         # Department mapping
         dept_id = request.department_id
+        if dept_id is not None:
+            if isinstance(dept_id, int):
+                pass
+            elif isinstance(dept_id, str):
+                if dept_id.isdigit():
+                    dept_id = int(dept_id)
+                else:
+                    dept_code = dept_id.upper()
+                    code_map = {
+                        "ROAD_DEPT": "road_infrastructure",
+                        "ROADS": "road_infrastructure",
+                        "ROAD": "road_infrastructure",
+                        "WASTE_MGT": "waste_management",
+                        "WASTE": "waste_management",
+                        "STREET_LIGHT": "electrical_street_lighting",
+                        "ELECTRICITY": "electrical_street_lighting",
+                        "WATER_SUPPLY": "water_supply",
+                        "WATER": "water_supply",
+                        "DRAINAGE": "drainage_sanitation",
+                        "SANITATION": "drainage_sanitation",
+                        "PUBLIC_SAFETY": "public_safety_other"
+                    }
+                    target_cat = code_map.get(dept_code, dept_id.lower())
+                    matched_dept = db.query(Department).filter(
+                        (Department.category == target_cat) |
+                        (Department.name.ilike(f"%{dept_id}%"))
+                    ).first()
+                    dept_id = matched_dept.id if matched_dept else None
+
         if not dept_id:
-            dept = db.query(Department).filter(Department.category == request.category).first()
+            dept = db.query(Department).filter(
+                (Department.category == request.category) |
+                (Department.name.ilike(f"%{request.category}%"))
+            ).first()
             if dept:
                 dept_id = dept.id
 
@@ -93,8 +125,12 @@ class ComplaintService:
         db.add(history)
 
         # Record Evidence if provided
-        if request.evidence_urls:
-            for url in request.evidence_urls:
+        all_ev_urls = list(request.evidence_urls or [])
+        if request.image_url and request.image_url not in all_ev_urls:
+            all_ev_urls.append(request.image_url)
+
+        for url in all_ev_urls:
+            if url:
                 ev = Evidence(
                     complaint_id=cid,
                     type="image",
