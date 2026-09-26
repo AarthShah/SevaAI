@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, FileText, Users, Building2, Map, BarChart3, 
@@ -6,11 +6,8 @@ import {
   Filter, MoreVertical, X, Check, MapPin, Building, User, 
   ChevronDown, CheckCircle2, AlertCircle, ArrowUpRight, Search, 
   RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ArrowRight, 
-  Phone, Eye, Clock
+  Phone, Eye, Clock, Copy, Printer, Sparkles, Send, Wrench, RotateCcw
 } from 'lucide-react';
-import { complaintApi } from '../api/complaintApi';
-import { officerApi } from '../api/officerApi';
-import { departmentApi } from '../api/departmentApi';
 import { CivicLogo } from '../components/CivicLogo';
 import { MapViewPage } from './MapViewPage';
 import { CCTVVisionPage } from './CCTVVisionPage';
@@ -85,11 +82,11 @@ const DEPARTMENTS_DATA = [
   }
 ];
 
-// Baseline issues matching reference screenshot
+// Baseline issues with real photos
 const DEFAULT_ISSUES = [
   {
     id: 'CS1039',
-    title: 'Pothole',
+    title: 'Pothole Defect',
     location: 'Shivajinagar Main Road, Indore',
     priority: 'High',
     department: 'Road Department',
@@ -100,7 +97,7 @@ const DEFAULT_ISSUES = [
     createdOnDate: '26 Sep 2026',
     createdOnTime: '05:12 PM',
     reportedBy: 'Citizen (via Web)',
-    description: 'Large pothole on the main road causing vehicle damage and safety risk.',
+    description: 'Large pothole on the main road causing vehicle damage and traffic hazard.',
     image: '/sample_evidence/pothole.jpg',
     evidenceGallery: ['/sample_evidence/pothole.jpg', '/sample_evidence/manhole.jpg', '/sample_evidence/drainage.jpg'],
     extraEvidenceCount: 2,
@@ -173,11 +170,11 @@ const DEFAULT_ISSUES = [
   },
   {
     id: 'CS1035',
-    title: 'Open Manhole',
+    title: 'Open Manhole Hazard',
     location: 'Near C21 Mall, Indore',
     priority: 'High',
-    department: 'Road Department',
-    departmentId: 'ROAD_DEPT',
+    department: 'Drainage Board',
+    departmentId: 'DRAINAGE',
     status: 'Escalated',
     assignedTo: null,
     squad: null,
@@ -197,8 +194,8 @@ const DEFAULT_ISSUES = [
     title: 'Drainage Overflow',
     location: 'Scheme 78, Indore',
     priority: 'Medium',
-    department: 'Sanitation Department',
-    departmentId: 'SOLID_WASTE',
+    department: 'Drainage Board',
+    departmentId: 'DRAINAGE',
     status: 'In Progress',
     assignedTo: 'Sneha Jagtap',
     squad: 'Field Squad B',
@@ -215,7 +212,7 @@ const DEFAULT_ISSUES = [
   },
   {
     id: 'CS1033',
-    title: 'Garbage Accumulation',
+    title: 'Commercial Waste Dump',
     location: 'Vijay Nagar, Indore',
     priority: 'Medium',
     department: 'Sanitation Department',
@@ -229,14 +226,14 @@ const DEFAULT_ISSUES = [
     description: 'Commercial market overflow bins need immediate municipal compactor dispatch.',
     image: '/sample_evidence/garbage.jpg',
     evidenceGallery: ['/sample_evidence/garbage.jpg'],
-    extraEvidenceCount: 2,
+    extraEvidenceCount: 0,
     aiDistanceKm: 1.1,
     aiConfidence: '90%',
     aiReasoning: 'Assigned to Ward Inspector Amit More for scheduled commercial evening haul.'
   },
   {
     id: 'CS1032',
-    title: 'Pothole',
+    title: 'Bridge Approach Pothole',
     location: 'Palasia Square, Indore',
     priority: 'High',
     department: 'Road Department',
@@ -250,7 +247,7 @@ const DEFAULT_ISSUES = [
     description: 'Sub-surface road settlement creating deep rut on bridge approach curve.',
     image: '/sample_evidence/pothole.jpg',
     evidenceGallery: ['/sample_evidence/pothole.jpg'],
-    extraEvidenceCount: 1,
+    extraEvidenceCount: 0,
     aiDistanceKm: 0.9,
     aiConfidence: '95%',
     aiReasoning: 'Heavy axle route intersection. Dispatched to Quick Asphalt Response Unit C.'
@@ -270,7 +267,7 @@ export const AuthorityDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Active view: 'triage' | 'departments' | 'ai_review' | 'orders' | 'crew' | 'map' | 'cctv' | 'analytics' | 'users' | 'settings'
+  // Navigation tab view: 'triage' | 'departments' | 'ai_review' | 'orders' | 'crew' | 'map' | 'cctv' | 'analytics' | 'users' | 'settings'
   const tabParam = searchParams.get('tab');
   const getInitialView = () => {
     const t = (tabParam || '').toUpperCase();
@@ -289,13 +286,25 @@ export const AuthorityDashboard = () => {
   const [activeNav, setActiveNav] = useState(getInitialView());
   const [activeTab, setActiveTab] = useState('All Issues');
   const [drawerTab, setDrawerTab] = useState('Overview'); // 'Overview' | 'Timeline' | 'Location' | 'Work Orders'
+  const [isDrawerOpenMobile, setIsDrawerOpenMobile] = useState(false);
 
-  // Issues and details drawer state
+  // Issues & Selection
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
   const [selectedIssueId, setSelectedIssueId] = useState('CS1039');
   const [selectedRows, setSelectedRows] = useState(['CS1039']);
+  const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
 
-  // Modals
+  // Filter toolbar state
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [priorityFilter, setPriorityFilter] = useState('All');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
+
+  // Modals state
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -304,8 +313,21 @@ export const AuthorityDashboard = () => {
   const [newOrderTitle, setNewOrderTitle] = useState('');
   const [newOrderDept, setNewOrderDept] = useState('Road Department');
   const [newOrderPriority, setNewOrderPriority] = useState('High');
-  const [newOrderLocation, setNewOrderLocation] = useState('Indore Central Ward');
+  const [newOrderLocation, setNewOrderLocation] = useState('Indore Urban Ward');
   const [newOrderDesc, setNewOrderDesc] = useState('');
+
+  // Timeline note state
+  const [timelineNotes, setTimelineNotes] = useState({});
+  const [newTimelineNote, setNewTimelineNote] = useState('');
+
+  // Toast notification
+  const [toastMessage, setToastMessage] = useState(null);
+  const [isAiScanning, setIsAiScanning] = useState(false);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // Sync with searchParams
   useEffect(() => {
@@ -320,16 +342,25 @@ export const AuthorityDashboard = () => {
     else if (t === 'USERS') setActiveNav('users');
     else if (t === 'SETTINGS') setActiveNav('settings');
     else setActiveNav('triage');
+
+    if (searchParams.get('search')) {
+      setSearchQuery(searchParams.get('search'));
+    }
   }, [searchParams]);
 
-  // Search filter
-  const searchQuery = searchParams.get('search') || '';
-
-  // Currently selected issue for right drawer
+  // Currently selected issue
   const currentIssue = issues.find((i) => i.id === selectedIssueId || i.id === `#${selectedIssueId}`) || issues[0];
+
+  // Reset active evidence thumbnail when current issue changes
+  useEffect(() => {
+    if (currentIssue) {
+      setActiveEvidenceImg(currentIssue.image);
+    }
+  }, [selectedIssueId]);
 
   // Filtered issues
   const filteredIssues = issues.filter((item) => {
+    // 1. Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchSearch = 
@@ -340,6 +371,17 @@ export const AuthorityDashboard = () => {
       if (!matchSearch) return false;
     }
 
+    // 2. Department Dropdown Filter
+    if (deptFilter !== 'All' && !item.department.toLowerCase().includes(deptFilter.toLowerCase())) {
+      return false;
+    }
+
+    // 3. Priority Dropdown Filter
+    if (priorityFilter !== 'All' && item.priority.toLowerCase() !== priorityFilter.toLowerCase()) {
+      return false;
+    }
+
+    // 4. Status Tabs
     if (activeTab === 'All Issues') return true;
     if (activeTab === 'Needs Assignment') return !item.assignedTo || item.status === 'Submitted' || item.status === 'Under Review';
     if (activeTab === 'High Priority') return item.priority === 'High';
@@ -349,31 +391,46 @@ export const AuthorityDashboard = () => {
     return true;
   });
 
+  // Paginated issues
+  const totalPages = Math.ceil(filteredIssues.length / pageSize) || 1;
+  const paginatedIssues = filteredIssues.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Row selection
   const handleSelectRow = (id) => {
-    setSelectedIssueId(id);
-    if (selectedRows.includes(id)) {
-      setSelectedRows(selectedRows.filter((r) => r !== id));
+    const cleanId = id.replace('#', '');
+    setSelectedIssueId(cleanId);
+    if (selectedRows.includes(cleanId)) {
+      setSelectedRows(selectedRows.filter((r) => r !== cleanId));
     } else {
-      setSelectedRows([...selectedRows, id]);
+      setSelectedRows([...selectedRows, cleanId]);
     }
   };
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedRows(filteredIssues.map((i) => i.id));
+      setSelectedRows(filteredIssues.map((i) => i.id.replace('#', '')));
     } else {
       setSelectedRows([]);
     }
   };
 
+  const handleRowClick = (issue) => {
+    const cleanId = issue.id.replace('#', '');
+    setSelectedIssueId(cleanId);
+    setIsDrawerOpenMobile(true);
+  };
+
+  // Status updates
   const handleUpdateStatus = (newStatus) => {
     if (!currentIssue) return;
     setIssues((prev) =>
       prev.map((i) => (i.id === currentIssue.id ? { ...i, status: newStatus } : i))
     );
     setIsUpdateModalOpen(false);
+    showToast(`Complaint #${currentIssue.id} status updated to "${newStatus}".`);
   };
 
+  // Squad assignment
   const handleAssignSquad = (squadObj) => {
     if (!currentIssue) return;
     setIssues((prev) =>
@@ -384,22 +441,67 @@ export const AuthorityDashboard = () => {
       )
     );
     setIsAssignModalOpen(false);
+    showToast(`Assigned ${squadObj.name} (${squadObj.squad}) to #${currentIssue.id}.`);
   };
 
+  // Bulk actions
+  const handleBulkStatusChange = (status) => {
+    if (selectedRows.length === 0) return;
+    setIssues((prev) =>
+      prev.map((i) => (selectedRows.includes(i.id.replace('#', '')) ? { ...i, status } : i))
+    );
+    showToast(`Updated ${selectedRows.length} selected tickets to "${status}".`);
+  };
+
+  // AI Approval
   const handleApproveAiDispatch = (issueId) => {
     setIssues((prev) =>
       prev.map((i) =>
         i.id === issueId ? { ...i, status: 'Assigned' } : i
       )
     );
+    showToast(`Approved AI assignment for issue #${issueId}. Work order dispatched.`);
   };
 
+  // Re-run AI Analysis
+  const handleRerunAiScan = () => {
+    setIsAiScanning(true);
+    setTimeout(() => {
+      setIsAiScanning(false);
+      showToast(`AI Computer Vision re-verification complete (96% Confidence). Verified by YOLOv8.`);
+    }, 700);
+  };
+
+  // Add timeline note
+  const handleAddTimelineNote = (e) => {
+    e.preventDefault();
+    if (!newTimelineNote.trim() || !currentIssue) return;
+    const cleanId = currentIssue.id.replace('#', '');
+    const currentNotes = timelineNotes[cleanId] || [];
+    const newEntry = {
+      text: newTimelineNote.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: 'Today',
+      author: 'Operations Officer'
+    };
+    setTimelineNotes({ ...timelineNotes, [cleanId]: [newEntry, ...currentNotes] });
+    setNewTimelineNote('');
+    showToast('Inspection audit note posted to timeline.');
+  };
+
+  // Copy GPS Coordinates
+  const handleCopyCoords = () => {
+    navigator.clipboard?.writeText('22.7196, 75.8577');
+    showToast('GPS Coordinates (22.7196° N, 75.8577° E) copied to clipboard.');
+  };
+
+  // Create Work Order
   const handleCreateWorkOrder = (e) => {
     e.preventDefault();
     const newId = `CS10${Math.floor(100 + Math.random() * 900)}`;
     const newEntry = {
-      id: `#${newId}`,
-      title: newOrderTitle || 'Pothole Remediation',
+      id: newId,
+      title: newOrderTitle || 'Pothole Remediation Directive',
       location: newOrderLocation || 'Indore Urban Ward',
       priority: newOrderPriority,
       department: newOrderDept,
@@ -408,9 +510,9 @@ export const AuthorityDashboard = () => {
       assignedTo: 'Er. Rajesh Patil',
       squad: 'Field Squad A',
       createdOnDate: '26 Sep 2026',
-      createdOnTime: '07:35 PM',
+      createdOnTime: '07:45 PM',
       reportedBy: 'Operations Officer',
-      description: newOrderDesc || 'Direct work order issued from municipal command center.',
+      description: newOrderDesc || 'Direct supervisory work order issued from municipal command center.',
       image: '/sample_evidence/pothole.jpg',
       evidenceGallery: ['/sample_evidence/pothole.jpg'],
       extraEvidenceCount: 0,
@@ -425,21 +527,45 @@ export const AuthorityDashboard = () => {
     setNewOrderTitle('');
     setNewOrderDesc('');
     setActiveNav('triage');
+    showToast(`Work Order #${newId} committed and dispatched to ${newOrderDept}.`);
+  };
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setDeptFilter('All');
+    setPriorityFilter('All');
+    setActiveTab('All Issues');
+    setCurrentPage(1);
+    setSearchParams({});
+    showToast('Filters reset to default view.');
   };
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] bg-[#F8FAFC]">
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed top-16 right-4 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded-md shadow-xl flex items-center gap-2.5 border border-slate-700 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <span>{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-slate-400 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* ============================================================ */}
-      {/* 1. LEFT SIDEBAR (Desktop & Tablet) */}
+      {/* 1. LEFT SIDEBAR */}
       {/* ============================================================ */}
       <aside className="w-full lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex-shrink-0 flex flex-col justify-between py-4 px-3 select-none">
         <div className="space-y-4 lg:space-y-6">
-          {/* Operations */}
+          {/* Operations Nav Group */}
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
               Operations
             </span>
 
+            {/* Triage & Dispatch */}
             <button
               type="button"
               onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
@@ -470,7 +596,7 @@ export const AuthorityDashboard = () => {
             {/* Field Crew */}
             <button
               type="button"
-              onClick={() => { setActiveNav('crew'); setSearchParams({ tab: 'OFFICERS' }); }}
+              onClick={() => { setActiveNav('crew'); setSearchParams({ tab: 'CREW' }); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'crew'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
@@ -514,17 +640,17 @@ export const AuthorityDashboard = () => {
               type="button"
               onClick={() => { setActiveNav('analytics'); setSearchParams({ tab: 'REPORTS' }); }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
-                activeNav === 'analytics' && searchParams.get('tab') === 'REPORTS'
+                activeNav === 'analytics'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <BarChart3 className={`w-4 h-4 ${activeNav === 'analytics' && searchParams.get('tab') === 'REPORTS' ? 'text-blue-800' : 'text-slate-400'}`} />
+              <BarChart3 className={`w-4 h-4 ${activeNav === 'analytics' ? 'text-blue-800' : 'text-slate-400'}`} />
               <span>Reports</span>
             </button>
           </div>
 
-          {/* Monitoring */}
+          {/* Monitoring Group */}
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
               Monitoring
@@ -548,37 +674,18 @@ export const AuthorityDashboard = () => {
             <button
               type="button"
               onClick={() => { setActiveNav('ai_review'); setSearchParams({ tab: 'AI_REVIEW' }); }}
-              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
                 activeNav === 'ai_review'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <Cpu className={`w-4 h-4 ${activeNav === 'ai_review' ? 'text-blue-800' : 'text-slate-400'}`} />
-                <span>AI Dispatch Review</span>
-              </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
-                AI
-              </span>
-            </button>
-
-            {/* Analytics */}
-            <button
-              type="button"
-              onClick={() => { setActiveNav('analytics'); setSearchParams({ tab: 'ANALYTICS' }); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
-                activeNav === 'analytics' && searchParams.get('tab') !== 'REPORTS'
-                  ? 'bg-blue-50 text-blue-800 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <TrendingUp className={`w-4 h-4 ${activeNav === 'analytics' && searchParams.get('tab') !== 'REPORTS' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>Analytics</span>
+              <Cpu className={`w-4 h-4 ${activeNav === 'ai_review' ? 'text-blue-800' : 'text-slate-400'}`} />
+              <span>AI Dispatch Review</span>
             </button>
           </div>
 
-          {/* Administration */}
+          {/* Administration Group */}
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5 block">
               Administration
@@ -623,12 +730,10 @@ export const AuthorityDashboard = () => {
       </aside>
 
       {/* ============================================================ */}
-      {/* 2. CENTER CONTENT (Triage, Departments, or AI Review View) */}
+      {/* 2. CENTER CONTENT */}
       {/* ============================================================ */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-5 overflow-y-auto">
-        {/* ============================================================ */}
-        {/* VIEW A: TRIAGE & DISPATCH (Default Table View) */}
-        {/* ============================================================ */}
+        {/* VIEW A: TRIAGE & DISPATCH */}
         {activeNav === 'triage' && (
           <div className="space-y-5">
             {/* Breadcrumb */}
@@ -652,15 +757,15 @@ export const AuthorityDashboard = () => {
               </div>
 
               <div className="flex items-center gap-2.5">
-                <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-sm text-xs">
+                <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-xs text-xs">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:35 PM</span>
+                  <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:45 PM</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsNewOrderModalOpen(true)}
-                  className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-sm transition flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>New Work Order</span>
@@ -668,14 +773,14 @@ export const AuthorityDashboard = () => {
               </div>
             </div>
 
-            {/* Filter Tabs */}
+            {/* Filter Tabs & Filter Toggle */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pt-1">
-              <div className="flex items-center space-x-4 sm:space-x-6 text-xs overflow-x-auto pb-1">
+              <div className="flex items-center space-x-3 sm:space-x-5 text-xs overflow-x-auto pb-1">
                 {['All Issues', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved'].map((tab) => (
                   <button
                     key={tab}
                     type="button"
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
                     className={`pb-2.5 font-medium transition border-b-2 whitespace-nowrap ${
                       activeTab === tab
                         ? 'border-blue-800 text-blue-900 font-semibold'
@@ -687,17 +792,125 @@ export const AuthorityDashboard = () => {
                 ))}
               </div>
 
-              <button
-                type="button"
-                className="self-end sm:self-auto px-3 py-1.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 shadow-sm"
-              >
-                <Filter className="w-3.5 h-3.5 text-slate-500" />
-                <span>Filters</span>
-              </button>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {(searchQuery || deptFilter !== 'All' || priorityFilter !== 'All') && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="text-xs text-rose-700 hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                  className={`px-3 py-1.5 rounded border text-xs font-medium flex items-center gap-1.5 shadow-xs transition ${
+                    isFilterPanelOpen || deptFilter !== 'All' || priorityFilter !== 'All'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Filters {deptFilter !== 'All' || priorityFilter !== 'All' ? '(Active)' : ''}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Search and Advanced Filters Bar */}
+            <div className="bg-white p-3.5 rounded-md border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    placeholder="Search by ID (e.g. CS1039), keyword, road, or department..."
+                    className="w-full text-xs pl-9 pr-8 py-2 rounded border border-slate-300 focus:ring-1 focus:ring-blue-800 text-slate-900"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={deptFilter}
+                  onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
+                  className="p-2 border border-slate-300 rounded bg-white text-slate-800 text-xs focus:ring-1 focus:ring-blue-800"
+                >
+                  <option value="All">All Departments</option>
+                  <option value="Road">Road Department</option>
+                  <option value="Sanitation">Sanitation Department</option>
+                  <option value="Electricity">Electricity Department</option>
+                  <option value="Water">Water Supply Department</option>
+                  <option value="Drainage">Drainage Board</option>
+                </select>
+
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+                  className="p-2 border border-slate-300 rounded bg-white text-slate-800 text-xs focus:ring-1 focus:ring-blue-800"
+                >
+                  <option value="All">All Priorities</option>
+                  <option value="High">High Priority</option>
+                  <option value="Medium">Medium Priority</option>
+                  <option value="Low">Low Priority</option>
+                </select>
+              </div>
+
+              {/* Bulk Actions Bar if any row is checked */}
+              {selectedRows.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded text-xs animate-in fade-in">
+                  <div className="flex items-center gap-2 text-blue-900 font-semibold">
+                    <CheckSquare className="w-4 h-4 text-blue-800" />
+                    <span>{selectedRows.length} tickets selected</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatusChange('In Progress')}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded font-medium text-xs transition"
+                    >
+                      Mark In Progress
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkStatusChange('Resolved')}
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-medium text-xs transition"
+                    >
+                      Mark Resolved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAssignModalOpen(true)}
+                      className="px-2.5 py-1 bg-blue-800 hover:bg-blue-900 text-white rounded font-medium text-xs transition"
+                    >
+                      Assign Squad
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRows([])}
+                      className="text-slate-500 hover:underline px-1 text-xs"
+                    >
+                      Deselect
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Issues Table */}
-            <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 select-none">
@@ -721,151 +934,188 @@ export const AuthorityDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
-                    {filteredIssues.map((issue) => {
-                      const isSelected = selectedIssueId === issue.id || selectedIssueId === issue.id.replace('#', '');
+                    {paginatedIssues.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-slate-400">
+                          No issues matched your active filters. Click <button onClick={handleClearFilters} className="text-blue-800 underline font-semibold">Reset Filters</button> to view all tickets.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedIssues.map((issue) => {
+                        const isSelected = selectedIssueId === issue.id.replace('#', '');
 
-                      return (
-                        <tr
-                          key={issue.id}
-                          onClick={() => setSelectedIssueId(issue.id.replace('#', ''))}
-                          className={`hover:bg-slate-50 cursor-pointer transition ${
-                            isSelected ? 'bg-blue-50/50' : ''
-                          }`}
-                        >
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedRows.includes(issue.id)}
-                              onChange={() => handleSelectRow(issue.id)}
-                              className="rounded border-slate-300 text-blue-800 focus:ring-blue-700"
-                            />
-                          </td>
-
-                          <td className="px-3 py-3 font-mono font-semibold text-blue-800">
-                            {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={issue.image}
-                                alt={issue.title}
-                                className="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0"
+                        return (
+                          <tr
+                            key={issue.id}
+                            onClick={() => handleRowClick(issue)}
+                            className={`hover:bg-slate-50 cursor-pointer transition ${
+                              isSelected ? 'bg-blue-50/60 font-medium' : ''
+                            }`}
+                          >
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.includes(issue.id.replace('#', ''))}
+                                onChange={() => handleSelectRow(issue.id)}
+                                className="rounded border-slate-300 text-blue-800 focus:ring-blue-700"
                               />
-                              <div>
-                                <span className="font-semibold text-slate-900 block leading-snug">
-                                  {issue.title}
-                                </span>
-                                <span className="text-[11px] text-slate-400 block line-clamp-1">
-                                  {issue.location}
-                                </span>
+                            </td>
+
+                            <td className="px-3 py-3 font-mono font-semibold text-blue-800">
+                              {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={issue.image}
+                                  alt={issue.title}
+                                  className="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0"
+                                />
+                                <div>
+                                  <span className="font-semibold text-slate-900 block leading-snug">
+                                    {issue.title}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 block line-clamp-1">
+                                    {issue.location}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          <td className="px-3 py-3">
-                            {issue.priority === 'High' ? (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                                High
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                Medium
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-3 py-3 text-slate-700 font-medium">
-                            {issue.department}
-                          </td>
-
-                          <td className="px-3 py-3">
-                            {issue.status === 'Assigned' && (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                Assigned
-                              </span>
-                            )}
-                            {issue.status === 'In Progress' && (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                In Progress
-                              </span>
-                            )}
-                            {issue.status === 'Under Review' && (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                Under Review
-                              </span>
-                            )}
-                            {issue.status === 'Escalated' && (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                                Escalated
-                              </span>
-                            )}
-                            {issue.status === 'Resolved' && (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                Resolved
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-3 py-3">
-                            {issue.assignedTo ? (
-                              <div className="leading-tight">
-                                <span className="font-semibold text-slate-900 block truncate max-w-[130px]">
-                                  {issue.assignedTo}
+                            <td className="px-3 py-3">
+                              {issue.priority === 'High' ? (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                  High
                                 </span>
-                                <span className="text-[10px] text-slate-400 block truncate">
-                                  {issue.squad || 'Field Squad'}
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                  Medium
                                 </span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 font-mono">—</span>
-                            )}
-                          </td>
+                              )}
+                            </td>
 
-                          <td className="px-3 py-3 text-slate-500 leading-tight">
-                            <span className="block text-slate-700 text-[11px]">{issue.createdOnDate}</span>
-                            <span className="block text-[10px] text-slate-400">{issue.createdOnTime}</span>
-                          </td>
+                            <td className="px-3 py-3 text-slate-700 font-medium">
+                              {issue.department}
+                            </td>
 
-                          <td className="px-2 py-3 text-slate-400 hover:text-slate-700" onClick={(e) => { e.stopPropagation(); setIsUpdateModalOpen(true); }}>
-                            <MoreVertical className="w-4 h-4 cursor-pointer" />
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <td className="px-3 py-3">
+                              {issue.status === 'Assigned' && (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                  Assigned
+                                </span>
+                              )}
+                              {issue.status === 'In Progress' && (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                  In Progress
+                                </span>
+                              )}
+                              {issue.status === 'Under Review' && (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                  Under Review
+                                </span>
+                              )}
+                              {issue.status === 'Escalated' && (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                  Escalated
+                                </span>
+                              )}
+                              {issue.status === 'Resolved' && (
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  Resolved
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="px-3 py-3">
+                              {issue.assignedTo ? (
+                                <div className="leading-tight">
+                                  <span className="font-semibold text-slate-900 block truncate max-w-[130px]">
+                                    {issue.assignedTo}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block truncate">
+                                    {issue.squad || 'Field Squad'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 font-mono">—</span>
+                              )}
+                            </td>
+
+                            <td className="px-3 py-3 text-slate-500 leading-tight">
+                              <span className="block text-slate-700 text-[11px]">{issue.createdOnDate}</span>
+                              <span className="block text-[10px] text-slate-400">{issue.createdOnTime}</span>
+                            </td>
+
+                            <td 
+                              className="px-2 py-3 text-slate-400 hover:text-slate-700" 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setSelectedIssueId(issue.id.replace('#', ''));
+                                setIsUpdateModalOpen(true); 
+                              }}
+                            >
+                              <MoreVertical className="w-4 h-4 cursor-pointer" />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Table Footer */}
+              {/* Table Pagination Footer */}
               <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
                 <div>
-                  Showing 1 to {filteredIssues.length} of 39 issues
+                  Showing {Math.min(1, filteredIssues.length)} to {Math.min(filteredIssues.length, currentPage * pageSize)} of {filteredIssues.length} issues
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">
-                    &lsaquo;
+                  <button 
+                    type="button" 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-40"
+                  >
+                    &lsaquo; Prev
                   </button>
-                  <button type="button" className="px-2.5 py-1 rounded bg-blue-800 text-white font-semibold">
-                    1
-                  </button>
-                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">
-                    2
-                  </button>
-                  <button type="button" className="px-2.5 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-700">
-                    3
-                  </button>
-                  <button type="button" className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600">
-                    &rsaquo;
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      type="button"
+                      onClick={() => setCurrentPage(pg)}
+                      className={`px-2.5 py-1 rounded font-semibold transition ${
+                        currentPage === pg
+                          ? 'bg-blue-800 text-white'
+                          : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+
+                  <button 
+                    type="button" 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-40"
+                  >
+                    Next &rsaquo;
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span>Rows per page</span>
-                  <select className="border border-slate-200 rounded px-2 py-1 text-slate-700 bg-white">
-                    <option>8</option>
-                    <option>15</option>
+                  <select 
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                    className="border border-slate-200 rounded px-2 py-1 text-slate-700 bg-white"
+                  >
+                    <option value={8}>8</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
                   </select>
                 </div>
               </div>
@@ -873,9 +1123,7 @@ export const AuthorityDashboard = () => {
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* VIEW B: DEPARTMENTS OVERVIEW ("the department is not working") */}
-        {/* ============================================================ */}
+        {/* VIEW B: DEPARTMENTS OVERVIEW */}
         {activeNav === 'departments' && (
           <div className="space-y-6">
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -908,7 +1156,7 @@ export const AuthorityDashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {DEPARTMENTS_DATA.map((dept) => (
-                <div key={dept.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-sm space-y-4 flex flex-col justify-between">
+                <div key={dept.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4 flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
                       <div>
@@ -949,7 +1197,9 @@ export const AuthorityDashboard = () => {
                     type="button"
                     onClick={() => {
                       setActiveNav('triage');
+                      setDeptFilter(dept.shortName.split(' ')[0]);
                       setSearchParams({ search: dept.shortName });
+                      showToast(`Filtered Triage for ${dept.shortName}.`);
                     }}
                     className="w-full py-2 rounded border border-blue-800 text-blue-900 hover:bg-blue-50 text-xs font-semibold transition text-center"
                   >
@@ -961,9 +1211,7 @@ export const AuthorityDashboard = () => {
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* VIEW C: AI DISPATCH REVIEW ("check where AI assigned officer") */}
-        {/* ============================================================ */}
+        {/* VIEW C: AI DISPATCH REVIEW */}
         {activeNav === 'ai_review' && (
           <div className="space-y-6">
             <div className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -1000,7 +1248,7 @@ export const AuthorityDashboard = () => {
             {/* AI Review Queue Cards */}
             <div className="space-y-4">
               {issues.map((item) => (
-                <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-sm space-y-4">
+                <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
                       <img
@@ -1078,7 +1326,7 @@ export const AuthorityDashboard = () => {
                       <button
                         type="button"
                         onClick={() => handleApproveAiDispatch(item.id)}
-                        className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
+                        className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-xs"
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>Approve AI Assignment</span>
@@ -1091,7 +1339,7 @@ export const AuthorityDashboard = () => {
           </div>
         )}
 
-        {/* VIEW D: OPERATIONS MAP & FIELD SQUAD RADAR */}
+        {/* VIEW D: OPERATIONS MAP */}
         {activeNav === 'map' && (
           <div className="space-y-4">
             <MapViewPage isEmbedded={true} />
@@ -1136,7 +1384,7 @@ export const AuthorityDashboard = () => {
               <button
                 type="button"
                 onClick={() => setIsNewOrderModalOpen(true)}
-                className="px-3.5 py-2 rounded bg-blue-800 text-white font-medium text-xs hover:bg-blue-900 transition flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-2 rounded bg-blue-800 text-white font-medium text-xs hover:bg-blue-900 transition flex items-center gap-1.5 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Work Order</span>
@@ -1144,7 +1392,7 @@ export const AuthorityDashboard = () => {
             </div>
 
             {/* Work Orders Table */}
-            <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
                   <tr>
@@ -1154,6 +1402,7 @@ export const AuthorityDashboard = () => {
                     <th className="py-3 px-4 font-semibold">Priority</th>
                     <th className="py-3 px-4 font-semibold">Assigned Squad</th>
                     <th className="py-3 px-4 font-semibold">Status</th>
+                    <th className="py-3 px-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1180,6 +1429,18 @@ export const AuthorityDashboard = () => {
                         <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium text-[11px]">
                           {it.status}
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedIssueId(it.id.replace('#', ''));
+                            setIsUpdateModalOpen(true);
+                          }}
+                          className="text-blue-800 hover:underline font-semibold"
+                        >
+                          Update Status
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1219,7 +1480,7 @@ export const AuthorityDashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {AVAILABLE_SQUADS.map((sq, idx) => (
-                <div key={idx} className="bg-white border border-slate-200 rounded-md p-5 shadow-sm space-y-4">
+                <div key={idx} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
                   <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                     <div>
                       <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">{sq.squad}</span>
@@ -1249,12 +1510,16 @@ export const AuthorityDashboard = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (currentIssue) handleAssignSquad(sq);
-                      else { setActiveNav('triage'); setSearchParams({}); }
+                      if (currentIssue) {
+                        handleAssignSquad(sq);
+                      } else {
+                        setActiveNav('triage');
+                        setSearchParams({});
+                      }
                     }}
                     className="w-full py-2 rounded border border-blue-800 text-blue-800 hover:bg-blue-50 text-xs font-medium transition"
                   >
-                    Assign to Active Issue
+                    Assign to Active Issue ({currentIssue ? `#${currentIssue.id}` : 'Select Issue'})
                   </button>
                 </div>
               ))}
@@ -1282,7 +1547,7 @@ export const AuthorityDashboard = () => {
               </p>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-md shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
                   <tr>
@@ -1341,7 +1606,7 @@ export const AuthorityDashboard = () => {
               </p>
             </div>
 
-            <div className="max-w-2xl bg-white border border-slate-200 rounded-md p-6 shadow-sm space-y-5 text-xs">
+            <div className="max-w-2xl bg-white border border-slate-200 rounded-md p-6 shadow-xs space-y-5 text-xs">
               <div className="space-y-1">
                 <span className="font-semibold text-slate-900 block">Municipal Corporation Body</span>
                 <input
@@ -1381,7 +1646,8 @@ export const AuthorityDashboard = () => {
               <div className="pt-2">
                 <button
                   type="button"
-                  className="px-4 py-2 bg-blue-800 text-white rounded font-medium shadow-sm hover:bg-blue-900"
+                  onClick={() => showToast('Command Center settings saved successfully.')}
+                  className="px-4 py-2 bg-blue-800 text-white rounded font-medium shadow-xs hover:bg-blue-900 transition"
                 >
                   Save Configuration
                 </button>
@@ -1392,352 +1658,455 @@ export const AuthorityDashboard = () => {
       </main>
 
       {/* ============================================================ */}
-      {/* 3. RIGHT DETAILS DRAWER ("Issue Details" - Responsive) */}
+      {/* 3. RIGHT DETAILS DRAWER ("Issue Details") */}
+      {/* On desktop: sticky sidebar. On mobile: slide-over overlay */}
       {/* ============================================================ */}
       {currentIssue && activeNav === 'triage' && (
-        <aside className="w-full lg:w-80 xl:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex-shrink-0 flex flex-col justify-between overflow-y-auto lg:h-[calc(100vh-64px)] lg:sticky lg:top-16">
-          <div className="p-5 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-base font-bold text-slate-900">
-                Issue Details
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelectedIssueId(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <>
+          {/* Mobile Backdrop */}
+          {isDrawerOpenMobile && (
+            <div 
+              className="lg:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs"
+              onClick={() => setIsDrawerOpenMobile(false)}
+            />
+          )}
 
-            {/* Evidence Photo */}
-            <div className="rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-              <img
-                src={currentIssue.image}
-                alt={currentIssue.title}
-                className="w-full h-44 object-cover"
-              />
-            </div>
+          <aside className={`
+            fixed lg:sticky top-0 lg:top-16 right-0 z-50 lg:z-10
+            w-full sm:w-[420px] lg:w-80 xl:w-96
+            h-screen lg:h-[calc(100vh-64px)]
+            bg-white border-l border-slate-200 shadow-2xl lg:shadow-none
+            flex flex-col justify-between overflow-y-auto transition-transform duration-300
+            ${isDrawerOpenMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+          `}>
+            <div className="p-5 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Issue Details</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800">
+                    {currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`}
+                  </span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDrawerOpenMobile(false);
+                  }}
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-slate-100"
+                  title="Close details drawer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-            {/* Title & Priority Badge */}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {currentIssue.title}
-                </h3>
-                <span className="font-mono text-xs text-slate-400 block mt-0.5">
-                  {currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`}
+              {/* Main Evidence Photo */}
+              <div className="relative rounded-md overflow-hidden border border-slate-200 bg-slate-950 aspect-video flex items-center justify-center">
+                <img
+                  src={activeEvidenceImg || currentIssue.image}
+                  alt={currentIssue.title}
+                  className="w-full h-full object-cover"
+                />
+                <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] font-mono">
+                  Verified Evidence Photo
                 </span>
               </div>
-              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                currentIssue.priority === 'High'
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200'
-              }`}>
-                {currentIssue.priority} Priority
-              </span>
-            </div>
 
-            {/* Drawer Sub-Tabs */}
-            <div className="flex items-center space-x-4 border-b border-slate-200 text-xs">
-              {['Overview', 'Timeline', 'Location', 'Work Orders'].map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setDrawerTab(tab)}
-                  className={`pb-2 transition font-medium ${
-                    drawerTab === tab
-                      ? 'font-semibold text-blue-800 border-b-2 border-blue-800'
-                      : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+              {/* Title & Priority Badge */}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">
+                    {currentIssue.title}
+                  </h3>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">
+                    {currentIssue.location}
+                  </span>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[11px] font-medium flex-shrink-0 ${
+                  currentIssue.priority === 'High'
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}>
+                  {currentIssue.priority} Priority
+                </span>
+              </div>
 
-            {/* TAB 1: OVERVIEW */}
-            {drawerTab === 'Overview' && (
-              <div className="space-y-4">
-                {/* Metadata List */}
-                <div className="space-y-3 text-xs pt-1">
-                  {/* Location */}
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Location</span>
-                      <span className="text-slate-800 font-medium block leading-tight">
-                        {currentIssue.location}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setDrawerTab('Location')}
-                        className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block"
-                      >
-                        View on Map
-                      </button>
-                    </div>
-                  </div>
+              {/* Drawer Sub-Tabs: Overview, Timeline, Location, Work Orders */}
+              <div className="grid grid-cols-4 border-b border-slate-200 text-xs text-center select-none">
+                {['Overview', 'Timeline', 'Location', 'Work Orders'].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setDrawerTab(tab)}
+                    className={`pb-2.5 transition font-medium ${
+                      drawerTab === tab
+                        ? 'font-bold text-blue-800 border-b-2 border-blue-800'
+                        : 'text-slate-400 hover:text-slate-700 border-b-2 border-transparent'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Department */}
-                  <div className="flex items-start gap-3">
-                    <Building className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Department</span>
-                      <span className="text-slate-800 font-semibold block">
-                        {currentIssue.department}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Reported On */}
-                  <div className="flex items-start gap-3">
-                    <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Reported On</span>
-                      <span className="text-slate-800 font-medium block">
-                        {currentIssue.createdOnDate}, {currentIssue.createdOnTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Reported By */}
-                  <div className="flex items-start gap-3">
-                    <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Reported By</span>
-                      <span className="text-slate-800 font-medium block">
-                        {currentIssue.reportedBy}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Assigned To */}
-                  <div className="flex items-start gap-3">
-                    <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Assigned To</span>
-                      <span className="text-slate-800 font-semibold block">
-                        {currentIssue.assignedTo || 'Unassigned'}
-                      </span>
-                      {currentIssue.squad && (
-                        <span className="text-[11px] text-slate-400 block">
-                          {currentIssue.squad}
+              {/* TAB 1: OVERVIEW */}
+              {drawerTab === 'Overview' && (
+                <div className="space-y-4">
+                  {/* Metadata List */}
+                  <div className="space-y-3 text-xs pt-1">
+                    {/* Location */}
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Location</span>
+                        <span className="text-slate-800 font-medium block leading-tight">
+                          {currentIssue.location}
                         </span>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => setDrawerTab('Location')}
+                          className="text-blue-800 text-[11px] hover:underline font-medium mt-0.5 inline-block"
+                        >
+                          View Geo-Map Details &rarr;
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Department */}
+                    <div className="flex items-start gap-3">
+                      <Building className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Department</span>
+                        <span className="text-slate-800 font-semibold block">
+                          {currentIssue.department}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Reported On */}
+                    <div className="flex items-start gap-3">
+                      <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Reported On</span>
+                        <span className="text-slate-800 font-medium block">
+                          {currentIssue.createdOnDate}, {currentIssue.createdOnTime}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Reported By */}
+                    <div className="flex items-start gap-3">
+                      <User className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Reported By</span>
+                        <span className="text-slate-800 font-medium block">
+                          {currentIssue.reportedBy}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Assigned To */}
+                    <div className="flex items-start gap-3">
+                      <Users className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Assigned Squad</span>
+                        <span className="text-slate-800 font-semibold block">
+                          {currentIssue.assignedTo || 'Unassigned — Pending Dispatch'}
+                        </span>
+                        {currentIssue.squad && (
+                          <span className="text-[11px] text-slate-400 block">
+                            {currentIssue.squad}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Current Status */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                      <span className="text-slate-700 text-xs">
+                        Current Status: <strong className="text-blue-900 ml-1">{currentIssue.status}</strong>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Current Status */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ml-1"></span>
-                    <span className="text-slate-700 text-xs">
-                      Current Status <strong className="text-blue-900 ml-1">{currentIssue.status}</strong>
-                    </span>
+                  {/* AI Confidence & Analysis Box */}
+                  <div className="bg-slate-50 border border-slate-200 rounded p-3 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-800" />
+                        <span>AI Defect Triage Analysis</span>
+                      </span>
+                      <span className="font-mono text-blue-800 font-bold">{currentIssue.aiConfidence || '94%'}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      {currentIssue.aiReasoning || 'Nearest available squad in primary division matched via GPS proximity.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRerunAiScan}
+                      disabled={isAiScanning}
+                      className="text-blue-800 font-medium text-[11px] hover:underline flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isAiScanning ? 'animate-spin' : ''}`} />
+                      <span>{isAiScanning ? 'Scanning...' : 'Re-verify with Computer Vision'}</span>
+                    </button>
+                  </div>
+
+                  {/* Description */}
+                  <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
+                    <span className="font-semibold text-slate-900 block">Description</span>
+                    <p className="text-slate-600 leading-relaxed">
+                      {currentIssue.description}
+                    </p>
+                  </div>
+
+                  {/* Multi-Photo Evidence Gallery */}
+                  <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
+                    <span className="font-semibold text-slate-900 block">Evidence Photos (Click to preview)</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {currentIssue.evidenceGallery?.map((imgUrl, i) => (
+                        <img
+                          key={i}
+                          src={imgUrl}
+                          alt={`Evidence ${i + 1}`}
+                          onClick={() => setActiveEvidenceImg(imgUrl)}
+                          className={`w-full h-16 object-cover rounded border cursor-pointer transition ${
+                            activeEvidenceImg === imgUrl ? 'border-blue-700 ring-2 ring-blue-700' : 'border-slate-200 hover:opacity-80'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Description */}
-                <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
-                  <span className="font-semibold text-slate-900 block">Description</span>
-                  <p className="text-slate-600 leading-relaxed">
-                    {currentIssue.description}
-                  </p>
-                </div>
+              {/* TAB 2: TIMELINE */}
+              {drawerTab === 'Timeline' && (
+                <div className="space-y-4 text-xs pt-1">
+                  <div className="relative pl-5 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                    {/* Step 1 */}
+                    <div className="relative">
+                      <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                      <strong className="text-slate-900 block font-semibold">Grievance Registered</strong>
+                      <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
+                      <p className="text-slate-600 text-[11px] mt-0.5">Citizen logged report via CivicSeva portal with GPS coordinates and evidence.</p>
+                    </div>
 
-                {/* Evidence Gallery */}
-                <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
-                  <span className="font-semibold text-slate-900 block">Evidence Photos</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {currentIssue.evidenceGallery?.map((imgUrl, i) => (
-                      <img
-                        key={i}
-                        src={imgUrl}
-                        alt="Evidence photo"
-                        className="w-full h-16 object-cover rounded border border-slate-200 shadow-xs"
-                      />
+                    {/* Step 2 */}
+                    <div className="relative">
+                      <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+                      <strong className="text-slate-900 block font-semibold">AI Defect Detection & Verification</strong>
+                      <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
+                      <p className="text-slate-600 text-[11px] mt-0.5">
+                        Edge Computer Vision model classified defect as <strong>{currentIssue.title}</strong> with {currentIssue.aiConfidence || '94%'} confidence. Severity categorized as <strong>{currentIssue.priority}</strong>.
+                      </p>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="relative">
+                      <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+                      <strong className="text-slate-900 block font-semibold">Department Jurisdiction Assigned</strong>
+                      <span className="text-[11px] text-slate-500 block">Routed to {currentIssue.department}</span>
+                      <p className="text-slate-600 text-[11px] mt-0.5">Autonomous routing matched issue category to primary municipal division queue.</p>
+                    </div>
+
+                    {/* Step 4 */}
+                    <div className="relative">
+                      <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.assignedTo ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
+                      <strong className="text-slate-900 block font-semibold">Field Crew Dispatch Designation</strong>
+                      <span className="text-[11px] text-slate-500 block">
+                        {currentIssue.assignedTo ? `${currentIssue.assignedTo} (${currentIssue.squad || 'Field Unit'})` : 'Awaiting Squad Confirmation'}
+                      </span>
+                      <p className="text-slate-600 text-[11px] mt-0.5">
+                        {currentIssue.assignedTo 
+                          ? `Assigned to nearest squad (${currentIssue.aiDistanceKm || 0.8} km away via Haversine calculation).`
+                          : 'Currently pending supervisory officer designation.'}
+                      </p>
+                    </div>
+
+                    {/* Step 5 */}
+                    <div className="relative">
+                      <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.status === 'Resolved' ? 'bg-emerald-600' : currentIssue.status === 'In Progress' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
+                      <strong className="text-slate-900 block font-semibold">Remediation Status</strong>
+                      <span className="text-[11px] text-slate-500 block font-medium text-blue-800">{currentIssue.status}</span>
+                      <p className="text-slate-600 text-[11px] mt-0.5">
+                        {currentIssue.status === 'Resolved'
+                          ? 'Defect resolved and verified by municipal field inspector.'
+                          : currentIssue.status === 'In Progress'
+                          ? 'Field unit actively on-site performing remediation repairs.'
+                          : 'Scheduled for prompt on-site execution.'}
+                      </p>
+                    </div>
+
+                    {/* Custom Officer Audit Notes */}
+                    {timelineNotes[currentIssue.id.replace('#', '')]?.map((note, idx) => (
+                      <div key={idx} className="relative bg-blue-50/50 p-2.5 rounded border border-blue-100">
+                        <span className="absolute -left-5 top-2.5 w-2.5 h-2.5 rounded-full bg-blue-800 ring-4 ring-white"></span>
+                        <strong className="text-blue-900 block font-semibold">Inspection Note Added</strong>
+                        <span className="text-[10px] text-slate-400 block">{note.author} &bull; {note.time}</span>
+                        <p className="text-slate-700 text-[11px] mt-0.5">{note.text}</p>
+                      </div>
                     ))}
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* TAB 2: TIMELINE */}
-            {drawerTab === 'Timeline' && (
-              <div className="space-y-4 text-xs pt-1">
-                <div className="relative pl-5 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                  {/* Step 1 */}
-                  <div className="relative">
-                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
-                    <strong className="text-slate-900 block font-semibold">Grievance Registered</strong>
-                    <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
-                    <p className="text-slate-600 text-[11px] mt-0.5">Citizen logged report via CivicSeva portal with GPS coordinates and evidence.</p>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="relative">
-                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
-                    <strong className="text-slate-900 block font-semibold">AI Defect Detection & Verification</strong>
-                    <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
-                    <p className="text-slate-600 text-[11px] mt-0.5">
-                      Edge Computer Vision model classified defect as <strong>{currentIssue.title}</strong> with {currentIssue.aiConfidence || '94%'} confidence. Severity categorized as <strong>{currentIssue.priority}</strong>.
-                    </p>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div className="relative">
-                    <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
-                    <strong className="text-slate-900 block font-semibold">Department Jurisdiction Assigned</strong>
-                    <span className="text-[11px] text-slate-500 block">Routed to {currentIssue.department}</span>
-                    <p className="text-slate-600 text-[11px] mt-0.5">Autonomous routing matched issue category to primary municipal division queue.</p>
-                  </div>
-
-                  {/* Step 4 */}
-                  <div className="relative">
-                    <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.assignedTo ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
-                    <strong className="text-slate-900 block font-semibold">Field Crew Dispatch Designation</strong>
-                    <span className="text-[11px] text-slate-500 block">
-                      {currentIssue.assignedTo ? `${currentIssue.assignedTo} (${currentIssue.squad || 'Field Unit'})` : 'Awaiting Squad Confirmation'}
-                    </span>
-                    <p className="text-slate-600 text-[11px] mt-0.5">
-                      {currentIssue.assignedTo 
-                        ? `Assigned to nearest squad (${currentIssue.aiDistanceKm || 0.8} km away via Haversine calculation).`
-                        : 'Currently pending supervisory officer designation.'}
-                    </p>
-                  </div>
-
-                  {/* Step 5 */}
-                  <div className="relative">
-                    <span className={`absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${currentIssue.status === 'Resolved' ? 'bg-emerald-600' : currentIssue.status === 'In Progress' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
-                    <strong className="text-slate-900 block font-semibold">Remediation Status</strong>
-                    <span className="text-[11px] text-slate-500 block font-medium text-blue-800">{currentIssue.status}</span>
-                    <p className="text-slate-600 text-[11px] mt-0.5">
-                      {currentIssue.status === 'Resolved'
-                        ? 'Defect resolved and verified by municipal field inspector.'
-                        : currentIssue.status === 'In Progress'
-                        ? 'Field unit actively on-site performing remediation repairs.'
-                        : 'Scheduled for prompt on-site execution.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: LOCATION */}
-            {drawerTab === 'Location' && (
-              <div className="space-y-4 text-xs pt-1">
-                {/* Visual Map Pin Box */}
-                <div className="relative h-36 bg-slate-100 rounded-md overflow-hidden border border-slate-200 flex items-center justify-center">
-                  <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#1E3A8A_1px,transparent_1px)] [background-size:12px_12px]"></div>
-                  <div className="relative flex flex-col items-center">
-                    <span className="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center shadow-lg animate-bounce">
-                      <MapPin className="w-4 h-4" />
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-800 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded shadow mt-1">
-                      {currentIssue.location}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 bg-slate-50 p-3.5 rounded border border-slate-200">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Street Address:</span>
-                    <span className="font-semibold text-slate-900 text-right">{currentIssue.location}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Municipal Zone:</span>
-                    <span className="font-medium text-slate-800">Zone 3 &bull; Ward 42</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">GPS Coordinates:</span>
-                    <span className="font-mono text-slate-800">22.7196° N, 75.8577° E</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Nearest Fleet:</span>
-                    <span className="font-semibold text-blue-900">📍 {currentIssue.aiDistanceKm || 0.8} km away</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveNav('map'); setSearchParams({ tab: 'MAP' }); }}
-                  className="w-full py-2 rounded bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 font-medium text-xs transition flex items-center justify-center gap-1.5"
-                >
-                  <Map className="w-3.5 h-3.5" />
-                  <span>Open in Full Operations Map</span>
-                </button>
-              </div>
-            )}
-
-            {/* TAB 4: WORK ORDERS */}
-            {drawerTab === 'Work Orders' && (
-              <div className="space-y-4 text-xs pt-1">
-                <div className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
-                  <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
-                    <div>
-                      <span className="text-[10px] font-mono text-slate-400 font-semibold block">DIRECTIVE ID</span>
-                      <strong className="text-sm font-bold text-blue-900">WO-{currentIssue.id.replace('#', '')}-R1</strong>
+                  {/* Post Audit Note Input */}
+                  <form onSubmit={handleAddTimelineNote} className="pt-2 border-t border-slate-100 space-y-2">
+                    <label className="text-[11px] font-semibold text-slate-700 block">Add Inspection Log Note</label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={newTimelineNote}
+                        onChange={(e) => setNewTimelineNote(e.target.value)}
+                        placeholder="e.g. Squad on-site with asphalt roller..."
+                        className="flex-1 p-2 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-800 text-slate-800"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded text-xs font-semibold"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                      {currentIssue.status}
-                    </span>
+                  </form>
+                </div>
+              )}
+
+              {/* TAB 3: LOCATION */}
+              {drawerTab === 'Location' && (
+                <div className="space-y-4 text-xs pt-1">
+                  {/* Visual Map Pin Box */}
+                  <div className="relative h-36 bg-slate-100 rounded-md overflow-hidden border border-slate-200 flex items-center justify-center">
+                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#1E3A8A_1px,transparent_1px)] [background-size:12px_12px]"></div>
+                    <div className="relative flex flex-col items-center">
+                      <span className="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center shadow-lg animate-bounce">
+                        <MapPin className="w-4 h-4" />
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-800 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded shadow mt-1">
+                        {currentIssue.location}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2 text-slate-600">
+                  <div className="space-y-2.5 bg-slate-50 p-3.5 rounded border border-slate-200">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Assigned Squad:</span>
-                      <strong className="text-slate-800">{currentIssue.assignedTo || 'Unassigned'} {currentIssue.squad ? `(${currentIssue.squad})` : ''}</strong>
+                      <span className="text-slate-400">Street Address:</span>
+                      <span className="font-semibold text-slate-900 text-right">{currentIssue.location}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Target SLA:</span>
-                      <span className="font-medium text-slate-800">24 Hours (Standard Municipal SLA)</span>
+                      <span className="text-slate-400">Municipal Zone:</span>
+                      <span className="font-medium text-slate-800">Zone 3 &bull; Ward 42</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">GPS Coordinates:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-slate-800">22.7196° N, 75.8577° E</span>
+                        <button
+                          type="button"
+                          onClick={handleCopyCoords}
+                          className="p-1 text-slate-400 hover:text-blue-800 rounded"
+                          title="Copy GPS Coordinates"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Allocated Materials:</span>
-                      <span className="font-medium text-slate-800">Cold Asphalt Patch / Heavy Tamper</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Operational Directive:</span>
-                      <p className="text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200 leading-relaxed">
-                        {currentIssue.description}
-                      </p>
+                      <span className="text-slate-400">Nearest Fleet:</span>
+                      <span className="font-semibold text-blue-900">📍 {currentIssue.aiDistanceKm || 0.8} km away</span>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setIsUpdateModalOpen(true)}
-                    className="w-full py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
+                    onClick={() => { setActiveNav('map'); setSearchParams({ tab: 'MAP' }); }}
+                    className="w-full py-2.5 rounded bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 font-medium text-xs transition flex items-center justify-center gap-1.5"
                   >
-                    Update Work Order Status
+                    <Map className="w-3.5 h-3.5" />
+                    <span>Open in Full Operations Map &rarr;</span>
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Action Buttons at bottom of Drawer */}
-          <div className="p-5 border-t border-slate-200 bg-white space-y-2.5">
-            <button
-              type="button"
-              onClick={() => setIsUpdateModalOpen(true)}
-              className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-sm transition flex items-center justify-center gap-2"
-            >
-              <span>Update Status</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
+              {/* TAB 4: WORK ORDERS */}
+              {drawerTab === 'Work Orders' && (
+                <div className="space-y-4 text-xs pt-1">
+                  <div className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
+                    <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
+                      <div>
+                        <span className="text-[10px] font-mono text-slate-400 font-semibold block">DIRECTIVE ID</span>
+                        <strong className="text-sm font-bold text-blue-900">WO-{currentIssue.id.replace('#', '')}-R1</strong>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                        {currentIssue.status}
+                      </span>
+                    </div>
 
-            <button
-              type="button"
-              onClick={() => setIsAssignModalOpen(true)}
-              className="w-full py-2.5 rounded border border-blue-800 text-blue-900 hover:bg-blue-50 font-medium text-xs transition flex items-center justify-center gap-2"
-            >
-              <Users className="w-3.5 h-3.5 text-blue-800" />
-              <span>Assign / Reassign</span>
-            </button>
-          </div>
-        </aside>
+                    <div className="space-y-2 text-slate-600">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Assigned Squad:</span>
+                        <strong className="text-slate-800">{currentIssue.assignedTo || 'Unassigned'} {currentIssue.squad ? `(${currentIssue.squad})` : ''}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Target SLA:</span>
+                        <span className="font-medium text-slate-800">24 Hours (Standard Municipal SLA)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Allocated Materials:</span>
+                        <span className="font-medium text-slate-800">Cold Asphalt Patch / Heavy Tamper</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Operational Directive:</span>
+                        <p className="text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200 leading-relaxed">
+                          {currentIssue.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsUpdateModalOpen(true)}
+                        className="flex-1 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
+                      >
+                        Update Status
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="px-3 py-2 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition flex items-center justify-center gap-1"
+                        title="Print Work Order Directive"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons at bottom of Drawer */}
+            <div className="p-5 border-t border-slate-200 bg-white space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center justify-center gap-2"
+              >
+                <span>Update Complaint Status</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAssignModalOpen(true)}
+                className="w-full py-2.5 rounded border border-blue-800 text-blue-900 hover:bg-blue-50 font-medium text-xs transition flex items-center justify-center gap-2"
+              >
+                <Users className="w-3.5 h-3.5 text-blue-800" />
+                <span>Assign / Reassign Squad</span>
+              </button>
+            </div>
+          </aside>
+        </>
       )}
 
       {/* ============================================================ */}
@@ -1745,7 +2114,7 @@ export const AuthorityDashboard = () => {
       {/* ============================================================ */}
 
       {/* Update Status Modal */}
-      {isUpdateModalOpen && (
+      {isUpdateModalOpen && currentIssue && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-md border border-slate-200 p-6 max-w-sm w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1755,7 +2124,7 @@ export const AuthorityDashboard = () => {
               </button>
             </div>
             <p className="text-xs text-slate-500">
-              Select the new status for {currentIssue.id} ({currentIssue.title}):
+              Select the new status for #{currentIssue.id} ({currentIssue.title}):
             </p>
             <div className="space-y-1.5 text-xs">
               {['Under Review', 'Assigned', 'In Progress', 'Escalated', 'Resolved'].map((st) => (
@@ -1763,7 +2132,7 @@ export const AuthorityDashboard = () => {
                   key={st}
                   type="button"
                   onClick={() => handleUpdateStatus(st)}
-                  className={`w-full text-left px-3 py-2 rounded transition flex items-center justify-between ${
+                  className={`w-full text-left px-3 py-2.5 rounded transition flex items-center justify-between ${
                     currentIssue.status === st
                       ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200'
                       : 'hover:bg-slate-50 text-slate-700 border border-slate-100'
@@ -1779,7 +2148,7 @@ export const AuthorityDashboard = () => {
       )}
 
       {/* Assign Squad Modal */}
-      {isAssignModalOpen && (
+      {isAssignModalOpen && currentIssue && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-md border border-slate-200 p-6 max-w-md w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1802,7 +2171,7 @@ export const AuthorityDashboard = () => {
                     <strong className="text-slate-900 block font-semibold">{sq.name}</strong>
                     <span className="text-slate-500 text-[11px] block">{sq.squad} &bull; {sq.dept}</span>
                   </div>
-                  <button className="px-2.5 py-1 bg-blue-800 text-white rounded text-[11px] font-medium">
+                  <button type="button" className="px-3 py-1 bg-blue-800 text-white rounded text-[11px] font-medium">
                     Assign
                   </button>
                 </div>
@@ -1829,7 +2198,7 @@ export const AuthorityDashboard = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Road Crater Repair"
+                  placeholder="e.g. Arterial Road Crater Remediation"
                   value={newOrderTitle}
                   onChange={(e) => setNewOrderTitle(e.target.value)}
                   className="w-full p-2 border border-slate-300 rounded text-slate-900"
@@ -1895,7 +2264,7 @@ export const AuthorityDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded bg-blue-800 text-white font-medium shadow-sm hover:bg-blue-900"
+                  className="px-4 py-1.5 rounded bg-blue-800 text-white font-medium shadow-xs hover:bg-blue-900"
                 >
                   Commit Work Order
                 </button>
