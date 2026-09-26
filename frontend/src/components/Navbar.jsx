@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, ArrowLeftRight, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight, Search, Bell, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { NotificationBell } from './NotificationBell';
 import { CivicLogo } from './CivicLogo';
 
 export const Navbar = () => {
@@ -10,26 +9,127 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navSearch, setNavSearch] = useState('');
 
   const isActive = (path) => location.pathname === path;
-  const isOfficial = user?.role === 'authority' || user?.role === 'admin';
+  const isOfficial = user?.role === 'authority' || user?.role === 'admin' || location.pathname.startsWith('/authority') || location.pathname.startsWith('/cctv');
 
   const handleToggleRole = async () => {
     if (isOfficial) {
       await switchDemoRole('citizen');
-      navigate('/report');
+      navigate('/');
     } else {
       await switchDemoRole('authority');
       navigate('/authority');
     }
   };
 
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (isOfficial) {
+      navigate(`/authority?search=${encodeURIComponent(navSearch)}`);
+    } else {
+      navigate(`/dashboard?search=${encodeURIComponent(navSearch)}`);
+    }
+  };
+
+  // ============================================================
+  // OFFICIAL MUNICIPAL COMMAND CENTER HEADER (Dark Slate Theme)
+  // ============================================================
+  if (isOfficial) {
+    return (
+      <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 gap-4">
+            {/* Left: Civic Logo & Municipal Subtitle */}
+            <Link to="/authority" className="flex items-center gap-3 flex-shrink-0 group">
+              <CivicLogo
+                className="h-7 w-7 text-white"
+                textClassName="text-lg font-bold text-white tracking-tight"
+              />
+              <div className="hidden sm:block pl-3 border-l border-slate-700">
+                <span className="text-[11px] font-medium text-slate-400 block tracking-wide uppercase">
+                  Municipal Command Center
+                </span>
+              </div>
+            </Link>
+
+            {/* Center: Search Box matching reference screenshot */}
+            <form onSubmit={handleSearchSubmit} className="flex-1 max-w-xl hidden md:block">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={navSearch}
+                  onChange={(e) => setNavSearch(e.target.value)}
+                  placeholder="Search by complaint ID, location, or keywords..."
+                  className="w-full bg-white text-slate-900 text-xs pl-9 pr-3 py-2 rounded-md border-none focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm placeholder:text-slate-400 font-normal"
+                />
+              </div>
+            </form>
+
+            {/* Right: Actions, Notifications, & User Profile */}
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              {/* Switch to Citizen Button */}
+              <button
+                onClick={handleToggleRole}
+                title="Switch to Citizen Public View"
+                className="px-2.5 py-1 text-xs font-medium border border-slate-700 rounded text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition flex items-center gap-1.5"
+              >
+                <ArrowLeftRight className="w-3 h-3 text-slate-400" />
+                <span className="hidden sm:inline">Citizen View</span>
+              </button>
+
+              {/* Notification Bell with Red Badge */}
+              <div className="relative">
+                <button
+                  className="p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                </button>
+                <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  1
+                </span>
+              </div>
+
+              {/* User Profile matching reference: RP / R. Patil / Operations Officer */}
+              <div className="flex items-center space-x-2 pl-2 border-l border-slate-700">
+                <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 text-white text-xs font-bold flex items-center justify-center">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'RP'}
+                </div>
+                <div className="hidden lg:block text-left">
+                  <span className="text-xs font-semibold text-white block leading-tight">
+                    {user?.name || 'R. Patil'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block leading-tight">
+                    {user?.role === 'admin' ? 'Commissioner' : 'Operations Officer'}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // ============================================================
+  // CITIZEN PUBLIC SERVICES HEADER (Clean White Theme)
+  // ============================================================
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* CivicSeva Logo */}
-          <Link to={isOfficial ? "/authority" : "/"} className="flex items-center">
+          <Link to="/" className="flex items-center">
             <CivicLogo
               className="h-6 w-6 text-blue-800"
               textClassName="text-lg font-bold text-slate-900 tracking-tight"
@@ -38,112 +138,49 @@ export const Navbar = () => {
 
           {/* Navigation Links with Active Bottom-Indicator */}
           <nav className="hidden md:flex items-center space-x-6 text-sm">
-            {isOfficial ? (
-              /* === OFFICIAL / MUNICIPAL OFFICER NAVIGATION === */
-              <>
-                <Link
-                  to="/authority"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/authority') && !location.search.includes('OFFICERS')
-                      ? 'border-blue-800 text-blue-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Triage Queue
-                </Link>
+            <Link
+              to="/"
+              className={`py-5 transition-colors border-b-2 font-medium ${
+                isActive('/')
+                  ? 'border-blue-800 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Home
+            </Link>
 
-                <Link
-                  to="/authority?tab=OFFICERS"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    location.search.includes('OFFICERS')
-                      ? 'border-blue-800 text-blue-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Field Squads
-                </Link>
+            <Link
+              to="/report"
+              className={`py-5 transition-colors border-b-2 font-medium ${
+                isActive('/report')
+                  ? 'border-blue-800 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Report Issue
+            </Link>
 
-                <Link
-                  to="/cctv"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/cctv')
-                      ? 'border-blue-800 text-blue-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  CCTV Grid
-                </Link>
+            <Link
+              to="/track"
+              className={`py-5 transition-colors border-b-2 font-medium ${
+                isActive('/track')
+                  ? 'border-blue-800 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Track Complaint
+            </Link>
 
-                <Link
-                  to="/map"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/map')
-                      ? 'border-blue-800 text-blue-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Operations Map
-                </Link>
-
-                <Link
-                  to="/analytics"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/analytics')
-                      ? 'border-blue-800 text-blue-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Analytics
-                </Link>
-              </>
-            ) : (
-              /* === CITIZEN NAVIGATION === */
-              <>
-                <Link
-                  to="/"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/')
-                      ? 'border-blue-800 text-slate-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Home
-                </Link>
-
-                <Link
-                  to="/report"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/report')
-                      ? 'border-blue-800 text-slate-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Report Issue
-                </Link>
-
-                <Link
-                  to="/track"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/track')
-                      ? 'border-blue-800 text-slate-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Track Complaint
-                </Link>
-
-                <Link
-                  to="/dashboard"
-                  className={`py-5 transition-colors border-b-2 font-medium ${
-                    isActive('/dashboard')
-                      ? 'border-blue-800 text-slate-900 font-semibold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  My Complaints
-                </Link>
-              </>
-            )}
+            <Link
+              to="/dashboard"
+              className={`py-5 transition-colors border-b-2 font-medium ${
+                isActive('/dashboard')
+                  ? 'border-blue-800 text-slate-900 font-semibold'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              My Complaints
+            </Link>
           </nav>
 
           {/* Right Action Items & Mode Switcher */}
@@ -151,18 +188,15 @@ export const Navbar = () => {
             {/* Clean rectangular role switcher */}
             <button
               onClick={handleToggleRole}
-              title={isOfficial ? "Switch to Citizen View" : "Switch to Municipal Officer Portal"}
+              title="Switch to Municipal Officer Portal"
               className="px-2.5 py-1 text-xs font-medium border border-slate-300 rounded text-slate-700 bg-white hover:bg-slate-50 transition flex items-center gap-1.5"
             >
               <ArrowLeftRight className="w-3 h-3 text-slate-500" />
-              <span>{isOfficial ? 'Switch to Citizen' : 'Municipal Portal'}</span>
+              <span>Municipal Portal</span>
             </button>
-
-            <NotificationBell />
 
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
-                {/* Circular Avatar with Initial */}
                 <div className="w-7 h-7 rounded-full bg-slate-600 text-white text-xs font-semibold flex items-center justify-center">
                   {user.name ? user.name.charAt(0).toUpperCase() : 'A'}
                 </div>
@@ -208,83 +242,41 @@ export const Navbar = () => {
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 py-3 space-y-1 bg-white">
-            {isOfficial ? (
-              <>
-                <Link
-                  to="/authority"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Triage Queue
-                </Link>
-                <Link
-                  to="/authority?tab=OFFICERS"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Field Squads
-                </Link>
-                <Link
-                  to="/cctv"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  CCTV Grid
-                </Link>
-                <Link
-                  to="/map"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Operations Map
-                </Link>
-                <Link
-                  to="/analytics"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Analytics
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/report"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Report Issue
-                </Link>
-                <Link
-                  to="/track"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Track Complaint
-                </Link>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  My Complaints
-                </Link>
-              </>
-            )}
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Home
+            </Link>
+            <Link
+              to="/report"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Report Issue
+            </Link>
+            <Link
+              to="/track"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Track Complaint
+            </Link>
+            <Link
+              to="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded text-sm text-slate-700 hover:bg-slate-50"
+            >
+              My Complaints
+            </Link>
 
             <div className="pt-2 border-t border-slate-200">
               <button
                 onClick={() => { handleToggleRole(); setMobileMenuOpen(false); }}
                 className="w-full text-left px-3 py-2 rounded text-xs font-medium text-blue-800 hover:bg-blue-50 flex items-center justify-between"
               >
-                <span>{isOfficial ? 'Switch to Citizen View' : 'Switch to Municipal Portal'}</span>
+                <span>Switch to Municipal Portal</span>
                 <ArrowLeftRight className="w-3.5 h-3.5" />
               </button>
             </div>
