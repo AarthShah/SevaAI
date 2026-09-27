@@ -26,67 +26,86 @@ class CctvVisionDetector:
     MUNICIPAL_CAMERAS = [
         {
             "camera_id": "CCTV-PN-01",
-            "name": "Shivajinagar Junction Arterial Cam",
+            "name": "MG Road Central Traffic Grid (Live Feed 01)",
             "zone": "Central Ward - Zone 1",
             "latitude": 18.5204,
             "longitude": 73.8567,
-            "address": "Shivajinagar Major Intersection, Pune",
-            "primary_focus": "Traffic & Road Infrastructure",
+            "address": "Mahatma Gandhi Road Arterial Corridor, Pune",
+            "primary_focus": "Traffic Flow & Road Surface Quality",
             "sample_snapshot": "/sample_evidence/pothole.jpg",
-            "default_defect": "POTHOLE",
-            "resolution": "1080p 60fps",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
+            "default_defect": "NORMAL",
+            "resolution": "4K 60fps UltraHD",
             "status": "LIVE_MONITORING"
         },
         {
             "camera_id": "CCTV-PN-02",
-            "name": "Mandai Central Produce Market Cam",
+            "name": "Central Promenade Surveillance Grid (Live Feed 02)",
             "zone": "Market Yard - Zone 3",
             "latitude": 18.5280,
             "longitude": 73.8650,
-            "address": "Mandai Wholesale Market Perimeter, Pune",
-            "primary_focus": "Solid Waste & Sanitation",
+            "address": "Market Central Promenade & Walkway, Pune",
+            "primary_focus": "Public Realm & Cleanliness Monitoring",
             "sample_snapshot": "/sample_evidence/garbage.jpg",
-            "default_defect": "GARBAGE_ACCUMULATION",
-            "resolution": "4K 30fps",
-            "status": "LIVE_MONITORING"
-        },
-        {
-            "camera_id": "CCTV-PN-03",
-            "name": "Mutha Riverbank Distribution Hub",
-            "zone": "Deccan Utility Corridor - Zone 2",
-            "latitude": 18.5150,
-            "longitude": 73.8500,
-            "address": "River Road Main Pipeline Sluice, Pune",
-            "primary_focus": "Water Infrastructure & Sewerage",
-            "sample_snapshot": "/sample_evidence/water_leak.jpg",
-            "default_defect": "WATER_PIPELINE_BURST",
+            "video_url": "/sample_evidence/cctv_feed_2.mp4",
+            "default_defect": "NORMAL",
             "resolution": "1080p 60fps",
             "status": "LIVE_MONITORING"
         },
         {
+            "camera_id": "CCTV-PN-03",
+            "name": "Shivajinagar Junction (Defect Test Feed)",
+            "zone": "Deccan Utility Corridor - Zone 2",
+            "latitude": 18.5150,
+            "longitude": 73.8500,
+            "address": "Shivajinagar Junction Arterial Crossing, Pune",
+            "primary_focus": "Road Cavitation & Pothole Detection",
+            "sample_snapshot": "/sample_evidence/pothole.jpg",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
+            "default_defect": "POTHOLE",
+            "resolution": "1080p 60fps",
+            "status": "TEST_FEED"
+        },
+        {
             "camera_id": "CCTV-PN-04",
-            "name": "Outer Bypass Highway KM 14",
-            "zone": "High-Speed Ring Corridor - Zone 5",
-            "latitude": 18.5350,
-            "longitude": 73.8400,
-            "address": "Katraj Bypass Flyover Approach, Pune",
-            "primary_focus": "Streetlighting & Electrical Grid",
-            "sample_snapshot": "/sample_evidence/streetlight.jpg",
-            "default_defect": "STREETLIGHT_OUTAGE",
-            "resolution": "1080p IR NightVision",
-            "status": "LIVE_MONITORING"
+            "name": "Mandai Market Perimeter (Defect Test Feed)",
+            "zone": "Market Yard - Zone 3",
+            "latitude": 18.5280,
+            "longitude": 73.8650,
+            "address": "Mandai Wholesale Market Perimeter, Pune",
+            "primary_focus": "Solid Waste & Sanitation Inspection",
+            "sample_snapshot": "/sample_evidence/garbage.jpg",
+            "video_url": "/sample_evidence/cctv_feed_2.mp4",
+            "default_defect": "GARBAGE_ACCUMULATION",
+            "resolution": "1080p 30fps",
+            "status": "TEST_FEED"
         },
         {
             "camera_id": "CCTV-PN-05",
-            "name": "Swargate Multi-Modal Transit Terminal",
-            "zone": "South Transport Hub - Zone 4",
+            "name": "Riverbank Distribution Hub (Defect Test Feed)",
+            "zone": "Utility Corridor - Zone 4",
             "latitude": 18.5080,
             "longitude": 73.8350,
-            "address": "Swargate Bus Depot North Gate, Pune",
-            "primary_focus": "Drainage & Pedestrian Safety",
+            "address": "River Road Main Pipeline Sluice, Pune",
+            "primary_focus": "Water Infrastructure Leakage Detection",
+            "sample_snapshot": "/sample_evidence/water_leak.jpg",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
+            "default_defect": "WATER_PIPELINE_BURST",
+            "resolution": "1080p 60fps",
+            "status": "TEST_FEED"
+        },
+        {
+            "camera_id": "CCTV-PN-06",
+            "name": "Smart City Safe Corridor (Zero Defects)",
+            "zone": "Central Ward - Zone 1",
+            "latitude": 18.5204,
+            "longitude": 73.8567,
+            "address": "MG Road Main Promenade, Indore",
+            "primary_focus": "Pedestrian Safety & Clean Urban Realm",
             "sample_snapshot": "/sample_evidence/pothole.jpg",
-            "default_defect": "OPEN_DRAINAGE_HAZARD",
-            "resolution": "4K 60fps",
+            "video_url": "/sample_evidence/cctv_feed_1.mp4",
+            "default_defect": "NORMAL",
+            "resolution": "4K 60fps UltraHD",
             "status": "LIVE_MONITORING"
         }
     ]
@@ -111,20 +130,53 @@ class CctvVisionDetector:
         if not cam_info:
             cam_info = cls.MUNICIPAL_CAMERAS[0]
 
-        target_defect = cam_info.get("default_defect", "POTHOLE")
+        target_defect = cam_info.get("default_defect", "NORMAL")
         fn = (filename or "").lower()
 
-        # Filename heuristics if custom image uploaded
-        if "pothole" in fn or "crater" in fn:
-            target_defect = "POTHOLE"
-        elif "garbage" in fn or "trash" in fn or "waste" in fn:
-            target_defect = "GARBAGE_ACCUMULATION"
-        elif "water" in fn or "leak" in fn:
-            target_defect = "WATER_PIPELINE_BURST"
-        elif "street" in fn or "light" in fn or "lamp" in fn:
-            target_defect = "STREETLIGHT_OUTAGE"
-        elif "drain" in fn or "manhole" in fn:
-            target_defect = "OPEN_DRAINAGE_HAZARD"
+        # Filename heuristics if custom image or video uploaded:
+        # ONLY flag explicit defects; do NOT flag general words like 'street', 'light', 'water', 'road'
+        has_pothole = "pothole" in fn or "crater" in fn
+        has_garbage = "garbage" in fn or "trash" in fn or "waste_dump" in fn
+        has_pipe_burst = "pipe_burst" in fn or "pipeline_leak" in fn
+        has_manhole = "open_manhole" in fn or "missing_cover" in fn
+        has_outage = "blackout" in fn or "streetlight_outage" in fn
+
+        if filename is not None and filename != "":
+            if has_pothole:
+                target_defect = "POTHOLE"
+            elif has_garbage:
+                target_defect = "GARBAGE_ACCUMULATION"
+            elif has_pipe_burst:
+                target_defect = "WATER_PIPELINE_BURST"
+            elif has_outage:
+                target_defect = "STREETLIGHT_OUTAGE"
+            elif has_manhole:
+                target_defect = "OPEN_DRAINAGE_HAZARD"
+            else:
+                # Any standard uploaded video (traffic, drive, street, etc.) is classified as NORMAL
+                target_defect = "NORMAL"
+
+        # 2. Check for Normal / Nominal Feed
+        if target_defect in ["NORMAL", "CLEAR", "NONE", "ZERO_DEFECTS", "NOMINAL"]:
+            return {
+                "camera": cam_info,
+                "detection_timestamp": "Real-Time Feed Telemetry Locked",
+                "defect_detected": False,
+                "status": "NOMINAL",
+                "has_defect": False,
+                "primary_issue": "Normal Feed - Zero Defects Detected",
+                "detected_issue": "Normal - Zero Defects Detected",
+                "category": "ALL_CLEAR",
+                "severity": "NONE",
+                "suggested_department": "None Required",
+                "confidence_score": 0.99,
+                "confidence": 0.99,
+                "auto_dispatch_recommended": False,
+                "description": f"Continuous AI computer vision scanning verified normal roadway and infrastructure conditions at {cam_info['address']}. No potholes, garbage accumulation, or pipeline leaks detected.",
+                "detections": [],
+                "box": None,
+                "recommended_action": "No remedial action required. Standard municipal surveillance routine active."
+            }
 
         # 2. Generate Defect-Specific Bounding Boxes & Telemetry
         if target_defect == "POTHOLE":

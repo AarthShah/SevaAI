@@ -77,9 +77,15 @@ async def auto_dispatch_cctv_defect(
     free field squad via Haversine proximity, and dispatches the work order immediately.
     """
     # Resolve camera defaults if missing
-    cam_meta = next((c for c in cctv_detector.get_cameras() if c["camera_id"].upper() == payload.camera_id.upper()), None)
-    
-    defect_type = payload.defect_type or (cam_meta.get("default_defect") if cam_meta else None) or "POTHOLE"
+    cam_meta = next((c for c in cctv_detector.get_cameras() if c.get("camera_id") == payload.camera_id), None)
+    defect_type = payload.defect_type or (cam_meta.get("default_defect") if cam_meta else None) or "NORMAL"
+    if not defect_type or defect_type.upper() in ["NORMAL", "CLEAR", "NONE", "ZERO_DEFECTS"]:
+        return {
+            "status": "CLEAR",
+            "message": "Feed verified normal. Zero defects detected. No work order required.",
+            "ticket_id": None
+        }
+
     severity = payload.severity or (cam_meta.get("severity") if cam_meta else None) or "HIGH"
     address = payload.address or (cam_meta.get("address") if cam_meta else None) or "Smart City Surveillance Zone, MG Road"
     latitude = payload.latitude if payload.latitude is not None else ((cam_meta.get("latitude") if cam_meta else None) or 18.5204)

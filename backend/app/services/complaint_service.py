@@ -90,6 +90,20 @@ class ComplaintService:
             if dept:
                 dept_id = dept.id
 
+        lat_val = None
+        if request.latitude is not None and str(request.latitude).strip():
+            try:
+                lat_val = float(request.latitude)
+            except (ValueError, TypeError):
+                lat_val = 22.7196
+
+        lng_val = None
+        if request.longitude is not None and str(request.longitude).strip():
+            try:
+                lng_val = float(request.longitude)
+            except (ValueError, TypeError):
+                lng_val = 75.8577
+
         complaint = Complaint(
             id=cid,
             citizen_id=citizen_id,
@@ -97,8 +111,8 @@ class ComplaintService:
             issue_type=request.issue_type or request.category,
             description=request.description,
             generated_complaint=request.generated_complaint,
-            latitude=request.latitude,
-            longitude=request.longitude,
+            latitude=lat_val,
+            longitude=lng_val,
             address=request.address or "Location verified via coordinates",
             severity=request.severity.upper() if request.severity else "MEDIUM",
             status="Submitted",

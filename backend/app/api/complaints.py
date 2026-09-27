@@ -147,6 +147,52 @@ def submit_complaint(
         resp.department_name = complaint.department.name
     return resp
 
+@router.get("/reverse-geocode")
+async def reverse_geocode_location(
+    lat: float = Query(..., description="Latitude"),
+    lng: float = Query(..., description="Longitude")
+):
+    """
+    Reverse geocodes latitude/longitude coordinates into a civic street address.
+    """
+    try:
+        import urllib.request
+        import json
+        req = urllib.request.Request(
+            f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1",
+            headers={"User-Agent": "CivicSevaMunicipalApp/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode())
+            display_name = data.get("display_name", "")
+            address_info = data.get("address", {})
+            road = address_info.get("road") or address_info.get("pedestrian") or address_info.get("suburb") or ""
+            city = address_info.get("city") or address_info.get("town") or address_info.get("state_district") or "Indore"
+            postcode = address_info.get("postcode", "")
+
+            clean_addr = f"{road}, {city}" if road else (display_name.split(",")[0] + f", {city}" if display_name else f"Zone Near {city}")
+            if postcode and postcode not in clean_addr:
+                clean_addr += f" - {postcode}"
+
+            return {
+                "address": clean_addr.strip(", "),
+                "full_address": display_name,
+                "city": city,
+                "latitude": lat,
+                "longitude": lng,
+                "verified": True
+            }
+    except Exception:
+        return {
+            "address": f"GPS Pin ({lat:.4f}°N, {lng:.4f}°E), Municipal Ward",
+            "full_address": f"Coordinates: {lat}, {lng}",
+            "city": "Indore",
+            "latitude": lat,
+            "longitude": lng,
+            "verified": False,
+            "fallback": True
+        }
+
 @router.get("", response_model=List[ComplaintResponse])
 def get_complaints(
     status: Optional[str] = Query(None, description="Filter by complaint status"),

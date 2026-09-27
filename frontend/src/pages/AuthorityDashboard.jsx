@@ -13,6 +13,7 @@ import { CivicLogo } from '../components/CivicLogo';
 import { MapViewPage } from './MapViewPage';
 import { CCTVVisionPage } from './CCTVVisionPage';
 import { AnalyticsPage } from './AnalyticsPage';
+import { complaintApi } from '../api/complaintApi';
 
 // 5 Municipal Departments
 const DEPARTMENTS_DATA = [
@@ -82,6 +83,58 @@ const DEPARTMENTS_DATA = [
     jurisdiction: 'Catchment basins, storm culverts, and sewer inspection manholes.'
   }
 ];
+
+// Helper to convert live backend Complaint database objects into AuthorityDashboard issue format
+const mapApiComplaintToIssue = (c) => {
+  const cleanId = c.id ? c.id.replace('#', '') : 'CS1000';
+  const d = new Date(c.created_at);
+  const createdOnDate = isNaN(d.getTime()) ? 'Today' : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const createdOnTime = isNaN(d.getTime()) ? 'Just now' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  // Map category to appropriate civic visual evidence
+  const cat = (c.category || '').toLowerCase();
+  let defaultImg = '/sample_evidence/pothole.jpg';
+  if (cat.includes('garbage') || cat.includes('waste')) defaultImg = '/sample_evidence/garbage.jpg';
+  else if (cat.includes('water') || cat.includes('leak')) defaultImg = '/sample_evidence/water_leak.jpg';
+  else if (cat.includes('light') || cat.includes('electric')) defaultImg = '/sample_evidence/streetlight.jpg';
+  else if (cat.includes('drain') || cat.includes('manhole')) defaultImg = '/sample_evidence/manhole.jpg';
+
+  const evidenceUrls = (c.evidence_list && c.evidence_list.length > 0)
+    ? c.evidence_list.map((e) => e.file_url)
+    : [defaultImg];
+
+  const rawSeverity = (c.severity || 'MEDIUM').toUpperCase();
+  const priority = rawSeverity === 'CRITICAL' || rawSeverity === 'HIGH' ? 'High' : 'Medium';
+
+  let status = c.status || 'Submitted';
+  if (status === 'Draft') status = 'Submitted';
+
+  const deptName = c.department_name || (c.department ? c.department.name : 'Municipal Road Department');
+  const isRecent = !isNaN(d.getTime()) && (Date.now() - d.getTime()) < (24 * 3600 * 1000);
+
+  return {
+    id: cleanId,
+    title: c.title || (c.issue_type ? c.issue_type.replace(/_/g, ' ') : (c.category ? c.category.replace(/_/g, ' ') : 'Civic Issue')),
+    location: c.address || 'Indore Urban Ward',
+    priority: priority,
+    department: deptName,
+    departmentId: c.department_id ? String(c.department_id) : 'ROAD_DEPT',
+    status: status,
+    assignedTo: c.assigned_officer_name || null,
+    squad: c.assigned_officer_name ? (c.assigned_officer_name.includes('Patil') ? 'Field Squad A' : 'Field Squad B') : null,
+    createdOnDate,
+    createdOnTime,
+    isLiveReport: isRecent,
+    reportedBy: c.citizen_id ? `Citizen (#${c.citizen_id})` : 'Citizen (via Web Portal)',
+    description: c.description || 'Civic infrastructure defect reported by resident.',
+    image: evidenceUrls[0] || defaultImg,
+    evidenceGallery: evidenceUrls,
+    extraEvidenceCount: Math.max(0, evidenceUrls.length - 1),
+    aiDistanceKm: c.officer_distance_km !== null && c.officer_distance_km !== undefined ? c.officer_distance_km : 0.8,
+    aiConfidence: c.ai_confidence ? `${Math.round(c.ai_confidence * 100)}%` : '92%',
+    aiReasoning: c.grounded_explanation || c.severity_reason || 'AI Vision & NLP matched to responsible municipal department based on civic infrastructure heuristics.'
+  };
+};
 
 // Baseline issues with real photos
 const DEFAULT_ISSUES = [
@@ -347,10 +400,68 @@ export const AuthorityDashboard = () => {
     else if (t === 'SETTINGS') setActiveNav('settings');
     else setActiveNav('triage');
 
-    if (searchParams.get('search')) {
-      setSearchQuery(searchParams.get('search'));
+    const searchArg = searchParams.get('search');
+    if (searchArg) {
+      const clean = searchArg.replace('#', '');
+      setSearchQuery(clean);
+      setSelectedIssueId(clean);
+      setSelectedRows([clean]);
+      setCurrentPage(1);
+      setActiveTab('All Issues');
+      setDeptFilter('All');
+      setPriorityFilter('All');
+      setActiveNav('triage');
     }
   }, [searchParams]);
+
+  // ============================================================
+  // LIVE ISSUES SYNC FROM BACKEND DATABASE
+  // Polls backend /api/complaints so newly submitted issues appear immediately
+  // ============================================================
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchAndSyncIssues = async (manual = false) => {
+    if (manual) setIsRefreshing(true);
+    try {
+      const liveComplaints = await complaintApi.getComplaints();
+      if (Array.isArray(liveComplaints) && liveComplaints.length > 0) {
+        const mappedLiveIssues = liveComplaints.map(mapApiComplaintToIssue);
+
+        // Sort descending so highest / newest ticket number appears at the top of Page 1
+        mappedLiveIssues.sort((a, b) => {
+          const numA = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
+          const numB = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
+          return numB - numA;
+        });
+
+        setIssues((prev) => {
+          const prevIds = new Set(prev.map((p) => p.id.replace('#', '')));
+          const newlyDiscovered = mappedLiveIssues.filter((m) => !prevIds.has(m.id.replace('#', '')));
+          if (newlyDiscovered.length > 0 && !manual) {
+            showToast(`🚨 New Citizen Report: #${newlyDiscovered[0].id} (${newlyDiscovered[0].title}) received in queue.`);
+          }
+
+          const liveIds = new Set(mappedLiveIssues.map((m) => m.id.replace('#', '')));
+          const nonDupePrev = prev.filter((p) => !liveIds.has(p.id.replace('#', '')));
+          return [...mappedLiveIssues, ...nonDupePrev];
+        });
+
+        if (manual) showToast(`Synced ${liveComplaints.length} live issues from municipal database.`);
+      }
+    } catch (err) {
+      console.warn('Could not sync live complaints from backend', err);
+    } finally {
+      if (manual) setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSyncIssues();
+    const interval = setInterval(() => {
+      fetchAndSyncIssues();
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
 
   // ============================================================
   // 1-MINUTE REMEDIATION COUNTDOWN ENGINE (60 Seconds Work Simulation)
@@ -1036,6 +1147,17 @@ export const AuthorityDashboard = () => {
                   <option value="Medium">Medium Priority</option>
                   <option value="Low">Low Priority</option>
                 </select>
+
+                <button
+                  type="button"
+                  onClick={() => fetchAndSyncIssues(true)}
+                  disabled={isRefreshing}
+                  className="px-3 py-2 border border-slate-300 rounded bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                  title="Sync latest live complaints from Municipal Database"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-blue-800 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
+                </button>
               </div>
 
               {/* Bulk Actions Bar if any row is checked */}
@@ -1135,7 +1257,14 @@ export const AuthorityDashboard = () => {
                             </td>
 
                             <td className="px-3 py-3 font-mono font-semibold text-blue-800">
-                              {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
+                              <div className="flex items-center gap-1.5">
+                                <span>{issue.id.startsWith('#') ? issue.id : `#${issue.id}`}</span>
+                                {issue.isLiveReport && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                    LIVE
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td className="px-4 py-3">

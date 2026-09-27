@@ -98,20 +98,67 @@ export const ReportIssuePage = () => {
   const [submissionResult, setSubmissionResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Detect location via browser GPS if available
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLatitude(pos.coords.latitude);
-          setLongitude(pos.coords.longitude);
-        },
-        () => {
-          // Keep default Indore coordinates
-        },
-        { timeout: 4000 }
-      );
+  // GPS Location states
+  const [isLocating, setIsLocating] = useState(false);
+  const [isGpsLocked, setIsGpsLocked] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsNotice, setGpsNotice] = useState(null);
+
+  // Robust GPS Location detection via browser Geolocation + Backend Reverse Geocoding
+  const acquireCurrentLocation = (manual = false) => {
+    if (!navigator.geolocation) {
+      setGpsNotice('Geolocation is not supported by your browser. Please enter location manually.');
+      return;
     }
+
+    setIsLocating(true);
+    setGpsNotice(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = Math.round(pos.coords.accuracy || 12);
+        setLatitude(lat);
+        setLongitude(lng);
+        setGpsAccuracy(acc);
+        setIsGpsLocked(true);
+
+        try {
+          const geo = await complaintApi.reverseGeocode(lat, lng);
+          if (geo && geo.address) {
+            setAddress(geo.address);
+            if (manual) {
+              setGpsNotice(`✓ Location verified via device GPS: ${geo.address} (±${acc}m accuracy)`);
+            }
+          } else {
+            setAddress(`Live GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+          }
+        } catch {
+          setAddress(`Live GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        let msg = 'Could not access GPS location. Please check browser permissions or type address manually.';
+        if (err.code === 1) msg = 'Location permission was denied by browser. Please allow location access or type address.';
+        else if (err.code === 2) msg = 'Position unavailable. Please type address manually.';
+        else if (err.code === 3) msg = 'Location request timed out. Please try again or type address.';
+        setGpsNotice(msg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  // Attempt initial GPS lock on mount
+  useEffect(() => {
+    acquireCurrentLocation(false);
   }, []);
 
   // Handle URL preset if passed
@@ -436,6 +483,49 @@ export const ReportIssuePage = () => {
               ))}
             </div>
           </div>
+
+          {/* Location & GPS Detection Card */}
+          <div className="border border-slate-200 rounded-md p-4 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className={`p-2.5 rounded-md flex-shrink-0 ${isGpsLocked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900">Incident Location</span>
+                  {isGpsLocked ? (
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>GPS Locked (±{gpsAccuracy}m)</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      Standard Urban Area
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-800 font-semibold text-xs leading-snug">{address}</p>
+                <p className="text-[11px] text-slate-400">
+                  Coordinates: {typeof latitude === 'number' ? latitude.toFixed(4) : latitude}°N, {typeof longitude === 'number' ? longitude.toFixed(4) : longitude}°E
+                </p>
+                {gpsNotice && (
+                  <p className="text-[11px] text-blue-700 font-medium pt-0.5">{gpsNotice}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => acquireCurrentLocation(true)}
+                disabled={isLocating}
+                className="px-3 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                <span>{isLocating ? 'Acquiring GPS...' : 'Detect My Live Location'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -529,11 +619,21 @@ export const ReportIssuePage = () => {
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Detected Location</span>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-slate-800 font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 block text-[11px]">Incident Location</span>
+                      {isGpsLocked && (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          GPS Locked (±{gpsAccuracy}m)
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 text-slate-900 font-semibold">
+                      <MapPin className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
                       <span className="truncate">{address}</span>
                     </div>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      {typeof latitude === 'number' ? latitude.toFixed(4) : latitude}°N, {typeof longitude === 'number' ? longitude.toFixed(4) : longitude}°E
+                    </span>
                   </div>
                 </div>
 
@@ -547,37 +647,76 @@ export const ReportIssuePage = () => {
                   </p>
                 </div>
 
-                {/* Location Edit Option */}
-                {isEditingLocation ? (
-                  <div className="border border-slate-200 p-3 rounded space-y-2 bg-slate-50">
-                    <label className="font-semibold text-slate-800 block">
-                      Edit Location:
-                    </label>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded text-xs text-slate-900"
-                      placeholder="Enter street or area name"
-                    />
+                {/* Location Quick Controls */}
+                <div className="border border-slate-200 rounded p-3 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-800">
+                      Location Verification
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setIsEditingLocation(false)}
-                      className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 rounded font-medium text-[11px] text-slate-800"
+                      onClick={() => acquireCurrentLocation(true)}
+                      disabled={isLocating}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-blue-900 border border-slate-300 rounded font-medium text-[11px] flex items-center gap-1 shadow-sm transition disabled:opacity-50"
                     >
-                      Save Location
+                      <RefreshCw className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
+                      <span>{isLocating ? 'Detecting GPS...' : '📍 Use Live GPS'}</span>
                     </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingLocation(true)}
-                    className="text-blue-800 hover:underline font-medium text-xs flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    <span>Edit location</span>
-                  </button>
-                )}
+
+                  {isEditingLocation ? (
+                    <div className="space-y-2 pt-1">
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded text-xs text-slate-900 bg-white"
+                        placeholder="Enter street, colony, or area name"
+                      />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-slate-500">Quick landmarks:</span>
+                        {['MG Road, Indore', 'Station Market Road', 'Sector 3 Colony', 'Shivajinagar Crossing'].map((lm) => (
+                          <button
+                            key={lm}
+                            type="button"
+                            onClick={() => { setAddress(lm); setIsEditingLocation(false); }}
+                            className="px-2 py-0.5 bg-white border border-slate-200 hover:border-blue-600 rounded text-[10px] text-slate-700"
+                          >
+                            {lm}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLocation(false)}
+                          className="px-3 py-1 bg-blue-800 hover:bg-blue-900 text-white rounded font-medium text-[11px]"
+                        >
+                          Confirm Location
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLocation(false)}
+                          className="px-2.5 py-1 text-slate-600 hover:underline text-[11px]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-500">Need to adjust address manually?</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingLocation(true)}
+                        className="text-blue-800 hover:underline font-medium text-[11px] flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit manually</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -681,14 +820,32 @@ export const ReportIssuePage = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
                 <span className="text-slate-500">Location:</span>
                 {isEditingDetails ? (
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
-                  />
+                  <div className="flex items-center gap-1.5 w-full sm:w-80 mt-1 sm:mt-0">
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="p-1.5 border border-slate-300 rounded text-slate-900 text-xs flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => acquireCurrentLocation(true)}
+                      disabled={isLocating}
+                      title="Detect device GPS"
+                      className="p-1.5 border border-slate-300 bg-slate-50 hover:bg-slate-100 rounded text-blue-900"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 ) : (
-                  <span className="font-semibold text-slate-900">{address}</span>
+                  <div className="flex items-center gap-1.5">
+                    {isGpsLocked && (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                        GPS
+                      </span>
+                    )}
+                    <span className="font-semibold text-slate-900">{address}</span>
+                  </div>
                 )}
               </div>
 
@@ -812,6 +969,14 @@ export const ReportIssuePage = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Link
+              to={`/authority?search=${submissionResult?.id || 'CS1009'}`}
+              className="w-full sm:w-auto px-5 py-2.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <span>View in Municipal Portal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+
             <Link
               to={`/track/${submissionResult?.id || 'CS1009'}`}
               className="w-full sm:w-auto px-5 py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"

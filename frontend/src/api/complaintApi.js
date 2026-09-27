@@ -28,6 +28,14 @@ export const complaintApi = {
     const res = await api.get('/complaints', { params });
     return res.data;
   },
+  reverseGeocode: async (lat, lng) => {
+    try {
+      const res = await api.get('/complaints/reverse-geocode', { params: { lat, lng } });
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
   getComplaintById: async (id) => {
     const res = await api.get(`/complaints/${id}`);
     return res.data;

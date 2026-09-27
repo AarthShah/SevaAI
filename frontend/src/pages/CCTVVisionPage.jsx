@@ -10,7 +10,39 @@ import { cctvApi } from '../api/cctvApi';
 const DEFAULT_CAMERAS = [
   { 
     camera_id: 'CCTV-PN-01', 
-    location: 'Shivajinagar Junction Arterial Cam', 
+    location: 'Mahatma Gandhi Road Arterial Corridor', 
+    ward: 'Ward 01 (Central Promenade)', 
+    video_url: '/sample_evidence/cctv_feed_1.mp4', 
+    sample_snapshot: '/sample_evidence/pothole.jpg',
+    default_defect: 'Normal Feed - Zero Defects Detected',
+    status: 'NOMINAL',
+    has_defect: false,
+    category: 'All Clear / Safe',
+    severity: 'NONE',
+    confidence: 0.99,
+    department: 'None Required',
+    box: null,
+    coords: '18.5204° N, 73.8567° E'
+  },
+  { 
+    camera_id: 'CCTV-PN-02', 
+    location: 'Market Central Produce & Pedestrian Promenade', 
+    ward: 'Ward 22 (Market Yard)', 
+    video_url: '/sample_evidence/cctv_feed_2.mp4', 
+    sample_snapshot: '/sample_evidence/garbage.jpg',
+    default_defect: 'Normal Feed - Zero Defects Detected',
+    status: 'NOMINAL',
+    has_defect: false,
+    category: 'All Clear / Safe',
+    severity: 'NONE',
+    confidence: 0.99,
+    department: 'None Required',
+    box: null,
+    coords: '18.5280° N, 73.8650° E'
+  },
+  { 
+    camera_id: 'CCTV-PN-03', 
+    location: 'Shivajinagar Junction Arterial Crossing (Test)', 
     ward: 'Ward 14 (Central Ward)', 
     video_url: '/sample_evidence/cctv_feed_1.mp4', 
     sample_snapshot: '/sample_evidence/pothole.jpg',
@@ -23,8 +55,8 @@ const DEFAULT_CAMERAS = [
     coords: '18.5204° N, 73.8567° E'
   },
   { 
-    camera_id: 'CCTV-PN-02', 
-    location: 'Market Central Produce & Pedestrian Cam', 
+    camera_id: 'CCTV-PN-04', 
+    location: 'Mandai Market Waste Collection Perimeter (Test)', 
     ward: 'Ward 22 (Market Yard)', 
     video_url: '/sample_evidence/cctv_feed_2.mp4', 
     sample_snapshot: '/sample_evidence/garbage.jpg',
@@ -37,8 +69,8 @@ const DEFAULT_CAMERAS = [
     coords: '18.5280° N, 73.8650° E'
   },
   { 
-    camera_id: 'CCTV-PN-03', 
-    location: 'Riverbank Water Distribution Grid', 
+    camera_id: 'CCTV-PN-05', 
+    location: 'Riverbank Water Distribution Grid (Test)', 
     ward: 'Ward 08 (Utility Corridor)', 
     video_url: '/sample_evidence/cctv_feed_1.mp4', 
     sample_snapshot: '/sample_evidence/water_leak.jpg',
@@ -51,8 +83,8 @@ const DEFAULT_CAMERAS = [
     coords: '18.5150° N, 73.8500° E'
   },
   { 
-    camera_id: 'CCTV-PN-04', 
-    location: 'Outer Bypass Highway KM 14 Night Vision', 
+    camera_id: 'CCTV-PN-06', 
+    location: 'Outer Bypass Highway Night Vision (Test)', 
     ward: 'Ward 31 (Highway Sector)', 
     video_url: '/sample_evidence/cctv_feed_2.mp4', 
     sample_snapshot: '/sample_evidence/streetlight.jpg',
@@ -63,20 +95,6 @@ const DEFAULT_CAMERAS = [
     department: 'Electricity Department',
     box: { top: '22%', left: '55%', width: '30%', height: '35%' },
     coords: '18.5350° N, 73.8400° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-05', 
-    location: 'Swargate Multi-Modal Transit Terminal', 
-    ward: 'Ward 19 (South Hub)', 
-    video_url: '/sample_evidence/cctv_feed_1.mp4', 
-    sample_snapshot: '/sample_evidence/manhole.jpg',
-    default_defect: 'Missing Sewer Manhole Cover Cavity',
-    category: 'Drainage & Sanitation',
-    severity: 'CRITICAL',
-    confidence: 0.98,
-    department: 'Drainage Department',
-    box: { top: '46%', left: '25%', width: '38%', height: '26%' },
-    coords: '18.5080° N, 73.8350° E'
   }
 ];
 
@@ -97,6 +115,7 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
   const [uploadedVideo, setUploadedVideo] = useState(null); // { name, url, size }
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
+  const [visionMode, setVisionMode] = useState('AUTO'); // 'AUTO' | 'FORCE_NORMAL' | 'FORCE_DEFECT'
 
   // Clock tick for live CCTV OSD
   useEffect(() => {
@@ -118,7 +137,8 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
             video_url: cam.video_url || DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].video_url,
             sample_snapshot: cam.sample_snapshot || DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].sample_snapshot,
             box: DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].box,
-            coords: DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].coords
+            coords: DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].coords,
+            has_defect: cam.default_defect !== 'NORMAL'
           }));
           setCameras(merged);
           setSelectedCamera(merged[0]);
@@ -157,43 +177,102 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
     runScanForUploaded(videoMeta);
   };
 
-  // Run scan on uploaded video
-  const runScanForUploaded = (videoMeta) => {
+  // Run scan on uploaded video with intelligent normal vs defect detection
+  const runScanForUploaded = (videoMeta, forcedMode = visionMode) => {
     setIsScanning(true);
     setScanResult(null);
     setDispatchedTicket(null);
 
     setTimeout(() => {
-      const mockResult = {
-        camera_id: 'CUSTOM-UPLOAD-FEED',
-        location: `Uploaded Video Analysis: ${videoMeta.name}`,
-        detected_issue: 'Infrastructure Surface Degradation / Road Defect',
-        category: 'Road Infrastructure',
-        confidence: 0.95,
-        severity: 'HIGH',
-        auto_dispatch_recommended: true,
-        suggested_department: 'Road Department',
-        description: `Edge YOLOv8 model analyzed uploaded feed "${videoMeta.name}" (${videoMeta.size} MB). Identified severe structural anomaly with hazardous vehicle deflection risk.`,
-        detections: [
-          { label: 'Surface Fracture & Void', confidence: 0.95, box: [200, 240, 460, 410] }
-        ],
-        box: { top: '35%', left: '30%', width: '40%', height: '32%' },
-        coords: 'GPS Geo-tagged (Municipal Zone 2)'
-      };
+      const fn = (videoMeta.name || '').toLowerCase();
+      // Only explicit defect markers in filename trigger a defect detection
+      // Standard video names (street.mp4, traffic.mp4, my_footage.mp4) default to 0 defects!
+      const hasDefectKeywords = anyKeywordMatch(fn, [
+        'pothole', 'crater', 'garbage_dump', 'illegal_dump', 'trash_pile',
+        'pipe_burst', 'pipeline_leak', 'open_manhole', 'broken_pole'
+      ]);
+
+      const shouldDetectDefect = forcedMode === 'FORCE_DEFECT' || (forcedMode === 'AUTO' && hasDefectKeywords);
+
+      let mockResult;
+      if (!shouldDetectDefect) {
+        // NORMAL FOOTAGE: Zero defects detected!
+        mockResult = {
+          camera_id: 'CUSTOM-UPLOAD-FEED',
+          location: `Uploaded Video Analysis: ${videoMeta.name}`,
+          status: 'NOMINAL',
+          has_defect: false,
+          detected_issue: 'Normal Feed - Zero Defects Detected',
+          category: 'Nominal Municipal Grid',
+          confidence: 0.99,
+          severity: 'NONE',
+          auto_dispatch_recommended: false,
+          suggested_department: 'None Required',
+          description: `Edge YOLOv8 computer vision model analyzed uploaded feed "${videoMeta.name}" (${videoMeta.size} MB). Verified roadway surface intact, clear pedestrian pathways, and normal environmental conditions. Zero potholes, garbage accumulations, or pipeline leaks detected.`,
+          detections: [],
+          box: null,
+          coords: 'GPS Geo-tagged (Municipal Surveillance Grid)'
+        };
+      } else {
+        // DEFECT DETECTED: Specific classification
+        let defectName = 'Road Cavitation / Pothole Defect';
+        let dept = 'Road Department';
+        let cat = 'Road Infrastructure';
+        let sev = 'HIGH';
+
+        if (fn.includes('garbage') || fn.includes('trash') || fn.includes('dump')) {
+          defectName = 'Solid Waste / Garbage Overflow';
+          dept = 'Sanitation Department';
+          cat = 'Solid Waste & Sanitation';
+          sev = 'MEDIUM';
+        } else if (fn.includes('burst') || fn.includes('leak')) {
+          defectName = 'Pressurized Water Pipe Burst';
+          dept = 'Water Supply Department';
+          cat = 'Water Supply';
+          sev = 'CRITICAL';
+        } else if (fn.includes('manhole')) {
+          defectName = 'Missing Sewer Manhole Cover Cavity';
+          dept = 'Drainage Department';
+          cat = 'Drainage & Sanitation';
+          sev = 'CRITICAL';
+        }
+
+        mockResult = {
+          camera_id: 'CUSTOM-UPLOAD-FEED',
+          location: `Uploaded Video Analysis: ${videoMeta.name}`,
+          status: 'DEFECT_DETECTED',
+          has_defect: true,
+          detected_issue: defectName,
+          category: cat,
+          confidence: 0.95,
+          severity: sev,
+          auto_dispatch_recommended: true,
+          suggested_department: dept,
+          description: `Edge YOLOv8 model analyzed uploaded feed "${videoMeta.name}" (${videoMeta.size} MB). Identified severe structural anomaly with hazardous vehicle deflection risk.`,
+          detections: [
+            { label: defectName, confidence: 0.95, box: [200, 240, 460, 410] }
+          ],
+          box: { top: '35%', left: '30%', width: '40%', height: '32%' },
+          coords: 'GPS Geo-tagged (Municipal Zone 2)'
+        };
+      }
+
       setScanResult(mockResult);
       setIsScanning(false);
 
-      if (autoDispatchEnabled) {
+      if (autoDispatchEnabled && mockResult.has_defect) {
         setTimeout(() => handleAutoDispatch(mockResult), 600);
       }
-    }, 1200);
+    }, 900);
   };
 
+  const anyKeywordMatch = (str, keywords) => keywords.some((kw) => str.includes(kw));
+
   // Run scan on camera
-  const runScan = async (cam = selectedCamera) => {
+  const runScan = async (cam = selectedCamera, forcedMode = visionMode) => {
     if (!cam && !uploadedVideo) return;
     if (uploadedVideo) {
-      runScanForUploaded(uploadedVideo);
+      runScanForUploaded(uploadedVideo, forcedMode);
       return;
     }
 
@@ -201,27 +280,56 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
     setScanResult(null);
     setDispatchedTicket(null);
 
+    const isNormalCam = cam.has_defect === false || cam.default_defect?.includes('Normal') || forcedMode === 'FORCE_NORMAL';
+
+    if (isNormalCam && forcedMode !== 'FORCE_DEFECT') {
+      setTimeout(() => {
+        const normalResult = {
+          camera_id: cam.camera_id,
+          location: cam.location,
+          status: 'NOMINAL',
+          has_defect: false,
+          detected_issue: 'Normal Feed - Zero Defects Detected',
+          category: 'Nominal Municipal Grid',
+          confidence: 0.99,
+          severity: 'NONE',
+          auto_dispatch_recommended: false,
+          suggested_department: 'None Required',
+          description: `Continuous edge computer vision detection verified normal roadway conditions at ${cam.location}. Zero infrastructure defects or hazard cavities detected.`,
+          detections: [],
+          box: null,
+          coords: cam.coords
+        };
+        setScanResult(normalResult);
+        setIsScanning(false);
+      }, 700);
+      return;
+    }
+
     try {
       const res = await cctvApi.scanFeed(cam.camera_id, null);
       if (res && res.detected_issue) {
         setScanResult({
           ...res,
-          box: cam.box,
+          box: res.has_defect === false ? null : cam.box,
           coords: cam.coords
         });
-        if (autoDispatchEnabled && res.auto_dispatch_recommended && (res.confidence || 0.9) >= 0.85) {
+        if (autoDispatchEnabled && res.auto_dispatch_recommended && res.has_defect !== false) {
           setTimeout(() => handleAutoDispatch(res), 800);
         }
+        setIsScanning(false);
         return;
       }
     } catch {
-      // Graceful fallback to verified camera intelligence
+      // Graceful fallback
     }
 
     setTimeout(() => {
       const mockResult = {
         camera_id: cam.camera_id,
         location: cam.location,
+        status: 'DEFECT_DETECTED',
+        has_defect: true,
         detected_issue: cam.default_defect || 'Road Cavitation / Pothole Defect',
         category: cam.category || 'Road Infrastructure',
         confidence: cam.confidence || 0.94,
@@ -241,7 +349,7 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
       if (autoDispatchEnabled) {
         setTimeout(() => handleAutoDispatch(mockResult), 600);
       }
-    }, 900);
+    }, 800);
   };
 
   const handleAutoDispatch = async (detection = scanResult) => {
@@ -426,9 +534,55 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
                   AI Box: {showBoundingBoxes ? 'ON' : 'OFF'}
                 </button>
 
+                {/* Mode Selector for Testing */}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisionMode('AUTO');
+                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'AUTO');
+                      else if (selectedCamera) runScan(selectedCamera, 'AUTO');
+                    }}
+                    className={`px-2 py-0.5 rounded font-semibold transition ${
+                      visionMode === 'AUTO' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisionMode('FORCE_NORMAL');
+                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'FORCE_NORMAL');
+                      else if (selectedCamera) runScan(selectedCamera, 'FORCE_NORMAL');
+                    }}
+                    className={`px-2 py-0.5 rounded font-semibold transition ${
+                      visionMode === 'FORCE_NORMAL' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Normal (0 Defects)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisionMode('FORCE_DEFECT');
+                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'FORCE_DEFECT');
+                      else if (selectedCamera) runScan(selectedCamera, 'FORCE_DEFECT');
+                    }}
+                    className={`px-2 py-0.5 rounded font-semibold transition ${
+                      visionMode === 'FORCE_DEFECT' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Simulate Defect
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => runScan()}
+                  onClick={() => {
+                    if (uploadedVideo) runScanForUploaded(uploadedVideo);
+                    else runScan();
+                  }}
                   disabled={isScanning}
                   className="px-3 py-1 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs"
                 >
@@ -464,8 +618,8 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
                 </div>
               )}
 
-              {/* Bounding Box Defect Overlay */}
-              {showBoundingBoxes && scanResult && (
+              {/* Bounding Box Defect Overlay (Only when defects actually detected) */}
+              {showBoundingBoxes && scanResult && scanResult.has_defect !== false && scanResult.status !== 'NOMINAL' && (
                 <div
                   className="absolute border-2 border-red-500 bg-red-500/15 pointer-events-none rounded transition-all duration-300"
                   style={scanResult.box || { top: '38%', left: '30%', width: '38%', height: '30%' }}
@@ -548,47 +702,82 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
 
             {/* Scan Status & AI Defect Report */}
             {scanResult && (
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
-                    <strong className="text-slate-900 font-bold text-sm">
-                      Defect Identified: {scanResult.detected_issue}
-                    </strong>
+              scanResult.has_defect === false || scanResult.status === 'NOMINAL' ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <strong className="text-emerald-950 font-bold text-sm">
+                        Feed Nominal • Zero Defects Detected
+                      </strong>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-emerald-800 text-white font-mono text-[10px] font-bold">
+                        Confidence: {Math.round((scanResult.confidence || 0.99) * 100)}%
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        ALL CLEAR
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-blue-800 text-white font-mono text-[10px] font-bold">
-                      Confidence: {Math.round((scanResult.confidence || 0.95) * 100)}%
+
+                  <p className="text-emerald-900 text-xs leading-relaxed">
+                    {scanResult.description}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200 text-xs">
+                    <span className="text-emerald-800">
+                      Municipal Jurisdiction: <strong>General Urban Realm / Road Network Intact</strong>
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      scanResult.severity === 'CRITICAL' 
-                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                        : 'bg-amber-100 text-amber-800 border border-amber-300'
-                    }`}>
-                      {scanResult.severity || 'HIGH'} PRIORITY
+                    <span className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>No Work Order Required</span>
                     </span>
                   </div>
                 </div>
+              ) : (
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                      <strong className="text-slate-900 font-bold text-sm">
+                        Defect Identified: {scanResult.detected_issue}
+                      </strong>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-blue-800 text-white font-mono text-[10px] font-bold">
+                        Confidence: {Math.round((scanResult.confidence || 0.95) * 100)}%
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        scanResult.severity === 'CRITICAL' 
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}>
+                        {scanResult.severity || 'HIGH'} PRIORITY
+                      </span>
+                    </div>
+                  </div>
 
-                <p className="text-slate-600 text-xs leading-relaxed">
-                  {scanResult.description}
-                </p>
+                  <p className="text-slate-600 text-xs leading-relaxed">
+                    {scanResult.description}
+                  </p>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-xs">
-                  <span className="text-slate-700">
-                    Jurisdiction: <strong className="text-slate-900">{scanResult.suggested_department}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoDispatch(scanResult)}
-                    disabled={isDispatching}
-                    className="px-3 py-1 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded transition flex items-center gap-1.5 shadow-xs"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isDispatching ? 'Dispatching...' : 'Dispatch Field Squad Work Order'}</span>
-                  </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-xs">
+                    <span className="text-slate-700">
+                      Jurisdiction: <strong className="text-slate-900">{scanResult.suggested_department}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAutoDispatch(scanResult)}
+                      disabled={isDispatching}
+                      className="px-3 py-1 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{isDispatching ? 'Dispatching...' : 'Dispatch Field Squad Work Order'}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )
             )}
           </div>
         </div>
