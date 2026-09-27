@@ -23,7 +23,7 @@ from .config import ALLOWED_ORIGINS, UPLOAD_DIR
 from .database.session import engine, SessionLocal
 from .database.base import Base
 from .database.seed_data import seed_database
-from .api import auth, complaints, departments, analytics, agent, upload, notifications, officers, cctv
+from .api import auth, complaints, departments, analytics, agent, upload, notifications, officers, cctv, assistant
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,7 +57,7 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 KNOWN_API_PREFIXES = (
     "/auth", "/complaints", "/departments", "/officers",
-    "/cctv/", "/analytics", "/agent", "/upload", "/notifications"
+    "/cctv/", "/analytics", "/agent", "/upload", "/notifications", "/assistant"
 )
 
 @app.middleware("http")
@@ -98,6 +98,7 @@ app.include_router(analytics.router)
 app.include_router(agent.router)
 app.include_router(upload.router)
 app.include_router(notifications.router)
+app.include_router(assistant.router)
 
 @app.get("/api")
 def api_root():

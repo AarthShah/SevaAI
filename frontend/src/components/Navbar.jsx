@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Menu, X, ArrowLeftRight, Search, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CivicLogo } from './CivicLogo';
+import { AssistantLauncher } from './AssistantLauncher';
 
 export const Navbar = () => {
   const { user, logout, switchDemoRole } = useAuth();
@@ -77,6 +78,9 @@ export const Navbar = () => {
                 <ArrowLeftRight className="w-3 h-3 text-slate-400" />
                 <span className="hidden sm:inline">Citizen View</span>
               </button>
+
+              {/* Contextual CivicSeva Assistant Launcher */}
+              <AssistantLauncher variant="authority" />
 
               {/* Notification Bell */}
               <div className="relative">
@@ -259,6 +263,9 @@ export const Navbar = () => {
               <ArrowLeftRight className="w-3 h-3 text-slate-500" />
               <span>Municipal Portal</span>
             </button>
+
+            {/* Contextual CivicSeva Assistant Launcher */}
+            <AssistantLauncher variant="citizen" />
 
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">

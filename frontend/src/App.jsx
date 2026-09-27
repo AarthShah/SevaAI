@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { AssistantProvider } from './context/AssistantContext';
+import { AssistantPanel } from './components/AssistantPanel';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 
@@ -52,9 +54,12 @@ export const App = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <AssistantProvider>
+          <Router>
+            <AppContent />
+            <AssistantPanel />
+          </Router>
+        </AssistantProvider>
       </NotificationProvider>
     </AuthProvider>
   );

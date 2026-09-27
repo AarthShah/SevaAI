@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
+import { useAssistantContext } from '../context/AssistantContext';
 
 const TRACKING_STEPS = [
   { id: 'Submitted', label: 'Submitted', desc: 'Complaint registered' },
@@ -18,6 +19,12 @@ export const TrackComplaintPage = () => {
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // CivicSeva Contextual Assistant live complaint registration
+  useAssistantContext({
+    pageName: 'TrackComplaintPage',
+    selectedComplaintId: complaint?.id || null
+  });
 
   const fetchComplaint = async (targetId) => {
     if (!targetId) return;

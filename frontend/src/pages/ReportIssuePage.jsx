@@ -4,6 +4,7 @@ import { Upload, MapPin, Check, ArrowRight, RefreshCw, Edit2, FileText, CheckCir
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { useAssistantContext } from '../context/AssistantContext';
 
 const PRESET_ISSUES = [
   {
@@ -103,6 +104,32 @@ export const ReportIssuePage = () => {
   const [isGpsLocked, setIsGpsLocked] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [gpsNotice, setGpsNotice] = useState(null);
+
+  // CivicSeva Contextual Assistant live form registration
+  useAssistantContext({
+    pageName: 'ReportIssuePage',
+    formContext: {
+      active: true,
+      current_step: step,
+      has_image: imageFile !== null || imagePreview !== null,
+      is_analyzing: isAnalyzing,
+      gps_locked: isGpsLocked,
+      ai_analysis_available: analysis !== null && !isAnalyzing,
+      ai_analysis_summary: analysis
+        ? {
+            issue: analysis.issue,
+            category: analysis.category,
+            severity: analysis.severity,
+            department: analysis.department,
+            confidence: analysis.confidence,
+            explanation: analysis.explanation
+          }
+        : null,
+      user_reviewing: step === 3,
+      submission_occurred: step === 4 && submissionResult !== null,
+      submitted_complaint_id: submissionResult?.id || null
+    }
+  });
 
   // Robust GPS Location detection via browser Geolocation + Backend Reverse Geocoding
   const acquireCurrentLocation = (manual = false) => {

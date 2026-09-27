@@ -4,6 +4,7 @@ import { Search, Plus, RefreshCw, Filter, Calendar } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { useAssistantContext } from '../context/AssistantContext';
 
 export const CitizenDashboard = () => {
   const { user } = useAuth();
@@ -14,6 +15,11 @@ export const CitizenDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
+
+  // CivicSeva Contextual Assistant page registration
+  useAssistantContext({
+    pageName: 'CitizenDashboard'
+  });
 
   const loadData = async () => {
     setLoading(true);

@@ -4,8 +4,12 @@ CivicSeva Backend Configuration
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BASE_DIR.parent
+load_dotenv(ROOT_DIR / ".env")
+load_dotenv(BASE_DIR / ".env")
 
 # Database Configuration
 # Fallback to local SQLite if PostgreSQL DATABASE_URL is not set or empty
@@ -60,3 +64,12 @@ SLA_HIGH_HOURS = int(os.getenv("SLA_HIGH_HOURS", "24"))
 SLA_MEDIUM_HOURS = int(os.getenv("SLA_MEDIUM_HOURS", "48"))
 SLA_LOW_HOURS = int(os.getenv("SLA_LOW_HOURS", "72"))
 DEMO_FAST_SLA_SIMULATION = os.getenv("DEMO_FAST_SLA_SIMULATION", "false").lower() == "true"
+
+# LLM & Assistant Configuration
+LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini").strip()
+ASSISTANT_LLM_API_KEY = os.getenv("ASSISTANT_LLM_API_KEY", "").strip() or LLM_API_KEY
+ASSISTANT_LLM_MODEL = os.getenv("ASSISTANT_LLM_MODEL", "").strip() or LLM_MODEL
+ASSISTANT_LLM_BASE_URL = os.getenv("ASSISTANT_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "8"))
+ASSISTANT_MAX_TOKENS = int(os.getenv("ASSISTANT_MAX_TOKENS", "600"))

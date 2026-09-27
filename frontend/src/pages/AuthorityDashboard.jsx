@@ -14,6 +14,7 @@ import { MapViewPage } from './MapViewPage';
 import { CCTVVisionPage } from './CCTVVisionPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { complaintApi } from '../api/complaintApi';
+import { useAssistantContext } from '../context/AssistantContext';
 
 // 5 Municipal Departments
 const DEPARTMENTS_DATA = [
@@ -432,6 +433,7 @@ export const AuthorityDashboard = () => {
   const [drawerTab, setDrawerTab] = useState('Overview'); // 'Overview' | 'Timeline' | 'Location' | 'Work Orders'
   const [isDrawerOpenMobile, setIsDrawerOpenMobile] = useState(false);
 
+
   // Issues, Squads & Active Remediation Timers
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
   const [squads, setSquads] = useState(INITIAL_SQUADS);
@@ -523,6 +525,19 @@ export const AuthorityDashboard = () => {
   const [selectedIssueId, setSelectedIssueId] = useState('CS1039');
   const [selectedRows, setSelectedRows] = useState(['CS1039']);
   const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
+
+  // CivicSeva Contextual Assistant live authority context registration
+  // Only send selected complaint if in triage and user explicitly opened drawer
+  const effectiveSelectedComplaintId = (activeNav === 'triage' && isDrawerOpenMobile)
+    ? selectedIssueId
+    : null;
+
+  useAssistantContext({
+    pageName: 'AuthorityDashboard',
+    activeTab: activeNav,
+    activeSubTab: activeTab,
+    selectedComplaintId: effectiveSelectedComplaintId
+  });
 
   // Filter toolbar state
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
