@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Upload, MapPin, Check, ArrowRight, RefreshCw, Edit2, FileText, CheckCircle2, ChevronRight, X, AlertCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
+import {
+  Upload, MapPin, Check, ArrowRight, RefreshCw, Edit2, FileText, CheckCircle2, ChevronRight, X, AlertCircle, ShieldCheck, ShieldAlert,
+  Copy, Share2, Mail, ExternalLink, Printer, CheckCheck, Clock, User, Phone, Tag, Building, ArrowUpRight
+} from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
@@ -114,6 +117,22 @@ export const ReportIssuePage = () => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
 
+  // Complainant identity details
+  const [complainantName, setComplainantName] = useState(user?.name || 'Aarth Shah');
+  const [complainantPhone, setComplainantPhone] = useState(user?.phone || '+91 98765 43210');
+  const [complainantEmail, setComplainantEmail] = useState(user?.email || 'citizen.report@municipal.gov.in');
+
+  useEffect(() => {
+    if (user?.name) setComplainantName(user.name);
+    if (user?.email) setComplainantEmail(user.email);
+    if (user?.phone) setComplainantPhone(user.phone);
+  }, [user]);
+
+  // Copy status feedback states
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
@@ -176,7 +195,7 @@ export const ReportIssuePage = () => {
           if (geo && geo.address) {
             setAddress(geo.address);
             if (manual) {
-              setGpsNotice(`✓ Location verified via device GPS: ${geo.address} (±${acc}m accuracy)`);
+              setGpsNotice(`Location verified via device GPS: ${geo.address} (±${acc}m accuracy)`);
             }
           } else {
             setAddress(`Live GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
@@ -488,6 +507,93 @@ export const ReportIssuePage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Derive clean docket ID and attributes
+  const rawDocketId = submissionResult?.id || 'CS1042';
+  const cleanDocketId = String(rawDocketId).replace(/^#/, '');
+  const displayDocketId = String(rawDocketId).startsWith('#') ? rawDocketId : `#${rawDocketId}`;
+
+  const finalIssueTitle = issueTitle || submissionResult?.title || analysis?.issue || 'Pothole / Road Damage';
+  const finalCategory = category || submissionResult?.category || analysis?.category || 'Road Infrastructure';
+  const finalDepartment = department || submissionResult?.department_name || analysis?.department || 'Road Department';
+  const finalSeverity = severity || submissionResult?.severity || analysis?.severity || 'MEDIUM';
+  const finalAddress = address || submissionResult?.address || 'MG Road, Indore';
+  const finalLat = typeof latitude === 'number' ? latitude.toFixed(4) : (latitude || '22.7196');
+  const finalLng = typeof longitude === 'number' ? longitude.toFixed(4) : (longitude || '75.8577');
+
+  const targetSLA = finalSeverity === 'CRITICAL' ? '12 Hours' : finalSeverity === 'HIGH' ? '24 Hours' : '48 Hours';
+
+  const forensicsVerdictText = (submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW')
+    ? 'Supervisor Review Required (Digital Forensics Flagged)'
+    : 'Verified Authentic (Digital Forensics Gateway Pass)';
+
+  const liveTrackingUrl = `${window.location.origin}/track/${cleanDocketId}`;
+
+  const registrationTimestamp = new Date().toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  // STRICTLY FORMAL TEXT MESSAGE WITHOUT ANY EMOJIS
+  const formalDocketMessage = `OFFICIAL CIVIC GRIEVANCE REGISTRATION DOCKET
+MUNICIPAL CORPORATION OPERATIONS DIVISION
+============================================================
+Docket Reference ID : ${displayDocketId}
+Complainant Name    : ${complainantName || 'Citizen Complainant'}
+Contact Number      : ${complainantPhone || 'Not Specified'}
+Identified Issue    : ${finalIssueTitle}
+Issue Category      : ${finalCategory}
+Designated Division : ${finalDepartment}
+Assessed Severity   : ${finalSeverity} (Standard SLA: ${targetSLA})
+Incident Location   : ${finalAddress}
+GPS Coordinates     : ${finalLat} N, ${finalLng} E
+Evidence Forensics  : ${forensicsVerdictText}
+Registration Time   : ${registrationTimestamp}
+Current Status      : Lodged and Dispatched to Field Operations
+
+Official Public Tracking Portal:
+${liveTrackingUrl}
+
+Administrative Notice:
+Your civic grievance has been officially registered in the central municipal registry. Operational directives have been routed to the relevant zonal engineering squad for on-site inspection and timely remediation. You may monitor live resolution milestones and photographic evidence via the official portal link above. Please retain this docket reference for all administrative correspondence.
+============================================================`;
+
+  const handleShareWhatsApp = () => {
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(formalDocketMessage)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleEmailDocket = () => {
+    const subject = `Official Civic Grievance Registration Docket ${displayDocketId} - ${finalIssueTitle}`;
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(formalDocketMessage)}`;
+    window.location.href = mailtoUrl;
+  };
+
+  const handleCopyFormalMessage = () => {
+    navigator.clipboard.writeText(formalDocketMessage);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 2500);
+  };
+
+  const handleCopyTrackingLink = () => {
+    navigator.clipboard.writeText(liveTrackingUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyDocketId = () => {
+    navigator.clipboard.writeText(displayDocketId);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2500);
+  };
+
+  const handlePrintDocket = () => {
+    window.print();
   };
 
   return (
@@ -1194,6 +1300,35 @@ export const ReportIssuePage = () => {
             {/* Review Attributes */}
             <div className="space-y-3 divide-y divide-slate-100">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Complainant Name:</span>
+                {isEditingDetails ? (
+                  <input
+                    type="text"
+                    value={complainantName}
+                    onChange={(e) => setComplainantName(e.target.value)}
+                    placeholder="Enter full name"
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded font-semibold text-slate-900 text-xs w-full sm:w-72"
+                  />
+                ) : (
+                  <span className="font-semibold text-slate-900">{complainantName || 'Citizen Complainant'}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
+                <span className="text-slate-500">Contact Number:</span>
+                {isEditingDetails ? (
+                  <input
+                    type="text"
+                    value={complainantPhone}
+                    onChange={(e) => setComplainantPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="mt-1 sm:mt-0 p-1.5 border border-slate-300 rounded text-slate-900 text-xs w-full sm:w-72"
+                  />
+                ) : (
+                  <span className="font-semibold text-slate-700">{complainantPhone || 'Not Specified'}</span>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
                 <span className="text-slate-500">Issue:</span>
                 {isEditingDetails ? (
                   <input
@@ -1356,76 +1491,320 @@ export const ReportIssuePage = () => {
       )}
 
       {/* ============================================================ */}
-      {/* STEP 4: SUBMISSION CONFIRMATION */}
+      {/* ============================================================ */}
+      {/* STEP 4: SUBMISSION CONFIRMATION & DETAILS DOCKET RECEIPT */}
       {/* ============================================================ */}
       {step === 4 && (
-        <div className="bg-white border border-slate-200 rounded-md p-6 sm:p-10 space-y-6 max-w-xl mx-auto text-center">
-          <div className="w-12 h-12 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 mx-auto flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6 text-emerald-700" />
-          </div>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Official Municipal Docket Receipt Card */}
+          <div className="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm space-y-6">
+            {/* Docket Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-lg bg-blue-900 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Building className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                      Municipal Corporation Operations Division
+                    </span>
+                    <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Registration Complete
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+                    Grievance Registration Docket & Investigation Receipt
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Official entry cataloged in the Central Civic Ledger with automated department dispatch.
+                  </p>
+                </div>
+              </div>
 
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              Complaint Registered
-            </span>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-              Complaint #{submissionResult?.id || 'CS1009'}
-            </h2>
-            <p className="text-xs text-slate-500">
-              Your grievance has been lodged on the municipal ledger and routed to the {department}.
-            </p>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded p-4 text-xs text-left space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Status:</span>
-              <StatusBadge status={submissionResult?.status || (authenticityData?.decision_gateway === 'REVIEW' ? 'Review Required' : 'Submitted')} />
+              <div className="flex sm:flex-col items-end justify-between sm:justify-center border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
+                <span className="text-[11px] text-slate-400 font-medium">Docket Reference</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-lg font-mono font-bold text-blue-950 bg-slate-100 px-2.5 py-1 rounded border border-slate-300">
+                    {displayDocketId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyDocketId}
+                    title="Copy Docket Reference ID"
+                    className="p-1.5 border border-slate-300 rounded hover:bg-slate-100 text-slate-600 transition"
+                  >
+                    {copiedId ? <CheckCheck className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+                {copiedId && (
+                  <span className="text-[10px] text-emerald-700 font-medium mt-1">Docket ID Copied</span>
+                )}
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Evidence Verification:</span>
-              <span className={`font-semibold ${submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW' ? 'text-amber-800' : 'text-emerald-700'}`}>
-                {submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW' ? 'Supervisor Review Required' : 'Verified Authentic (Gateway Pass)'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Department:</span>
-              <span className="font-semibold text-slate-900">{department}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Location:</span>
-              <span className="font-semibold text-slate-900 truncate max-w-xs">{address}</span>
-            </div>
-          </div>
 
-          {(submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW') && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded text-left text-xs text-amber-900">
-              <strong>Supervisor Review Active:</strong> Potential synthetic or tampering artifacts were detected during automated forensics. A municipal officer will review the evidence before dispatching field workers.
+            {/* Core Specifications Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-lg p-5 text-xs">
+              <div className="space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <User className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Complainant Name</span>
+                    <span className="font-semibold text-slate-900 text-sm">{complainantName || 'Citizen Complainant'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Phone className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Registered Contact</span>
+                    <span className="font-medium text-slate-800">{complainantPhone || 'Not Specified'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Tag className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Identified Defect (Real Issue)</span>
+                    <span className="font-bold text-blue-950 text-sm">{finalIssueTitle}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <FileText className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Issue Category</span>
+                    <span className="font-medium text-slate-800">{finalCategory}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Building className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Designated Department</span>
+                    <span className="font-semibold text-slate-900">{finalDepartment}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 md:border-l md:border-slate-200 md:pl-5">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Severity & Resolution SLA</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <SeverityBadge severity={finalSeverity} />
+                      <span className="text-[11px] font-medium text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                        Target SLA: {targetSLA}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Clock className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Registration Timestamp</span>
+                    <span className="font-medium text-slate-800">{registrationTimestamp}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Incident Location</span>
+                    <span className="font-semibold text-slate-900 block leading-tight">{finalAddress}</span>
+                    <span className="text-[11px] text-slate-500 font-mono mt-0.5 block">
+                      GPS: {finalLat} N, {finalLng} E {isGpsLocked ? `(Locked ±${gpsAccuracy || 12}m)` : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[11px] text-slate-400 block uppercase tracking-wide">Evidence Forensics</span>
+                    <span className={`font-semibold ${submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW' ? 'text-amber-800' : 'text-emerald-700'}`}>
+                      {forensicsVerdictText}
+                    </span>
+                  </div>
+                </div>
+
+                {imagePreview && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img
+                      src={imagePreview}
+                      alt="Captured evidence thumbnail"
+                      className="w-16 h-12 object-cover rounded border border-slate-300 shadow-xs"
+                    />
+                    <div className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-700 block">Photographic Evidence</span>
+                      <span>Cataloged with SHA256 integrity digest</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link
-              to={`/authority?search=${submissionResult?.id || 'CS1009'}`}
-              className="w-full sm:w-auto px-5 py-2.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <span>View in Municipal Portal</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {/* Supervisor Review Active Warning if applicable */}
+            {(submissionResult?.requires_human_review || authenticityData?.decision_gateway === 'REVIEW') && (
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-semibold">Supervisor Review Active:</strong> Potential synthetic or tampering artifacts were detected during automated forensics inspection. A municipal supervisor will verify the evidence before field squad deployment.
+                </div>
+              </div>
+            )}
 
-            <Link
-              to={`/track/${submissionResult?.id || 'CS1009'}`}
-              className="w-full sm:w-auto px-5 py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
-            >
-              Track Complaint Status
-            </Link>
+            {/* Direct Public Tracking Portal Card */}
+            <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 border border-blue-200 rounded-lg p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                    Direct Public Tracking Portal
+                  </span>
+                  <span className="text-[10px] font-semibold text-blue-800 bg-blue-100/80 px-2 py-0.5 rounded">
+                    Live Link
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  Share this tracking link or retain it to monitor real-time status changes, officer ETA, and photographic completion reports.
+                </p>
+                <div className="pt-1">
+                  <code className="text-xs font-mono text-blue-900 bg-white/90 px-3 py-1.5 rounded border border-blue-200 block truncate max-w-xl">
+                    {liveTrackingUrl}
+                  </code>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleReset}
-              className="w-full sm:w-auto px-5 py-2.5 rounded bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs border border-slate-300 transition"
-            >
-              Report Another Issue
-            </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCopyTrackingLink}
+                  className="px-3.5 py-2 rounded border border-blue-300 bg-white hover:bg-blue-50 text-blue-900 font-medium text-xs transition flex items-center gap-1.5 shadow-sm"
+                >
+                  {copiedLink ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Link Copied' : 'Copy Tracking Link'}</span>
+                </button>
+
+                <Link
+                  to={`/track/${cleanDocketId}`}
+                  className="px-3.5 py-2 rounded bg-blue-900 hover:bg-blue-800 text-white font-medium text-xs transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <span>Open Tracker</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Formal Administrative Message Box (Emoji-Free) */}
+            <div className="border border-slate-200 rounded-lg p-5 bg-white space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    Formal Administrative Docket Notice
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Standardized formal text receipt formatted for official communications, WhatsApp, or email dispatch.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyFormalMessage}
+                  className="px-3 py-1.5 rounded border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition flex items-center gap-1.5 w-fit"
+                >
+                  {copiedMessage ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedMessage ? 'Notice Copied to Clipboard' : 'Copy Formal Notice'}</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <pre className="p-4 bg-slate-900 text-slate-100 font-mono text-[11px] rounded-md overflow-x-auto whitespace-pre-wrap break-words leading-relaxed border border-slate-800 selection:bg-blue-600">
+                  {formalDocketMessage}
+                </pre>
+              </div>
+            </div>
+
+            {/* Dispatch & Sharing Options */}
+            <div className="border border-slate-200 rounded-lg p-5 bg-slate-50 space-y-3">
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                  Dispatch & Sharing Options
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Transmit this formal docket receipt directly through official digital channels.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+                {/* WhatsApp Share */}
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="px-3.5 py-2.5 rounded bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Share on WhatsApp</span>
+                </button>
+
+                {/* Email Docket */}
+                <button
+                  type="button"
+                  onClick={handleEmailDocket}
+                  className="px-3.5 py-2.5 rounded bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Email Docket</span>
+                </button>
+
+                {/* Copy Formal Message */}
+                <button
+                  type="button"
+                  onClick={handleCopyFormalMessage}
+                  className="px-3.5 py-2.5 rounded bg-white hover:bg-slate-100 text-slate-800 font-medium text-xs border border-slate-300 transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  {copiedMessage ? <CheckCheck className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedMessage ? 'Formal Notice Copied' : 'Copy Formal Notice'}</span>
+                </button>
+
+                {/* Print Docket */}
+                <button
+                  type="button"
+                  onClick={handlePrintDocket}
+                  className="px-3.5 py-2.5 rounded bg-white hover:bg-slate-100 text-slate-800 font-medium text-xs border border-slate-300 transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Docket (PDF)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Primary Bottom Navigation Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-slate-200">
+              <Link
+                to={`/track/${cleanDocketId}`}
+                className="w-full sm:w-auto px-6 py-2.5 rounded bg-blue-900 hover:bg-blue-800 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>Track Complaint Status</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+
+              <Link
+                to={`/authority?search=${cleanDocketId}`}
+                className="w-full sm:w-auto px-5 py-2.5 rounded bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>View in Municipal Portal</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full sm:w-auto px-5 py-2.5 rounded bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs border border-slate-300 transition"
+              >
+                Report Another Issue
+              </button>
+            </div>
           </div>
         </div>
       )}
