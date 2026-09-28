@@ -9,6 +9,7 @@ Fully autonomous operations:
 - Autonomous Statutory Escalation Triggering
 """
 
+import json
 import math
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
@@ -173,18 +174,40 @@ class AutonomousAgentEngine:
         dept = db.query(Department).filter(Department.category == category).first()
         dept_id = dept.id if dept else 1
 
-        # 3. Autonomous Proximity Officer Matching & Dispatch
-        officer_match = AutonomousAgentEngine.find_nearest_available_officer(
-            db=db,
-            department_id=dept_id,
-            target_lat=location_data["latitude"],
-            target_lon=location_data["longitude"]
-        )
-        assigned_officer_id = officer_match.get("officer_id")
-        assigned_officer_name = officer_match.get("officer_name")
-        assigned_officer_phone = officer_match.get("officer_phone")
-        dist_km = officer_match.get("distance_km", 0.8)
-        eta_mins = officer_match.get("eta_minutes", 15)
+        # 2.5 Evidence Authenticity & Forensics Gateway Evaluation
+        auth_data = preds.get("evidence_authenticity") or analysis.get("evidence_authenticity") or {}
+        auth_score = auth_data.get("authenticity_score")
+        auth_verdict = auth_data.get("verdict") or "PASS"
+        auth_risk = auth_data.get("risk_level") or "LOW"
+        auth_flags_list = auth_data.get("flags") or []
+        auth_flags_str = ", ".join(auth_flags_list) if isinstance(auth_flags_list, list) else str(auth_flags_list)
+        gateway = auth_data.get("decision_gateway") or ("REVIEW" if auth_verdict == "REVIEW" else "PASS")
+        req_human_review = 1 if (gateway == "REVIEW" or auth_verdict == "REVIEW" or (auth_score is not None and auth_score < 70)) else 0
+        tampering_score = auth_data.get("tampering_score")
+        ai_gen_prob = auth_data.get("ai_generated_probability")
+
+        # 3. Autonomous Proximity Officer Matching & Dispatch (Conditional on Gateway PASS)
+        officer_match = {}
+        assigned_officer_id = None
+        assigned_officer_name = None
+        assigned_officer_phone = None
+        dist_km = None
+        eta_mins = None
+
+        if req_human_review == 0:
+            officer_match = AutonomousAgentEngine.find_nearest_available_officer(
+                db=db,
+                department_id=dept_id,
+                target_lat=location_data["latitude"],
+                target_lon=location_data["longitude"]
+            )
+            assigned_officer_id = officer_match.get("officer_id")
+            assigned_officer_name = officer_match.get("officer_name")
+            assigned_officer_phone = officer_match.get("officer_phone")
+            dist_km = officer_match.get("distance_km", 0.8)
+            eta_mins = officer_match.get("eta_minutes", 15)
+        else:
+            assigned_officer_name = "Pending Supervisor Review"
 
         # 4. Autonomous Duplicate & Neighborhood Clustering Check
         existing_cluster = AutonomousAgentEngine.detect_duplicate_or_cluster(
@@ -202,13 +225,24 @@ class AutonomousAgentEngine:
 
         # 5. Autonomous Grievance Docket Generation
         cid = ComplaintService.generate_next_id(db)
-        generated_text = sys_data.get("generated_complaint_text") or (
-            f"OFFICIAL CIVIC GRIEVANCE DOCKET\n"
-            f"TO: {dept_name}\n"
-            f"SUBJECT: Priority Remediation Order - {issue_type} at {location_data['address']}\n"
-            f"CLASSIFICATION: {category} (Severity: {severity})\n"
-            f"AUTONOMOUS DISPATCH: Dispatched directly to Field Officer {assigned_officer_name}."
-        )
+        if req_human_review == 1:
+            generated_text = (
+                f"OFFICIAL CIVIC GRIEVANCE DOCKET [HELD FOR SUPERVISOR REVIEW]\n"
+                f"TO: {dept_name}\n"
+                f"SUBJECT: Evidence Audit Required - {issue_type} at {location_data['address']}\n"
+                f"CLASSIFICATION: {category} (Severity: {severity})\n"
+                f"EVIDENCE GATEWAY: Tampering/Synthetic flags detected (Score: {auth_score or 0}%). Officer dispatch paused."
+            )
+        else:
+            generated_text = sys_data.get("generated_complaint_text") or (
+                f"OFFICIAL CIVIC GRIEVANCE DOCKET\n"
+                f"TO: {dept_name}\n"
+                f"SUBJECT: Priority Remediation Order - {issue_type} at {location_data['address']}\n"
+                f"CLASSIFICATION: {category} (Severity: {severity})\n"
+                f"AUTONOMOUS DISPATCH: Dispatched directly to Field Officer {assigned_officer_name}."
+            )
+
+        complaint_status = "Review Required" if req_human_review == 1 else "Assigned"
 
         complaint = Complaint(
             id=cid,
@@ -221,7 +255,7 @@ class AutonomousAgentEngine:
             longitude=location_data["longitude"],
             address=location_data["address"],
             severity=severity,
-            status="Assigned",
+            status=complaint_status,
             department_id=dept_id,
             assigned_officer_id=assigned_officer_id,
             assigned_officer_name=assigned_officer_name,
@@ -234,6 +268,13 @@ class AutonomousAgentEngine:
             severity_reason=preds["severity_reason"],
             grounded_explanation=preds["grounded_explanation"],
             recommended_action=preds["recommended_action"],
+            authenticity_score=auth_score,
+            authenticity_verdict=auth_verdict,
+            authenticity_risk=auth_risk,
+            authenticity_flags=auth_flags_str,
+            requires_human_review=req_human_review,
+            tampering_score=tampering_score,
+            ai_generated_probability=ai_gen_prob,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
@@ -242,28 +283,42 @@ class AutonomousAgentEngine:
 
         # 6. Attach Visual Evidence if provided
         if image_path:
+            forensic_json = json.dumps(auth_data.get("forensic_details", {})) if auth_data else None
             ev = Evidence(
                 complaint_id=cid,
                 type="image",
                 file_url=image_path,
                 description=f"Photographic evidence for {issue_type}",
-                ai_analysis=preds.get("evidence_summary", "Visual defect verified by Autonomous Vision Agent.")
+                ai_analysis=preds.get("evidence_summary", "Visual defect verified by Autonomous Vision Agent."),
+                authenticity_score=auth_score,
+                authenticity_verdict=auth_verdict,
+                tampering_score=tampering_score,
+                ai_generated_probability=ai_gen_prob,
+                forensic_details=forensic_json
             )
             db.add(ev)
 
-        # 7. Record History Log with Officer Geo-Dispatch Details
-        dispatch_remarks = (
-            f"⚡ Autonomous Auto-Dispatch: Classified as '{issue_type}'. Auto-routed to {dept_name}. "
-            f"Field Task assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins}m, 📞 {assigned_officer_phone})."
-        )
-        if is_duplicate:
-            dispatch_remarks += f" [🔗 Clustered with #{cluster_id} due to 50m proximity]"
+        # 7. Record History Log with Dispatch or Gateway Hold Details
+        if req_human_review == 1:
+            dispatch_remarks = (
+                f"Evidence Authenticity Gateway: Potential tampering or synthetic generation detected (Score: {auth_score or 0}%). "
+                f"Autonomous officer dispatch halted pending municipal supervisor verification. Flags: {auth_flags_str or 'None'}"
+            )
+            changed_by_name = "CivicSeva Evidence Forensics Gateway"
+        else:
+            dispatch_remarks = (
+                f"Autonomous Auto-Dispatch: Classified as '{issue_type}'. Auto-routed to {dept_name}. "
+                f"Field Task assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins}m, Phone: {assigned_officer_phone})."
+            )
+            if is_duplicate:
+                dispatch_remarks += f" [Clustered with #{cluster_id} due to 50m proximity]"
+            changed_by_name = "CivicSeva Autonomous Geo-Dispatcher"
 
         history = ComplaintHistory(
             complaint_id=cid,
             old_status="Draft",
-            new_status="Assigned",
-            changed_by="CivicSeva Autonomous Geo-Dispatcher",
+            new_status=complaint_status,
+            changed_by=changed_by_name,
             remarks=dispatch_remarks,
             timestamp=datetime.now(timezone.utc)
         )
@@ -281,31 +336,49 @@ class AutonomousAgentEngine:
                 timestamp=datetime.now(timezone.utc)
             ))
 
-        db.add(AgentAction(
-            complaint_id=cid,
-            agent_name="Autonomous Geo-Proximity Dispatcher",
-            action="Match & Assign Nearest Field Engineer",
-            input_summary=f"Location: ({location_data['latitude']:.4f}, {location_data['longitude']:.4f}), Dept: {dept_name}",
-            output_summary=f"Matched {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins). Dispatched task order.",
-            timestamp=datetime.now(timezone.utc)
-        ))
+        if auth_score is not None:
+            db.add(AgentAction(
+                complaint_id=cid,
+                agent_name="Evidence Authenticity & Forensics Gateway",
+                action="Forensic Integrity Assessment & Gateway Gatekeeper",
+                input_summary=f"Score: {auth_score}%, Tampering: {tampering_score or 0}%, AI Gen Prob: {ai_gen_prob or 0}%",
+                output_summary=f"Decision Gateway: {gateway} | Verdict: {auth_verdict} | Requires Human Review: {'YES' if req_human_review else 'NO'}",
+                timestamp=datetime.now(timezone.utc)
+            ))
 
-        # 9. Simulated Officer Mobile SMS / WhatsApp Alert Notice
-        mobile_alert = (
-            f"📲 SQUAD DISPATCH NOTICE:\n"
-            f"[CivicSeva Municipal Work Order #{cid}]\n"
-            f"Attention: {assigned_officer_name}\n"
-            f"Issue: {issue_type} ({severity} Priority)\n"
-            f"Site: {location_data['address']}\n"
-            f"Your Distance: {dist_km} km | Target On-Site Arrival: {eta_mins} mins\n"
-            f"GPS Navigation: https://maps.google.com/?q={location_data['latitude']},{location_data['longitude']}"
-        )
+        if req_human_review == 0 and assigned_officer_name:
+            db.add(AgentAction(
+                complaint_id=cid,
+                agent_name="Autonomous Geo-Proximity Dispatcher",
+                action="Match & Assign Nearest Field Engineer",
+                input_summary=f"Location: ({location_data['latitude']:.4f}, {location_data['longitude']:.4f}), Dept: {dept_name}",
+                output_summary=f"Matched {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins). Dispatched task order.",
+                timestamp=datetime.now(timezone.utc)
+            ))
+
+        # 9. Officer Alert Notice (Only if assigned)
+        mobile_alert = None
+        if req_human_review == 0 and assigned_officer_name:
+            mobile_alert = (
+                f"SQUAD DISPATCH NOTICE:\n"
+                f"[CivicSeva Municipal Work Order #{cid}]\n"
+                f"Attention: {assigned_officer_name}\n"
+                f"Issue: {issue_type} ({severity} Priority)\n"
+                f"Site: {location_data['address']}\n"
+                f"Your Distance: {dist_km} km | Target On-Site Arrival: {eta_mins} mins\n"
+                f"GPS Navigation: https://maps.google.com/?q={location_data['latitude']},{location_data['longitude']}"
+            )
 
         # 10. Push Autonomous Citizen Notification
+        if req_human_review == 1:
+            citizen_msg = f"Docket #{cid} registered. Currently under municipal supervisor review for photographic evidence verification."
+        else:
+            citizen_msg = f"Ticket #{cid} assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins)."
+
         db.add(Notification(
             user_id=citizen_id or 1,
             complaint_id=cid,
-            message=f"⚡ Ticket #{cid} assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins)."
+            message=citizen_msg
         ))
 
         db.commit()
@@ -313,7 +386,7 @@ class AutonomousAgentEngine:
 
         return {
             "complaint_id": cid,
-            "status": "Assigned",
+            "status": complaint_status,
             "issue_type": issue_type,
             "category": category,
             "severity": severity,
@@ -325,19 +398,22 @@ class AutonomousAgentEngine:
             "assigned_officer": {
                 "id": assigned_officer_id,
                 "name": assigned_officer_name,
-                "role": officer_match.get("officer_role", "Field Engineer"),
+                "role": officer_match.get("officer_role", "Field Engineer") if assigned_officer_id else "N/A",
                 "phone": assigned_officer_phone,
                 "distance_km": dist_km,
                 "eta_minutes": eta_mins
-            },
+            } if assigned_officer_id else None,
             "cluster_info": {
                 "is_clustered": bool(existing_cluster),
                 "cluster_master_id": cluster_id
             },
+            "evidence_authenticity": auth_data,
+            "decision_gateway": gateway,
+            "requires_human_review": bool(req_human_review),
             "mobile_dispatch_notice": mobile_alert,
             "generated_complaint": generated_text,
             "decision_trace": trace,
-            "autonomous_mode": "ACTIVE_AUTO_DISPATCH"
+            "autonomous_mode": "ACTIVE_AUTO_DISPATCH" if req_human_review == 0 else "HOLD_FOR_REVIEW"
         }
 
     @staticmethod

@@ -152,3 +152,10 @@ DEPARTMENT_CONFIG = {
         "default_sla_hours": 72
     }
 }
+
+# Category Aliases for robust multi-agent routing
+DEPARTMENT_CONFIG["sanitation_waste"] = DEPARTMENT_CONFIG["waste_management"]
+DEPARTMENT_CONFIG["electricity_lighting"] = DEPARTMENT_CONFIG["electrical_street_lighting"]
+DEPARTMENT_CONFIG["street_lighting"] = DEPARTMENT_CONFIG["electrical_street_lighting"]
+DEPARTMENT_CONFIG["drainage_sewerage"] = DEPARTMENT_CONFIG["drainage_sanitation"]
+DEPARTMENT_CONFIG["drainage"] = DEPARTMENT_CONFIG["drainage_sanitation"]

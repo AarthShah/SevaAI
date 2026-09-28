@@ -37,6 +37,43 @@ except Exception as e:
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+def _migrate_schema(target_engine):
+    try:
+        with target_engine.connect() as conn:
+            # Check complaints columns
+            res = conn.execute(text("PRAGMA table_info(complaints)"))
+            existing_cols = {row[1] for row in res.fetchall()}
+            
+            new_complaint_cols = [
+                ("authenticity_score", "FLOAT DEFAULT 95.0"),
+                ("authenticity_verdict", "VARCHAR(30) DEFAULT 'PASS'"),
+                ("authenticity_risk", "VARCHAR(30) DEFAULT 'LOW'"),
+                ("authenticity_flags", "TEXT"),
+                ("requires_human_review", "INTEGER DEFAULT 0"),
+                ("tampering_score", "FLOAT DEFAULT 0.05"),
+                ("ai_generated_probability", "FLOAT DEFAULT 0.04")
+            ]
+            for col_name, col_def in new_complaint_cols:
+                if col_name not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE complaints ADD COLUMN {col_name} {col_def}"))
+            
+            # Check evidence columns
+            res_ev = conn.execute(text("PRAGMA table_info(evidence)"))
+            existing_ev_cols = {row[1] for row in res_ev.fetchall()}
+            new_ev_cols = [
+                ("authenticity_score", "FLOAT DEFAULT 95.0"),
+                ("authenticity_verdict", "VARCHAR(30) DEFAULT 'PASS'"),
+                ("tampering_score", "FLOAT DEFAULT 0.05"),
+                ("ai_generated_probability", "FLOAT DEFAULT 0.04"),
+                ("forensic_details", "TEXT")
+            ]
+            for col_name, col_def in new_ev_cols:
+                if col_name not in existing_ev_cols:
+                    conn.execute(text(f"ALTER TABLE evidence ADD COLUMN {col_name} {col_def}"))
+            conn.commit()
+    except Exception as e:
+        print(f"[INFO] Schema migration note: {e}")
+
 _db_initialized = False
 
 def ensure_db_initialized():
@@ -46,6 +83,7 @@ def ensure_db_initialized():
             from .base import Base as AppBase
             from .seed_data import seed_database
             AppBase.metadata.create_all(bind=engine)
+            _migrate_schema(engine)
             db = SessionLocal()
             try:
                 seed_database(db)

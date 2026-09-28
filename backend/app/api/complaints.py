@@ -17,13 +17,14 @@ from ..models.complaint_history import ComplaintHistory
 from ..models.agent_action import AgentAction
 from ..models.officer import Officer
 from ..models.user import User
+from ..models.notification import Notification
 from ..schemas.complaint import (
     ComplaintAnalyzeRequest, ComplaintSubmitRequest, ComplaintStatusUpdate,
     ComplaintFollowupRequest, ComplaintEscalateRequest,
     ComplaintResponse, ComplaintDetailResponse
 )
 from ..services.complaint_service import ComplaintService
-from ..services.autonomous_agent import autonomous_engine, calculate_haversine_distance
+from ..services.autonomous_agent import autonomous_engine, calculate_haversine_distance, AutonomousAgentEngine
 from ..services.aiml_client import aiml_client
 from ..middleware.auth_middleware import get_current_user, get_optional_user, require_roles
 
@@ -112,14 +113,39 @@ async def analyze_complaint(
         "longitude": payload.longitude
     }
 
+    # Resolve physical image path on disk if an image_url is provided
+    resolved_image_path = None
+    image_filename = None
+    if payload.image_url:
+        clean_name = payload.image_url.replace("/uploads/", "").lstrip("/\\")
+        candidate = UPLOAD_DIR / clean_name
+        if candidate.exists():
+            resolved_image_path = str(candidate)
+            image_filename = clean_name
+        else:
+            resolved_image_path = payload.image_url
+            image_filename = clean_name
+
     result = await aiml_client.analyze_complaint(
         text=payload.text,
         voice_transcription=payload.voice_transcription,
-        image_path=payload.image_url,
-        image_filename=payload.image_url.split("/")[-1] if payload.image_url else None,
+        image_path=resolved_image_path,
+        image_filename=image_filename,
         location=location_data,
         user_info=user_info
     )
+
+    # Flatten AI predictions so frontend receives fields both at top-level and nested
+    preds = result.get("ai_predictions") or {}
+    result["issue_type"] = preds.get("display_issue_type") or preds.get("issue_type")
+    result["category"] = preds.get("category")
+    result["severity"] = preds.get("severity")
+    result["suggested_department"] = preds.get("department")
+    result["department_id"] = preds.get("department_code")
+    result["confidence_score"] = preds.get("confidence")
+    result["description"] = preds.get("evidence_summary")
+    result["explanation"] = preds.get("grounded_explanation")
+    result["evidence_authenticity"] = preds.get("evidence_authenticity")
     return result
 
 @router.post("", response_model=ComplaintResponse, status_code=status.HTTP_201_CREATED)
@@ -432,5 +458,183 @@ def assign_officer_to_complaint(
         },
         "message": f"Successfully assigned Docket #{complaint_id} to {officer.name}."
     }
+
+@router.post("/verify-evidence")
+async def verify_evidence_endpoint(
+    file: Optional[UploadFile] = File(None),
+    image_url: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    address: Optional[str] = Form(None)
+):
+    """
+    Direct Evidence Authenticity Verification Endpoint.
+    Analyzes image tampering (ELA), AI-generation probability (2D FFT),
+    EXIF metadata, provenance hashes, and context consistency.
+    """
+    image_bytes = None
+    filename = None
+    image_path = None
+
+    if file:
+        image_bytes = await file.read()
+        filename = file.filename
+    if image_url:
+        clean_name = image_url.replace("/uploads/", "").lstrip("/\\")
+        candidate = UPLOAD_DIR / clean_name
+        if candidate.exists():
+            image_path = str(candidate)
+            filename = filename or clean_name
+        else:
+            image_path = image_path or image_url
+            filename = filename or clean_name
+
+    location = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address
+    }
+
+    result = await aiml_client.verify_evidence(
+        image_path=image_path,
+        image_bytes=image_bytes,
+        filename=filename,
+        location=location
+    )
+    return result
+
+class AuthenticityDecisionRequest(BaseModel):
+    decision: str  # "APPROVE" or "REJECT"
+    notes: Optional[str] = None
+
+@router.post("/{complaint_id}/verify-authenticity-decision")
+def submit_authenticity_decision(
+    complaint_id: str,
+    payload: AuthenticityDecisionRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Municipal Supervisor decision on flagged evidence.
+    If APPROVE: verifies the evidence, clears human review requirement,
+    and assigns/dispatches the designated field squad.
+    If REJECT: marks docket as Rejected due to synthetic/fraudulent evidence.
+    """
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if not complaint:
+        raise HTTPException(status_code=404, detail=f"Complaint #{complaint_id} not found.")
+
+    reviewer_name = current_user.name if current_user else "Municipal Supervisor"
+    dec_upper = payload.decision.upper()
+
+    if dec_upper in ["APPROVE", "APPROVED"]:
+        complaint.requires_human_review = 0
+        complaint.authenticity_verdict = "APPROVED_BY_SUPERVISOR"
+        complaint.authenticity_risk = "LOW"
+        complaint.authenticity_score = 98.0
+        
+        # If not assigned to officer yet, attempt dispatch now
+        if not complaint.assigned_officer_id and complaint.department_id:
+            c_lat = complaint.latitude or 18.5204
+            c_lon = complaint.longitude or 73.8567
+            officer_match = AutonomousAgentEngine.find_nearest_available_officer(
+                db=db,
+                department_id=complaint.department_id,
+                target_lat=c_lat,
+                target_lon=c_lon
+            )
+            complaint.assigned_officer_id = officer_match.get("officer_id")
+            complaint.assigned_officer_name = officer_match.get("officer_name")
+            complaint.assigned_officer_phone = officer_match.get("officer_phone")
+            complaint.officer_distance_km = officer_match.get("distance_km")
+            complaint.officer_eta_minutes = officer_match.get("eta_minutes")
+
+        old_status = complaint.status
+        complaint.status = "Assigned" if complaint.assigned_officer_id else "Submitted"
+        complaint.updated_at = datetime.now(timezone.utc)
+
+        remarks = (
+            f"Evidence Authenticity Approved by Supervisor {reviewer_name}. "
+            f"Notes: {payload.notes or 'Photographic evidence validated manually.'} "
+            f"Work order released for field execution."
+        )
+
+        db.add(ComplaintHistory(
+            complaint_id=complaint_id,
+            old_status=old_status,
+            new_status=complaint.status,
+            changed_by=reviewer_name,
+            remarks=remarks,
+            timestamp=datetime.now(timezone.utc)
+        ))
+
+        db.add(AgentAction(
+            complaint_id=complaint_id,
+            agent_name="Municipal Supervisor Review Gateway",
+            action="Approve Evidence Authenticity",
+            input_summary=f"Decision: APPROVED by {reviewer_name}",
+            output_summary=f"Docket released to {complaint.assigned_officer_name or 'Queue'}. Status: {complaint.status}",
+            timestamp=datetime.now(timezone.utc)
+        ))
+
+        if complaint.citizen_id:
+            db.add(Notification(
+                user_id=complaint.citizen_id,
+                complaint_id=complaint_id,
+                message=f"Your ticket #{complaint_id} evidence has been verified and approved by municipal supervisor."
+            ))
+
+    elif dec_upper in ["REJECT", "REJECTED"]:
+        complaint.requires_human_review = 0
+        complaint.authenticity_verdict = "REJECTED_FAKE"
+        complaint.authenticity_risk = "HIGH"
+        old_status = complaint.status
+        complaint.status = "Rejected"
+        complaint.updated_at = datetime.now(timezone.utc)
+
+        remarks = (
+            f"Rejected by Municipal Supervisor {reviewer_name}: "
+            f"{payload.notes or 'Evidence failed authenticity verification (identified as tampered or synthetic).'}"
+        )
+
+        db.add(ComplaintHistory(
+            complaint_id=complaint_id,
+            old_status=old_status,
+            new_status="Rejected",
+            changed_by=reviewer_name,
+            remarks=remarks,
+            timestamp=datetime.now(timezone.utc)
+        ))
+
+        db.add(AgentAction(
+            complaint_id=complaint_id,
+            agent_name="Municipal Supervisor Review Gateway",
+            action="Reject Fraudulent Evidence",
+            input_summary=f"Decision: REJECTED by {reviewer_name}",
+            output_summary=f"Docket rejected due to failed authenticity verification.",
+            timestamp=datetime.now(timezone.utc)
+        ))
+
+        if complaint.citizen_id:
+            db.add(Notification(
+                user_id=complaint.citizen_id,
+                complaint_id=complaint_id,
+                message=f"Your ticket #{complaint_id} was rejected: Evidence failed authenticity checks."
+            ))
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid decision '{payload.decision}'. Must be 'APPROVE' or 'REJECT'.")
+
+    db.commit()
+    db.refresh(complaint)
+
+    return {
+        "complaint_id": complaint.id,
+        "status": complaint.status,
+        "authenticity_verdict": complaint.authenticity_verdict,
+        "requires_human_review": bool(complaint.requires_human_review),
+        "assigned_officer_name": complaint.assigned_officer_name,
+        "message": f"Successfully recorded supervisor decision '{dec_upper}' for Docket #{complaint_id}."
+    }
+
 
 

@@ -12,6 +12,7 @@ from .classification_agent import classification_agent
 from .severity_agent import severity_agent
 from .department_agent import department_agent
 from ..nlp.complaint_generator import generator
+from ..forensics.authenticity_verifier import authenticity_verifier
 
 class CivicAgent:
     def __init__(self):
@@ -64,6 +65,27 @@ class CivicAgent:
             out="Multimodal inputs successfully normalized and verified."
         )
 
+        # 1.5 Evidence Authenticity & Forensics Verification
+        authenticity_report = None
+        if has_image:
+            authenticity_report = authenticity_verifier.verify_evidence(
+                image_input=image_bytes or image_path,
+                filename=image_filename,
+                reported_location=loc_data
+            )
+            auth_score = authenticity_report["authenticity_score"]
+            gateway_action = authenticity_report["decision_gateway"]
+            tampering_pct = authenticity_report["forensic_breakdown"]["tampering_analysis"].get("tampering_score", 0.0) * 100.0
+            ai_gen_pct = authenticity_report["forensic_breakdown"]["ai_generation_analysis"].get("ai_generated_probability", 0.0) * 100.0
+            log_step(
+                agent="Evidence Authenticity Agent",
+                action="Analyze Tampering & Synthetic Media",
+                inp=f"Image: {image_filename or 'attached_evidence'}, Location: {loc_data.get('address')}",
+                out=f"Authenticity Score: {auth_score}/100 [{gateway_action}]. Tampering Risk: {tampering_pct:.0f}%, AI-Gen Risk: {ai_gen_pct:.0f}%. {authenticity_report['summary']}"
+            )
+        else:
+            authenticity_report = authenticity_verifier._build_fallback_verdict("Citizen textual complaint; no photographic file attached.")
+
         # 2. Classification Agent Execution
         cls_result = classification_agent.execute(
             text=combined_text,
@@ -84,6 +106,33 @@ class CivicAgent:
 
         # 3. Evidence Extraction Agent
         vision_data = cls_result.get("vision_data") or {}
+
+        # Cross-correlate Vision LLM Forensics with Digital Forensics
+        groq_forensics = vision_data.get("forensics")
+        if groq_forensics and authenticity_report:
+            if groq_forensics.get("is_synthetic_ai"):
+                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 32.0)
+                authenticity_report["authenticity_risk"] = "HIGH"
+                authenticity_report["decision_gateway"] = "REVIEW"
+                authenticity_report["requires_human_review"] = True
+                if "audit_flags" in authenticity_report:
+                    authenticity_report["audit_flags"].append("Vision LLM detected synthetic/AI-generated visual artifacts")
+                if "forensic_breakdown" in authenticity_report and "ai_generation_analysis" in authenticity_report["forensic_breakdown"]:
+                    authenticity_report["forensic_breakdown"]["ai_generation_analysis"]["is_synthetic"] = True
+                    authenticity_report["forensic_breakdown"]["ai_generation_analysis"]["ai_generated_probability"] = max(
+                        authenticity_report["forensic_breakdown"]["ai_generation_analysis"].get("ai_generated_probability", 0.0),
+                        groq_forensics.get("synthetic_probability", 0.90)
+                    )
+            if groq_forensics.get("is_tampered"):
+                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 38.0)
+                authenticity_report["authenticity_risk"] = "HIGH"
+                authenticity_report["decision_gateway"] = "REVIEW"
+                authenticity_report["requires_human_review"] = True
+                if "audit_flags" in authenticity_report:
+                    authenticity_report["audit_flags"].append("Vision LLM detected digital manipulation/splicing in image")
+                if "forensic_breakdown" in authenticity_report and "tampering_analysis" in authenticity_report["forensic_breakdown"]:
+                    authenticity_report["forensic_breakdown"]["tampering_analysis"]["is_tampered"] = True
+
         if has_image and vision_data:
             evidence_summary = vision_data.get("evidence", "Photographic evidence verified.")
             log_step(
@@ -124,6 +173,8 @@ class CivicAgent:
             configured_departments=configured_departments
         )
         dept_name = dept_result["department_name"]
+        if (dept_name == "General Civic Administration" or not dept_name) and vision_data.get("suggested_department"):
+            dept_name = vision_data["suggested_department"]
         grounded_explanation = dept_result["grounded_explanation"]
 
         log_step(
@@ -182,7 +233,14 @@ class CivicAgent:
                 "severity_reason": sev_reason,
                 "grounded_explanation": grounded_explanation,
                 "rag_source": dept_result.get("rag_source"),
-                "recommended_action": recommended_actions.get(severity, "Inspect site and take remedial action.")
+                "recommended_action": recommended_actions.get(severity, "Inspect site and take remedial action."),
+                # Evidence Authenticity & Forensics Subsystem
+                "evidence_authenticity": authenticity_report,
+                "authenticity_score": authenticity_report.get("authenticity_score", 95.0),
+                "authenticity_verdict": authenticity_report.get("decision_gateway", "PASS"),
+                "authenticity_risk": authenticity_report.get("authenticity_risk", "LOW"),
+                "authenticity_flags": authenticity_report.get("audit_flags", []),
+                "requires_human_review": authenticity_report.get("requires_human_review", False)
             },
             "user_provided": {
                 "raw_text": combined_text,
@@ -195,6 +253,9 @@ class CivicAgent:
                 "generated_complaint_text": generated_complaint,
                 "estimated_sla_hours": dept_result.get("default_sla_hours", 48),
                 "decision_trace": trace,
+                "decision_gateway": authenticity_report.get("decision_gateway", "PASS"),
+                "requires_human_review": authenticity_report.get("requires_human_review", False),
+                "gateway_rationale": authenticity_report.get("gateway_rationale", "Standard intake processing"),
                 "mode": "DEMO_FALLBACK_ACTIVE" if not classification_agent.name.startswith("API") else "EXTERNAL_LLM"
             }
         }

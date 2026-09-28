@@ -75,5 +75,30 @@ export const complaintApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
+  },
+  verifyEvidence: async (fileOrUrl, locationData = {}) => {
+    const formData = new FormData();
+    if (fileOrUrl instanceof File || fileOrUrl instanceof Blob) {
+      formData.append('file', fileOrUrl);
+    } else if (typeof fileOrUrl === 'string') {
+      formData.append('image_url', fileOrUrl);
+    }
+    if (locationData.image_url && !formData.has('image_url')) {
+      formData.append('image_url', locationData.image_url);
+    }
+    if (locationData.latitude) formData.append('latitude', locationData.latitude);
+    if (locationData.longitude) formData.append('longitude', locationData.longitude);
+    if (locationData.address) formData.append('address', locationData.address);
+    const res = await api.post('/complaints/verify-evidence', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  submitAuthenticityDecision: async (id, decision, notes = '') => {
+    const res = await api.post(`/complaints/${id}/verify-authenticity-decision`, {
+      decision,
+      notes
+    });
+    return res.data;
   }
 };

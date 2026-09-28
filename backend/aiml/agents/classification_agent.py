@@ -40,23 +40,28 @@ class ClassificationAgent:
 
         if vision_result and vision_result.get("detected_issue") not in ["unknown", None]:
             vis_issue = vision_result["detected_issue"].upper()
+            vis_cat = vision_result.get("category", final_category)
             vis_evidence = vision_result.get("evidence", "")
 
-            # If both agree
-            if vis_issue == final_issue or (vis_issue == "ROAD_DAMAGE" and final_issue == "POTHOLE"):
+            # If user provided generic placeholder or Groq Vision ran, vision leads
+            is_generic_text = not text or len(text.strip()) < 15 or "captured via resident photo" in text.lower() or final_issue == "OTHER"
+            
+            if is_generic_text or vision_result.get("mode") == "GROQ_QWEN_VISION":
+                final_issue = vis_issue
+                final_category = vis_cat
+                final_confidence = vision_result.get("confidence", 0.94)
+                corroboration = "vision_led_multimodal"
+                reason_parts = [f"Multimodal AI vision analysis verified: {vis_evidence}"]
+            elif vis_issue == final_issue or (vis_issue in ["ROAD_DAMAGE", "POTHOLE"] and final_issue in ["ROAD_DAMAGE", "POTHOLE"]):
                 final_confidence = min(0.98, max(final_confidence, vision_result["confidence"]) + 0.05)
                 corroboration = "multimodal_corroborated"
                 reason_parts.append(f"Visual evidence independently confirms: {vis_evidence}")
-            elif final_issue == "OTHER" and vis_issue != "ROAD_DAMAGE":
-                # Vision provides primary signal
-                final_issue = vis_issue
-                final_category = text_result["category"]
-                final_confidence = vision_result["confidence"]
-                corroboration = "vision_led"
-                reason_parts.append(f"Primary classification derived from image analysis: {vis_evidence}")
             else:
-                corroboration = "multimodal_supplemented"
-                reason_parts.append(f"Image inspection noted: {vis_evidence}")
+                final_issue = vis_issue
+                final_category = vis_cat
+                final_confidence = vision_result.get("confidence", 0.92)
+                corroboration = "vision_verified"
+                reason_parts.append(f"Physical photographic inspection determined: {vis_evidence}")
 
         return {
             "agent": self.name,

@@ -37,6 +37,8 @@ const AppContent = () => {
           <Route path="/map" element={<Navigate to="/authority?tab=MAP" replace />} />
           <Route path="/analytics" element={<Navigate to="/authority?tab=ANALYTICS" replace />} />
           <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
+          <Route path="/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
+          <Route path="/authority/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
           <Route path="/evaluation" element={<EvaluationPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

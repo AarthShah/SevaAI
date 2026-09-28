@@ -5,14 +5,16 @@ import {
   Camera, TrendingUp, UserCog, Settings, Calendar, Plus, 
   Filter, MoreVertical, X, Check, MapPin, Building, User, 
   ChevronDown, CheckCircle2, AlertCircle, ArrowUpRight, Search, 
-  RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ArrowRight, 
+  RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ShieldAlert, ArrowRight, 
   Phone, Eye, Clock, Copy, Printer, Sparkles, Send, Wrench, RotateCcw,
-  FastForward, CheckCheck, Bot, Zap, Sliders, AlertTriangle
+  FastForward, CheckCheck, Bot, Zap, Sliders, AlertTriangle,
+  Video, Image, Play, Download, ExternalLink, CheckCircle, UserCheck
 } from 'lucide-react';
 import { CivicLogo } from '../components/CivicLogo';
 import { MapViewPage } from './MapViewPage';
 import { CCTVVisionPage } from './CCTVVisionPage';
 import { AnalyticsPage } from './AnalyticsPage';
+import { AuditLogsPage } from './AuditLogsPage';
 import { complaintApi } from '../api/complaintApi';
 import { useAssistantContext } from '../context/AssistantContext';
 
@@ -126,49 +128,223 @@ export const resolveDesignatedWorker = (issue) => {
   };
 };
 
-// Initial realistic AI Operational & Dispatch logs
+// Auto-resolver to match any issue to its Before defect evidence photo
+export const resolveBeforeImage = (issue) => {
+  if (issue?.image && typeof issue.image === 'string' && issue.image.startsWith('/sample_evidence/')) {
+    return issue.image;
+  }
+  const cat = (issue?.title || issue?.department || issue?.category || '').toLowerCase();
+  if (cat.includes('garbage') || cat.includes('sanitat') || cat.includes('waste')) return '/sample_evidence/garbage.jpg';
+  if (cat.includes('water') || cat.includes('leak') || cat.includes('pipeline')) return '/sample_evidence/water_leak.jpg';
+  if (cat.includes('light') || cat.includes('electr') || cat.includes('pole')) return '/sample_evidence/streetlight.jpg';
+  if (cat.includes('drain') || cat.includes('manhole') || cat.includes('sewer')) return '/sample_evidence/manhole.jpg';
+  return '/sample_evidence/pothole.jpg';
+};
+
+// Auto-resolver for completed work proof (After photo, Video proof, and verification metrics)
+export const resolveProofMedia = (issue) => {
+  const cat = (issue?.title || issue?.department || issue?.category || '').toLowerCase();
+  if (cat.includes('garbage') || cat.includes('sanitat') || cat.includes('waste')) {
+    return {
+      afterImage: '/sample_evidence/garbage_after.jpg',
+      videoProof: '/sample_evidence/cctv_feed_1.mp4',
+      verificationScore: 99.1,
+      repairSummary: 'Full waste accumulation removed, street sidewalk sanitized, green municipal container deployed.'
+    };
+  }
+  if (cat.includes('water') || cat.includes('leak') || cat.includes('pipeline')) {
+    return {
+      afterImage: '/sample_evidence/water_leak_after.jpg',
+      videoProof: '/sample_evidence/cctv_feed_2.mp4',
+      verificationScore: 98.4,
+      repairSummary: 'Underground municipal distribution valve gasket replaced, road surface repaved and sealed dry.'
+    };
+  }
+  if (cat.includes('light') || cat.includes('electr') || cat.includes('pole')) {
+    return {
+      afterImage: '/sample_evidence/streetlight_after.jpg',
+      videoProof: '/sample_evidence/cctv_feed_1.mp4',
+      verificationScore: 99.5,
+      repairSummary: 'Defective LED armature replaced, photocell sensor recalibrated, street luminaire fully restored.'
+    };
+  }
+  if (cat.includes('drain') || cat.includes('manhole') || cat.includes('sewer')) {
+    return {
+      afterImage: '/sample_evidence/drainage_after.jpg',
+      videoProof: '/sample_evidence/cctv_feed_2.mp4',
+      verificationScore: 97.9,
+      repairSummary: 'Reinforced cast iron stormwater grate installed, drainage silt vacuumed, zero water blockage.'
+    };
+  }
+  // Default road repair
+  return {
+    afterImage: '/sample_evidence/pothole_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_1.mp4',
+    verificationScore: 98.8,
+    repairSummary: 'High-density bituminous hot-mix asphalt laid and vibratory compacted. Yellow boundary marking repainted.'
+  };
+};
+
+// Initial realistic AI Operational & Dispatch logs with full media proof
 export const INITIAL_AI_LOGS = [
   {
     id: 'log-101',
-    time: '12:20:15 PM',
-    type: 'AI_MATCH_EVAL',
-    level: 'INFO',
+    time: '12:53:11 PM',
+    type: 'REMEDIATION_COMPLETE',
+    level: 'SUCCESS',
     issueId: 'CS1039',
+    issueTitle: 'Main Junction Deep Pothole',
     officer: 'Er. Rajesh Patil',
-    dept: 'Road Department',
-    message: 'AI Vision analyzed Pothole Defect (94% confidence). Matched to primary specialist Er. Rajesh Patil (Utility Truck 1, 0.8 km away).'
+    dept: 'Road Infrastructure',
+    message: 'On-site repair completed by Er. Rajesh Patil for #CS1039. Bituminous hot-mix asphalt laid and compacted with 10-ton vibratory roller. Officer posted post-repair photo and video verification proof. Officer status changed to AVAILABLE.',
+    beforeImage: '/sample_evidence/pothole.jpg',
+    afterImage: '/sample_evidence/pothole_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_1.mp4',
+    verificationScore: 98.8,
+    repairSummary: 'High-density bituminous hot-mix asphalt laid and vibratory compacted. Yellow boundary marking repainted.',
+    location: 'MG Road near Regal Square, Ward 12',
+    coordinates: '22.7196° N, 75.8577° E',
+    completedAt: '12:53:11 PM',
+    mode: 'Autonomous Zero-Touch'
   },
   {
     id: 'log-102',
-    time: '12:22:04 PM',
-    type: 'OFFICIAL_APPROVAL',
+    time: '12:52:31 PM',
+    type: 'AUTONOMOUS_DISPATCH',
     level: 'DISPATCH',
     issueId: 'CS1039',
+    issueTitle: 'Main Junction Deep Pothole',
     officer: 'Er. Rajesh Patil',
-    dept: 'Road Department',
-    message: 'Official supervisor approved AI work order dispatch. Er. Rajesh Patil deployed on-site. 60-second remediation countdown initiated.'
+    dept: 'Road Infrastructure',
+    message: '[Zero-Touch Mode] AI autonomously selected & dispatched Er. Rajesh Patil to #CS1039. Proximity match 0.8 km, estimated ETA 4 mins. 60-second remediation countdown initiated.',
+    beforeImage: '/sample_evidence/pothole.jpg',
+    afterImage: '/sample_evidence/pothole_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_1.mp4',
+    verificationScore: 98.8,
+    repairSummary: 'Asphalt leveling & surface patch operation.',
+    location: 'MG Road near Regal Square, Ward 12',
+    coordinates: '22.7196° N, 75.8577° E',
+    mode: 'Autonomous Zero-Touch'
   },
   {
     id: 'log-103',
-    time: '12:22:05 PM',
-    type: 'WORKER_BUSY_WAITLIST',
-    level: 'WARNING',
-    issueId: 'CS1032',
-    officer: 'Er. Rajesh Patil',
-    dept: 'Road Department',
-    message: 'Bridge Approach Pothole (#CS1032) arrived. Primary officer Er. Rajesh Patil is currently BUSY on #CS1039. Ticket queued for automated assignment upon worker availability.'
+    time: '12:50:53 PM',
+    type: 'REMEDIATION_COMPLETE',
+    level: 'SUCCESS',
+    issueId: 'CS1001',
+    issueTitle: 'Streetlight Pole Array Malfunction',
+    officer: 'Er. Vikram Shinde',
+    dept: 'Electricity & Lighting',
+    message: 'On-site repair completed by Er. Vikram Shinde for #CS1001. Defective LED armature replaced, photocell sensor recalibrated, street luminaire fully restored. Completion photo and video proof verified.',
+    beforeImage: '/sample_evidence/streetlight.jpg',
+    afterImage: '/sample_evidence/streetlight_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_1.mp4',
+    verificationScore: 99.5,
+    repairSummary: 'Armature replaced, photocell sensor recalibrated, luminaire verified.',
+    location: 'Scheme 78 Main Road, Sector B, Ward 4',
+    coordinates: '22.7533° N, 75.8937° E',
+    completedAt: '12:50:53 PM',
+    mode: 'Supervisor Approved'
   },
   {
     id: 'log-104',
-    time: '12:24:30 PM',
+    time: '12:50:53 PM',
+    type: 'REMEDIATION_COMPLETE',
+    level: 'SUCCESS',
+    issueId: 'CS1002',
+    issueTitle: 'Overflowing Commercial Dumpster',
+    officer: 'Priya Deshmukh',
+    dept: 'Sanitation & Solid Waste',
+    message: 'On-site repair completed by Priya Deshmukh for #CS1002. Full waste accumulation removed, sidewalk sanitized, green municipal container deployed. Completion photo and video proof verified.',
+    beforeImage: '/sample_evidence/garbage.jpg',
+    afterImage: '/sample_evidence/garbage_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_1.mp4',
+    verificationScore: 99.1,
+    repairSummary: 'Waste clearing and chemical wash completed, container emptied.',
+    location: 'AB Road Market Entrance, Ward 7',
+    coordinates: '22.7244° N, 75.8711° E',
+    completedAt: '12:50:53 PM',
+    mode: 'Autonomous Zero-Touch'
+  },
+  {
+    id: 'log-105',
+    time: '12:45:10 PM',
+    type: 'WORKER_BUSY_WAITLIST',
+    level: 'WARNING',
+    issueId: 'CS1032',
+    issueTitle: 'Stormwater Drain Clogging',
+    officer: 'Er. Rajesh Patil',
+    dept: 'Road Infrastructure',
+    message: 'Bridge Approach Defect (#CS1032) arrived. Designated specialist Er. Rajesh Patil was BUSY on #CS1039. Ticket placed in autonomous priority waitlist queue.',
+    beforeImage: '/sample_evidence/drainage.jpg',
+    afterImage: '/sample_evidence/drainage_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_2.mp4',
+    verificationScore: 97.9,
+    repairSummary: 'Drain grate clearing & silt suction.',
+    location: 'Bhawarkua Flyover Approach, Ward 21',
+    coordinates: '22.6912° N, 75.8654° E',
+    mode: 'Autonomous Queue'
+  },
+  {
+    id: 'log-106',
+    time: '12:44:00 PM',
+    type: 'WORKER_FREED',
+    level: 'INFO',
+    issueId: 'CS1032',
+    issueTitle: 'Stormwater Drain Clogging',
+    officer: 'Er. Rajesh Patil',
+    dept: 'Road Infrastructure',
+    message: 'Specialist Er. Rajesh Patil completed previous ticket and became AVAILABLE. Autonomous queue immediately triggered assignment for #CS1032.',
+    beforeImage: '/sample_evidence/drainage.jpg',
+    afterImage: '/sample_evidence/drainage_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_2.mp4',
+    verificationScore: 97.9,
+    repairSummary: 'Drain grate clearing & silt suction.',
+    location: 'Bhawarkua Flyover Approach, Ward 21',
+    coordinates: '22.6912° N, 75.8654° E',
+    mode: 'Autonomous Zero-Touch'
+  },
+  {
+    id: 'log-107',
+    time: '12:40:15 PM',
     type: 'AI_MATCH_EVAL',
     level: 'INFO',
     issueId: 'CS1038',
-    officer: 'Priya Deshmukh',
-    dept: 'Sanitation Department',
-    message: 'Garbage Accumulation evaluated. Matched to Lead Sanitarian Priya Deshmukh (Compactor 4, 1.2 km away).'
+    issueTitle: 'Pressurized Water Distribution Pipe Leak',
+    officer: 'Sneha Jagtap',
+    dept: 'Water Supply Board',
+    message: 'Acoustic & pressure loss telemetry evaluated. High priority water loss matched to Water Supply Specialist Sneha Jagtap (Valve Truck 2, 1.1 km away).',
+    beforeImage: '/sample_evidence/water_leak.jpg',
+    afterImage: '/sample_evidence/water_leak_after.jpg',
+    videoProof: '/sample_evidence/cctv_feed_2.mp4',
+    verificationScore: 98.4,
+    repairSummary: 'Distribution pipe valve gasket replacement.',
+    location: 'Sapna Sangeeta Road, Ward 15',
+    coordinates: '22.7051° N, 75.8682° E',
+    mode: 'AI Proximity Evaluation'
   }
 ];
+
+// Helper to determine if an issue has unverified / flagged evidence
+export const checkIsUnverified = (issue) => {
+  if (!issue) return false;
+  if (
+    issue.authenticityVerdict === 'APPROVED_BY_SUPERVISOR' ||
+    issue.status === 'Dismissed' ||
+    issue.status === 'Resolved' ||
+    issue.isUnverified === false
+  ) {
+    return false;
+  }
+  return Boolean(
+    issue.isUnverified ||
+    issue.requiresHumanReview ||
+    issue.status === 'Review Required' ||
+    issue.status === 'Under Review' ||
+    issue.authenticityVerdict === 'REVIEW' ||
+    (issue.authenticityScore !== null && issue.authenticityScore !== undefined && issue.authenticityScore < 70)
+  );
+};
 
 // Helper to convert live backend Complaint database objects into AuthorityDashboard issue format
 const mapApiComplaintToIssue = (c) => {
@@ -223,7 +399,15 @@ const mapApiComplaintToIssue = (c) => {
     extraEvidenceCount: Math.max(0, evidenceUrls.length - 1),
     aiDistanceKm: c.officer_distance_km !== null && c.officer_distance_km !== undefined ? c.officer_distance_km : 0.8,
     aiConfidence: c.ai_confidence ? `${Math.round(c.ai_confidence * 100)}%` : '92%',
-    aiReasoning: c.grounded_explanation || c.severity_reason || `Matched to specialist ${designated.name} (${designated.squad}) based on civic infrastructure defect analysis.`
+    aiReasoning: c.grounded_explanation || c.severity_reason || `Matched to specialist ${designated.name} (${designated.squad}) based on civic infrastructure defect analysis.`,
+    authenticityScore: c.authenticity_score,
+    authenticityVerdict: c.authenticity_verdict,
+    authenticityRisk: c.authenticity_risk,
+    authenticityFlags: c.authenticity_flags,
+    requiresHumanReview: Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
+    isUnverified: Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
+    tamperingScore: c.tampering_score,
+    aiGeneratedProbability: c.ai_generated_probability
   };
 };
 
@@ -294,12 +478,12 @@ const DEFAULT_ISSUES = [
   },
   {
     id: 'CS1036',
-    title: 'Water Leakage',
+    title: 'Water Leakage Pipeline',
     location: 'Vijay Nagar, Indore',
     priority: 'Medium',
     department: 'Water Supply Department',
     departmentId: 'WATER_SUPPLY',
-    status: 'Under Review',
+    status: 'Review Required',
     assignedTo: null,
     squad: null,
     createdOnDate: '26 Sep 2026',
@@ -311,7 +495,13 @@ const DEFAULT_ISSUES = [
     extraEvidenceCount: 1,
     aiDistanceKm: 2.1,
     aiConfidence: '89%',
-    aiReasoning: 'PHE underground distribution main anomaly detected. Awaiting official confirmation before valve shutdown.'
+    aiReasoning: 'PHE underground distribution main anomaly detected. Awaiting official confirmation before valve shutdown.',
+    isUnverified: true,
+    requiresHumanReview: true,
+    authenticityVerdict: 'REVIEW',
+    authenticityScore: 54.0,
+    authenticityRisk: 'HIGH',
+    authenticityFlags: ['High localized ELA compression variance', 'Spectral high-frequency periodic peak detected']
   },
   {
     id: 'CS1035',
@@ -418,7 +608,6 @@ export const AuthorityDashboard = () => {
     const t = (tabParam || '').toUpperCase();
     if (t === 'DEPARTMENTS') return 'departments';
     if (t === 'AI_REVIEW') return 'ai_review';
-    if (t === 'ORDERS') return 'orders';
     if (t === 'OFFICERS' || t === 'CREW') return 'crew';
     if (t === 'MAP') return 'map';
     if (t === 'CCTV') return 'cctv';
@@ -438,6 +627,10 @@ export const AuthorityDashboard = () => {
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
   const [squads, setSquads] = useState(INITIAL_SQUADS);
   const [activeJobs, setActiveJobs] = useState({}); // { [issueId]: { remainingSeconds: 60, officerName, squad } }
+  const activeJobsRef = useRef(activeJobs);
+  useEffect(() => {
+    activeJobsRef.current = activeJobs;
+  }, [activeJobs]);
 
   // Autonomous Zero-Touch AI Dispatch Engine switch
   const [autoDispatchMode, setAutoDispatchMode] = useState(false);
@@ -449,18 +642,48 @@ export const AuthorityDashboard = () => {
   // AI Autonomous Dispatch & Worker Activity Audit Log state
   const [aiAuditLogs, setAiAuditLogs] = useState(INITIAL_AI_LOGS);
   const [aiLogFilter, setAiLogFilter] = useState('ALL'); // 'ALL' | 'DISPATCH' | 'WAITLIST' | 'COMPLETE'
+  const [selectedAuditLogInAuthority, setSelectedAuditLogInAuthority] = useState(null);
 
-  // Helper to append real-time AI audit logs
-  const addAiLog = ({ type, level = 'INFO', issueId, officer, dept, message }) => {
+  // Helper to append real-time AI audit logs with rich media proof
+  const addAiLog = ({ 
+    type, 
+    level = 'INFO', 
+    issueId, 
+    issueTitle,
+    officer, 
+    dept, 
+    message,
+    beforeImage,
+    afterImage,
+    videoProof,
+    verificationScore,
+    repairSummary,
+    location,
+    coordinates
+  }) => {
+    const cleanId = issueId ? issueId.replace('#', '') : 'SYSTEM';
+    const matchedIssue = issues.find((i) => i.id.replace('#', '') === cleanId);
+    const resolvedBefore = beforeImage || (matchedIssue ? resolveBeforeImage(matchedIssue) : '/sample_evidence/pothole.jpg');
+    const proof = matchedIssue ? resolveProofMedia(matchedIssue) : resolveProofMedia({ title: 'Pothole' });
+
     const newLog = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       type,
       level,
-      issueId: issueId ? issueId.replace('#', '') : 'SYSTEM',
-      officer: officer || 'AI Engine',
-      dept: dept || 'Municipal Ops',
-      message
+      issueId: cleanId,
+      issueTitle: issueTitle || matchedIssue?.title || 'Civic Infrastructure Defect',
+      officer: officer || (matchedIssue ? matchedIssue.assignedTo : 'Er. Rajesh Patil'),
+      dept: dept || (matchedIssue ? matchedIssue.department : 'Road Infrastructure'),
+      message,
+      beforeImage: resolvedBefore,
+      afterImage: afterImage || proof.afterImage,
+      videoProof: videoProof || proof.videoProof,
+      verificationScore: verificationScore || proof.verificationScore,
+      repairSummary: repairSummary || proof.repairSummary,
+      location: location || matchedIssue?.location || 'MG Road, Ward 12',
+      coordinates: coordinates || matchedIssue?.coordinates || '22.7196° N, 75.8577° E',
+      mode: autoDispatchModeRef.current ? 'Autonomous Zero-Touch' : 'Supervisor Oversight'
     };
     setAiAuditLogs((prev) => [newLog, ...prev.slice(0, 49)]);
   };
@@ -579,7 +802,7 @@ export const AuthorityDashboard = () => {
     const t = (searchParams.get('tab') || '').toUpperCase();
     if (t === 'DEPARTMENTS') setActiveNav('departments');
     else if (t === 'AI_REVIEW') setActiveNav('ai_review');
-    else if (t === 'ORDERS') setActiveNav('orders');
+    else if (t === 'AUDIT_LOGS' || t === 'AUDIT' || t === 'LOGS') setActiveNav('audit_logs');
     else if (t === 'OFFICERS' || t === 'CREW') setActiveNav('crew');
     else if (t === 'MAP') setActiveNav('map');
     else if (t === 'CCTV') setActiveNav('cctv');
@@ -626,7 +849,7 @@ export const AuthorityDashboard = () => {
           const prevIds = new Set(prev.map((p) => p.id.replace('#', '')));
           const newlyDiscovered = mappedLiveIssues.filter((m) => !prevIds.has(m.id.replace('#', '')));
           if (newlyDiscovered.length > 0 && !manual) {
-            showToast(`🚨 New Citizen Report: #${newlyDiscovered[0].id} (${newlyDiscovered[0].title}) received in queue.`);
+            showToast(`New Citizen Report: #${newlyDiscovered[0].id} (${newlyDiscovered[0].title}) received in queue.`);
           }
 
           const liveIds = new Set(mappedLiveIssues.map((m) => m.id.replace('#', '')));
@@ -660,11 +883,37 @@ export const AuthorityDashboard = () => {
   // - Any queued ticket waiting for this worker is auto-assigned/dispatched!
   // ============================================================
   const handleJobFinished = (finishedCleanId, officerName, squadName) => {
-    // 1. Mark finished issue as Resolved
+    // Synchronously remove from activeJobsRef
+    if (activeJobsRef.current) {
+      const nextRef = { ...activeJobsRef.current };
+      delete nextRef[finishedCleanId];
+      activeJobsRef.current = nextRef;
+    }
+
+    // 0. Resolve media proof
+    let matchedIssue = issues.find((iss) => iss.id.replace('#', '') === finishedCleanId);
+    const beforeImg = matchedIssue ? resolveBeforeImage(matchedIssue) : '/sample_evidence/pothole.jpg';
+    const proof = matchedIssue ? resolveProofMedia(matchedIssue) : resolveProofMedia({ title: 'Pothole' });
+
+    // 1. Mark finished issue as Resolved with proof media
     setIssues((prevIssues) =>
       prevIssues.map((iss) =>
         iss.id.replace('#', '') === finishedCleanId
-          ? { ...iss, status: 'Resolved' }
+          ? { 
+              ...iss, 
+              status: 'Resolved',
+              resolvedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              proofMedia: {
+                beforeImage: beforeImg,
+                afterImage: proof.afterImage,
+                videoProof: proof.videoProof,
+                verificationScore: proof.verificationScore,
+                repairSummary: proof.repairSummary,
+                completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                officer: officerName,
+                squad: squadName
+              }
+            }
           : iss
       )
     );
@@ -678,9 +927,9 @@ export const AuthorityDashboard = () => {
       )
     );
 
-    // 3. Add timeline resolution entry
+    // 3. Add timeline resolution entry with media proof reference
     const completionNote = {
-      text: `Remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Infrastructure defect repaired and verified safe.`,
+      text: `Remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Infrastructure defect repaired and verified safe. On-site after photo and inspection video proof uploaded.`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       date: 'Today',
       author: officerName
@@ -690,17 +939,26 @@ export const AuthorityDashboard = () => {
       [finishedCleanId]: [completionNote, ...(prevNotes[finishedCleanId] || [])]
     }));
 
-    // 4. AI Audit Log for completion
+    // 4. AI Audit Log for completion with media proof
     addAiLog({
       type: 'REMEDIATION_COMPLETE',
       level: 'SUCCESS',
       issueId: finishedCleanId,
+      issueTitle: matchedIssue?.title || 'Civic Infrastructure Defect',
       officer: officerName,
       dept: squadName,
-      message: `On-site repair completed by ${officerName} for #${finishedCleanId}. Defect resolved. Officer status changed to AVAILABLE.`
+      message: `On-site repair completed by ${officerName} for #${finishedCleanId}. Defect resolved. Officer status changed to AVAILABLE. Worker posted completion photo and video proof.`,
+      beforeImage: beforeImg,
+      afterImage: proof.afterImage,
+      videoProof: proof.videoProof,
+      verificationScore: proof.verificationScore,
+      repairSummary: proof.repairSummary,
+      location: matchedIssue?.location || 'MG Road, Ward 12',
+      coordinates: matchedIssue?.coordinates || '22.7196° N, 75.8577° E',
+      completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     });
 
-    showToast(`🎉 Work Complete! Issue #${finishedCleanId} marked as RESOLVED. Officer ${officerName} is now AVAILABLE.`);
+    showToast(`Work Complete: Issue #${finishedCleanId} marked as RESOLVED. Officer ${officerName} posted completion photo and video proof.`);
 
     // 5. Look for any waiting queued ticket for this officer!
     setTimeout(() => {
@@ -777,50 +1035,121 @@ export const AuthorityDashboard = () => {
     handleJobFinished(cleanId, job.officerName, job.squad);
   };
 
-  // Autonomous Mode Toggle Handler
-  const handleToggleAutoDispatch = () => {
-    setAutoDispatchMode((prev) => {
-      const next = !prev;
-      if (next) {
-        addAiLog({
-          type: 'AUTONOMOUS_DISPATCH',
-          level: 'DISPATCH',
-          issueId: 'SYSTEM',
-          officer: 'AI Engine',
-          message: 'Autonomous Zero-Touch AI Dispatch turned ON. Field workers will be automatically selected, approved, and dispatched without human delay.'
-        });
-        showToast('🤖 Autonomous AI Dispatch (Zero-Touch) ENABLED. Workers will be auto-assigned and dispatched.');
+  // Autonomous Mode Handler - Supports direct selection or toggle
+  const handleSelectDispatchMode = (targetIsAuto) => {
+    if (autoDispatchMode === targetIsAuto) return;
 
-        // Immediately check and auto-dispatch any pending tickets with available workers
-        setTimeout(() => {
-          setIssues((currIssues) => {
-            const pendingIssues = currIssues.filter(
-              (i) => i.status !== 'Resolved' && i.status !== 'In Progress' && !activeJobs[i.id.replace('#', '')]
-            );
-            pendingIssues.forEach((iss) => {
-              const des = resolveDesignatedWorker(iss);
-              const workerName = iss.assignedTo || des.name;
-              const isBusy = Object.values(activeJobs).some((j) => j.officerName === workerName);
-              if (!isBusy) {
-                handleApproveAiDispatch(iss.id, true);
-              }
-            });
-            return currIssues;
-          });
-        }, 150);
-      } else {
-        addAiLog({
-          type: 'AI_MATCH_EVAL',
-          level: 'INFO',
-          issueId: 'SYSTEM',
-          officer: 'Human Director',
-          message: 'Human-in-the-Loop Supervision mode enabled. Official supervisor must click Approve or Edit for each assignment.'
+    if (targetIsAuto) {
+      setAutoDispatchMode(true);
+      autoDispatchModeRef.current = true;
+      addAiLog({
+        type: 'AUTONOMONOMOUS_DISPATCH' === 'AUTONOMOUS_DISPATCH' ? 'AUTONOMOUS_DISPATCH' : 'AUTONOMOUS_DISPATCH',
+        level: 'DISPATCH',
+        issueId: 'SYSTEM',
+        officer: 'AI Engine',
+        message: 'Autonomous Zero-Touch AI Dispatch turned ON. Field workers will be automatically selected, approved, and dispatched without human delay.'
+      });
+      showToast('Autonomous AI Dispatch (Zero-Touch) ENABLED. Available specialists will be dispatched.');
+
+      // Immediately check and auto-dispatch pending tickets for available workers (1 job per worker max!)
+      setTimeout(() => {
+        setIssues((currIssues) => {
+          const busyWorkersSet = new Set(
+            Object.values(activeJobsRef.current || {}).map((j) => j.officerName)
+          );
+          const pendingIssues = currIssues.filter(
+            (i) => i.status !== 'Resolved' && i.status !== 'In Progress' && !i.requiresHumanReview && i.status !== 'Review Required' && !(activeJobsRef.current || {})[i.id.replace('#', '')]
+          );
+
+          for (const iss of pendingIssues) {
+            const des = resolveDesignatedWorker(iss);
+            const workerName = iss.assignedTo || des.name;
+            if (!busyWorkersSet.has(workerName)) {
+              busyWorkersSet.add(workerName);
+              handleApproveAiDispatch(iss.id, true);
+            }
+          }
+          return currIssues;
         });
-        showToast('Human Supervision Mode enabled. Supervisor 1-click Approval or Edit required.');
-      }
-      return next;
-    });
+      }, 150);
+    } else {
+      setAutoDispatchMode(false);
+      autoDispatchModeRef.current = false;
+      addAiLog({
+        type: 'AI_MATCH_EVAL',
+        level: 'INFO',
+        issueId: 'SYSTEM',
+        officer: 'Human Director',
+        message: 'Manual Review Supervision mode enabled. Official supervisor must click Approve or Edit for each assignment.'
+      });
+      showToast('Manual Review Mode enabled. Supervisor 1-click Approval or Edit required.');
+    }
   };
+
+  const handleToggleAutoDispatch = () => {
+    handleSelectDispatchMode(!autoDispatchMode);
+  };
+
+  // Municipal Supervisor Evidence Authenticity Decision Gateway
+  const handleAuthenticityDecision = async (issueId, decision) => {
+    const cleanId = issueId.replace('#', '');
+    try {
+      let res = null;
+      try {
+        res = await complaintApi.submitAuthenticityDecision(cleanId, decision, 'Supervisor manual evidence verification');
+      } catch (apiErr) {
+        console.warn('API submitAuthenticityDecision failed, proceeding with state update:', apiErr);
+      }
+
+      setIssues((prev) =>
+        prev.map((iss) => {
+          if (iss.id.replace('#', '') !== cleanId) return iss;
+          if (decision === 'APPROVE') {
+            return {
+              ...iss,
+              status: res?.status || (iss.status === 'Review Required' || iss.status === 'Under Review' ? 'Submitted' : iss.status),
+              requiresHumanReview: false,
+              isUnverified: false,
+              authenticityVerdict: 'APPROVED_BY_SUPERVISOR',
+              authenticityScore: 98,
+              authenticityRisk: 'LOW',
+              assignedTo: res?.assigned_officer_name || iss.assignedTo
+            };
+          } else {
+            return {
+              ...iss,
+              status: 'Dismissed',
+              requiresHumanReview: false,
+              isUnverified: false,
+              authenticityVerdict: 'REJECTED_FAKE',
+              authenticityRisk: 'DISMISSED'
+            };
+          }
+        })
+      );
+
+      addAiLog({
+        type: decision === 'APPROVE' ? 'OFFICIAL_APPROVAL' : 'SUPERVISOR_EVIDENCE_REJECTION',
+        level: decision === 'APPROVE' ? 'SUCCESS' : 'WARNING',
+        issueId: cleanId,
+        officer: 'Municipal Supervisor',
+        message: decision === 'APPROVE' 
+          ? `Evidence verified and marked REAL by Municipal Supervisor. Docket #${cleanId} cleared for squad deployment.`
+          : `Docket #${cleanId} dismissed and rejected: Evidence identified as fraudulent or synthetic media.`
+      });
+
+      showToast(
+        decision === 'APPROVE'
+          ? `Docket #${cleanId} marked Real & Verified Authentic.`
+          : `Docket #${cleanId} dismissed as fraudulent.`
+      );
+    } catch (err) {
+      showToast(`Action failed: ${err.message || 'Could not record supervisor decision'}`);
+    }
+  };
+
+  const handleMarkReal = (issueId) => handleAuthenticityDecision(issueId, 'APPROVE');
+  const handleDismiss = (issueId) => handleAuthenticityDecision(issueId, 'REJECT');
 
   // Currently selected issue
   const currentIssue = issues.find((i) => i.id === selectedIssueId || i.id === `#${selectedIssueId}`) || issues[0];
@@ -860,7 +1189,8 @@ export const AuthorityDashboard = () => {
 
     // 4. Status Tabs
     if (activeTab === 'All Issues') return true;
-    if (activeTab === 'Needs Assignment') return !item.assignedTo || item.status === 'Submitted' || item.status === 'Under Review';
+    if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item);
+    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item);
     if (activeTab === 'High Priority') return item.priority === 'High';
     if (activeTab === 'In Progress') return item.status === 'In Progress';
     if (activeTab === 'Escalated') return item.status === 'Escalated';
@@ -952,11 +1282,13 @@ export const AuthorityDashboard = () => {
     const squadName = issue.squad || designated.squad;
 
     // Check if designated worker is already busy on another ticket
-    const busyJob = Object.entries(activeJobs).find(
+    const busyJob = Object.entries(activeJobsRef.current || activeJobs).find(
       ([issKey, j]) => j.officerName === officerName && issKey !== cleanId
     );
     if (busyJob) {
-      showToast(`Cannot dispatch: ${officerName} is currently busy on #${busyJob[0]} (${busyJob[1].remainingSeconds}s remaining). Queued for auto-assignment.`);
+      if (!isAutonomous) {
+        showToast(`Cannot dispatch: ${officerName} is currently busy on #${busyJob[0]} (${busyJob[1].remainingSeconds}s remaining). Queued for auto-assignment.`);
+      }
       return;
     }
 
@@ -979,13 +1311,20 @@ export const AuthorityDashboard = () => {
     );
 
     // 3. Start 60-second active job timer (1 minute countdown)
+    const newJob = {
+      remainingSeconds: 60,
+      officerName,
+      squad: squadName
+    };
+    if (activeJobsRef.current) {
+      activeJobsRef.current = {
+        ...activeJobsRef.current,
+        [cleanId]: newJob
+      };
+    }
     setActiveJobs((prev) => ({
       ...prev,
-      [cleanId]: {
-        remainingSeconds: 60,
-        officerName,
-        squad: squadName
-      }
+      [cleanId]: newJob
     }));
 
     // 4. Add dispatch note to timeline
@@ -995,7 +1334,7 @@ export const AuthorityDashboard = () => {
         : `Approved AI assignment. Work order dispatched to ${officerName} (${squadName}). Field squad deployed on-site. Status marked BUSY for 1-minute remediation repair.`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       date: 'Today',
-      author: isAutonomous ? '🤖 Autonomous AI Dispatcher' : 'Official Municipal Director'
+      author: isAutonomous ? 'Autonomous AI Dispatcher' : 'Official Municipal Director'
     };
     setTimelineNotes((prev) => ({
       ...prev,
@@ -1016,7 +1355,7 @@ export const AuthorityDashboard = () => {
 
     showToast(
       isAutonomous
-        ? `🤖 Autonomous AI Dispatch: #${cleanId} dispatched to ${officerName} (Zero-Touch).`
+        ? `Autonomous AI Dispatch: #${cleanId} dispatched to ${officerName} (Zero-Touch).`
         : `Approved AI assignment for issue #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`
     );
   };
@@ -1137,19 +1476,6 @@ export const AuthorityDashboard = () => {
               <span>Triage & Dispatch</span>
             </button>
 
-            {/* Work Orders */}
-            <button
-              type="button"
-              onClick={() => { setActiveNav('orders'); setSearchParams({ tab: 'ORDERS' }); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
-                activeNav === 'orders'
-                  ? 'bg-blue-50 text-blue-800 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <FileText className={`w-4 h-4 ${activeNav === 'orders' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>Work Orders</span>
-            </button>
 
             {/* Field Crew */}
             <button
@@ -1253,6 +1579,25 @@ export const AuthorityDashboard = () => {
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
               )}
             </button>
+
+            {/* AI Audit & Activity Logs */}
+            <button
+              type="button"
+              onClick={() => { setActiveNav('audit_logs'); setSearchParams({ tab: 'AUDIT_LOGS' }); }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'audit_logs'
+                  ? 'bg-blue-50 text-blue-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ClipboardList className={`w-4 h-4 ${activeNav === 'audit_logs' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>AI Audit & Activity Logs</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                {aiAuditLogs.length}
+              </span>
+            </button>
           </div>
 
           {/* Administration Group */}
@@ -1346,20 +1691,28 @@ export const AuthorityDashboard = () => {
             {/* Filter Tabs & Filter Toggle */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pt-1">
               <div className="flex items-center space-x-3 sm:space-x-5 text-xs overflow-x-auto pb-1">
-                {['All Issues', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved'].map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
-                    className={`pb-2.5 font-medium transition border-b-2 whitespace-nowrap ${
-                      activeTab === tab
-                        ? 'border-blue-800 text-blue-900 font-semibold'
-                        : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                {['All Issues', 'Unverified Detected', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved'].map((tab) => {
+                  const unverifiedCount = issues.filter(checkIsUnverified).length;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
+                      className={`pb-2.5 font-medium transition border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
+                        activeTab === tab
+                          ? 'border-blue-800 text-blue-900 font-semibold'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <span>{tab}</span>
+                      {tab === 'Unverified Detected' && unverifiedCount > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                          {unverifiedCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -1541,16 +1894,21 @@ export const AuthorityDashboard = () => {
                         const isSelected = selectedIssueId === cleanId;
                         const job = activeJobs[cleanId];
                         const workerStatus = getWorkerStatusForIssue(issue);
+                        const isUnverified = checkIsUnverified(issue);
 
                         return (
                           <tr
                             key={issue.id}
                             onClick={() => handleRowClick(issue)}
-                            className={`hover:bg-slate-50 cursor-pointer transition ${
-                              isSelected ? 'bg-blue-50/60 font-medium' : ''
+                            className={`cursor-pointer transition ${
+                              isUnverified
+                                ? 'bg-rose-50/30 border-y-2 border-rose-500 ring-1 ring-rose-400'
+                                : isSelected
+                                ? 'bg-blue-50/60 font-medium'
+                                : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <td className={`px-4 py-3 ${isUnverified ? 'border-l-4 border-rose-600' : ''}`} onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selectedRows.includes(cleanId)}
@@ -1561,7 +1919,9 @@ export const AuthorityDashboard = () => {
 
                             <td className="px-3 py-3 font-mono font-semibold text-blue-800">
                               <div className="flex items-center gap-1.5">
-                                <span>{issue.id.startsWith('#') ? issue.id : `#${issue.id}`}</span>
+                                <span className={isUnverified ? 'text-rose-900 font-bold' : ''}>
+                                  {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
+                                </span>
                                 {issue.isLiveReport && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
                                     LIVE
@@ -1575,15 +1935,43 @@ export const AuthorityDashboard = () => {
                                 <img
                                   src={issue.image}
                                   alt={issue.title}
-                                  className="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0"
+                                  className={`w-10 h-10 rounded object-cover border flex-shrink-0 ${
+                                    isUnverified ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-200'
+                                  }`}
                                 />
                                 <div>
-                                  <span className="font-semibold text-slate-900 block leading-snug">
+                                  <span className="font-bold text-slate-900 block leading-snug uppercase text-xs">
                                     {issue.title}
                                   </span>
                                   <span className="text-[11px] text-slate-400 block line-clamp-1">
                                     {issue.location}
                                   </span>
+                                  {isUnverified ? (
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-300">
+                                        <ShieldAlert className="w-3 h-3 text-rose-700" />
+                                        <span>Unverified Evidence</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMarkReal(issue.id)}
+                                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                        title="Mark Real (Verify Evidence)"
+                                      >
+                                        <Check className="w-2.5 h-2.5" />
+                                        <span>Mark Real</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDismiss(issue.id)}
+                                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                        title="Dismiss / Reject Fake Evidence"
+                                      >
+                                        <X className="w-2.5 h-2.5" />
+                                        <span>Dismiss</span>
+                                      </button>
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
                             </td>
@@ -1617,27 +2005,28 @@ export const AuthorityDashboard = () => {
                                 </span>
                               ) : (
                                 <>
-                                  {issue.status === 'Assigned' && (
+                                  {isUnverified && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                                      <ShieldAlert className="w-3 h-3 text-rose-700" />
+                                      <span>Unverified</span>
+                                    </span>
+                                  )}
+                                  {issue.status === 'Assigned' && !isUnverified && (
                                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                       Assigned
                                     </span>
                                   )}
-                                  {issue.status === 'In Progress' && (
+                                  {issue.status === 'In Progress' && !isUnverified && (
                                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                       In Progress
                                     </span>
                                   )}
-                                  {issue.status === 'Under Review' && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                      Under Review
-                                    </span>
-                                  )}
-                                  {issue.status === 'Submitted' && (
+                                  {issue.status === 'Submitted' && !isUnverified && (
                                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                       Submitted
                                     </span>
                                   )}
-                                  {issue.status === 'Escalated' && (
+                                  {issue.status === 'Escalated' && !isUnverified && (
                                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
                                       Escalated
                                     </span>
@@ -1646,6 +2035,12 @@ export const AuthorityDashboard = () => {
                                     <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                       <span>Resolved</span>
+                                    </span>
+                                  )}
+                                  {issue.status === 'Dismissed' && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
+                                      <X className="w-3 h-3 text-slate-500" />
+                                      <span>Dismissed</span>
                                     </span>
                                   )}
                                 </>
@@ -1686,7 +2081,7 @@ export const AuthorityDashboard = () => {
                             </td>
 
                             <td 
-                              className="px-2 py-3 text-slate-400 hover:text-slate-700" 
+                              className={`px-2 py-3 text-slate-400 hover:text-slate-700 ${isUnverified ? 'border-r-4 border-rose-600' : ''}`}
                               onClick={(e) => { 
                                 e.stopPropagation(); 
                                 setSelectedIssueId(cleanId);
@@ -1874,7 +2269,18 @@ export const AuthorityDashboard = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveNav('audit_logs');
+                    setSearchParams({ tab: 'AUDIT_LOGS' });
+                  }}
+                  className="px-3 py-2 rounded bg-blue-50 border border-blue-200 text-blue-900 font-semibold text-xs hover:bg-blue-100 transition flex items-center gap-1.5"
+                >
+                  <ClipboardList className="w-3.5 h-3.5 text-blue-700" />
+                  <span>View Activity & Audit Logs &rarr;</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
@@ -1885,198 +2291,116 @@ export const AuthorityDashboard = () => {
               </div>
             </div>
 
-            {/* AUTONOMOUS ZERO-TOUCH AI DISPATCH MASTER CONTROL BANNER */}
-            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-lg p-5 border border-blue-800 shadow-md">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className={`p-3 rounded-lg border flex-shrink-0 ${
-                    autoDispatchMode 
-                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' 
-                      : 'bg-blue-500/20 border-blue-400 text-blue-300'
-                  }`}>
-                    <Cpu className={`w-7 h-7 ${autoDispatchMode ? 'animate-pulse text-emerald-400' : ''}`} />
+            {/* AUTONOMOUS / MANUAL MODE CONTROLLER - SIMPLE, CLEAR 2-BUTTON SELECTOR */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-base text-slate-900">Dispatch Operating Mode</h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                      autoDispatchMode 
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                        : 'bg-blue-50 text-blue-900 border-blue-300'
+                    }`}>
+                      {autoDispatchMode ? 'Autonomous AI Mode Active' : 'Manual Review Mode Active'}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h2 className="font-bold text-base text-white">Autonomous AI Dispatch Engine</h2>
-                      <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${
-                        autoDispatchMode
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                          : 'bg-slate-700 text-slate-300 border-slate-600'
-                      }`}>
-                        {autoDispatchMode ? '● Zero-Touch Mode (ACTIVE)' : '○ Human Oversight Mode'}
+                  <p className="text-xs text-slate-500 mt-1 max-w-xl">
+                    Select how tickets are dispatched: manually review and approve each assignment, or enable AI to automatically dispatch available specialists.
+                  </p>
+                </div>
+
+                {/* Mode Selector Pill Toggle - Matches Requested Screenshot Design */}
+                <div className="inline-flex items-center bg-[#f0f2f6] border border-slate-200/90 rounded-full p-1 shadow-inner self-start lg:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDispatchMode(false)}
+                    className={`px-7 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      !autoDispatchMode
+                        ? 'bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-[0_4px_14px_rgba(29,78,216,0.35)]'
+                        : 'text-slate-700 hover:text-slate-900'
+                    }`}
+                  >
+                    Manual Review
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDispatchMode(true)}
+                    className={`px-7 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      autoDispatchMode
+                        ? 'bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-[0_4px_14px_rgba(29,78,216,0.35)]'
+                        : 'text-slate-700 hover:text-slate-900'
+                    }`}
+                  >
+                    AI Auto-Dispatch
+                  </button>
+                </div>
+              </div>
+
+              {/* Bold High-Contrast Explainer Callout */}
+              {!autoDispatchMode ? (
+                <div className="p-3.5 rounded-lg bg-blue-50/90 border border-blue-200 flex items-start gap-3">
+                  <div className="p-2 rounded-md bg-blue-100 text-blue-900 flex-shrink-0 mt-0.5">
+                    <UserCheck className="w-5 h-5 text-blue-800" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <strong className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                        CURRENT STATUS: MANUAL REVIEW REQUIRED (OFFICIAL SUPERVISION)
+                      </strong>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-blue-800 border border-blue-200">
+                        Human Oversight
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                      {autoDispatchMode 
-                        ? '🚀 Zero-Touch Active: The AI autonomously selects, approves, and dispatches field squads without requiring human confirmation. If a specialist is busy, tickets are automatically queued and dispatched the moment they become free.'
-                        : '🛡️ Human Oversight Active: The AI pairs issues with designated department specialists and monitors live queue availability. When free, supervisors review the AI rationale and simply click Approve or Edit.'}
+                    <p className="text-xs text-blue-900/90 mt-1 leading-relaxed">
+                      The AI has paired issues with specialists based on GPS location and skill set. <strong>You must click "Approve" or "Edit" on each card below</strong> to deploy the specialist. No workers will be dispatched until you approve them.
                     </p>
                   </div>
                 </div>
-
-                {/* Toggle Switch */}
-                <div className="flex items-center gap-3 self-end md:self-center bg-white/5 border border-white/10 p-2.5 rounded-lg flex-shrink-0">
-                  <div className="text-right">
-                    <span className="text-[11px] font-bold block text-white">
-                      {autoDispatchMode ? 'Zero-Touch ENABLED' : 'Manual Review'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      {autoDispatchMode ? 'No human clicks needed' : 'Click Approve or Edit'}
-                    </span>
+              ) : (
+                <div className="p-3.5 rounded-lg bg-emerald-50/90 border border-emerald-200 flex items-start gap-3">
+                  <div className="p-2 rounded-md bg-emerald-100 text-emerald-900 flex-shrink-0 mt-0.5">
+                    <Cpu className="w-5 h-5 text-emerald-800" />
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={autoDispatchMode}
-                    onClick={handleToggleAutoDispatch}
-                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      autoDispatchMode ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                        autoDispatchMode ? 'translate-x-7' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {/* Status Metric Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-blue-900/60 text-xs">
-                <div className="bg-white/5 rounded p-2 border border-white/10">
-                  <span className="text-slate-400 text-[10px] block font-mono">TOTAL ISSUES</span>
-                  <strong className="text-white text-sm font-semibold">{issues.length} Monitored</strong>
-                </div>
-                <div className="bg-white/5 rounded p-2 border border-white/10">
-                  <span className="text-slate-400 text-[10px] block font-mono">ACTIVE REMEDIATIONS</span>
-                  <strong className="text-amber-400 text-sm font-semibold">{Object.keys(activeJobs).length} Ongoing (60s)</strong>
-                </div>
-                <div className="bg-white/5 rounded p-2 border border-white/10">
-                  <span className="text-slate-400 text-[10px] block font-mono">AUTONOMOUS DISPATCHES</span>
-                  <strong className="text-emerald-400 text-sm font-semibold">{aiAuditLogs.filter(l => l.type === 'AUTONOMOUS_DISPATCH').length} Executed</strong>
-                </div>
-                <div className="bg-white/5 rounded p-2 border border-white/10">
-                  <span className="text-slate-400 text-[10px] block font-mono">AVAILABLE SPECIALISTS</span>
-                  <strong className="text-cyan-400 text-sm font-semibold">{squads.filter(s => s.status === 'AVAILABLE').length} On-Call</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* REAL-TIME AI AUTONOMOUS DISPATCH & WORKER ACTIVITY AUDIT LOG */}
-            <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-              <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded bg-blue-100 text-blue-800">
-                    <ClipboardList className="w-4 h-4 text-blue-800" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-slate-900">
-                        AI Autonomous Dispatch & Worker Activity Audit Log
-                      </h3>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live Stream
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <strong className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                        CURRENT STATUS: AI AUTONOMOUS ZERO-TOUCH DISPATCH (ACTIVE)
+                      </strong>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-emerald-800 border border-emerald-200">
+                        Autonomous
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-500 block">
-                      Chronological trace of AI match rationale, worker busy waitlists, auto-dispatches, and completions.
-                    </span>
+                    <p className="text-xs text-emerald-900/90 mt-1 leading-relaxed">
+                      AI is actively dispatching available department specialists automatically without requiring human confirmation. When a specialist is busy on another ticket (60s remediation), subsequent tickets are queued and dispatched the second they become free.
+                    </p>
                   </div>
                 </div>
+              )}
 
-                {/* Filter pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto text-[11px]">
-                  {['ALL', 'DISPATCH', 'WAITLIST', 'COMPLETE'].map((filterKey) => (
-                    <button
-                      key={filterKey}
-                      type="button"
-                      onClick={() => setAiLogFilter(filterKey)}
-                      className={`px-2.5 py-1 rounded font-semibold transition ${
-                        aiLogFilter === filterKey
-                          ? 'bg-blue-800 text-white shadow-xs'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {filterKey === 'ALL' && `All Logs (${aiAuditLogs.length})`}
-                      {filterKey === 'DISPATCH' && 'Dispatches'}
-                      {filterKey === 'WAITLIST' && 'Waitlists / Busy'}
-                      {filterKey === 'COMPLETE' && 'Completions'}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setAiAuditLogs(INITIAL_AI_LOGS)}
-                    className="text-slate-400 hover:text-slate-700 ml-1 p-1"
-                    title="Reset to Initial Audit Logs"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
+              {/* Status Metric Strip (Light colored tiles) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
+                <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-200/80">
+                  <span className="text-slate-500 text-[11px] block font-medium">TOTAL MONITORED ISSUES</span>
+                  <strong className="text-slate-900 text-base font-bold">{issues.length}</strong>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Active registry</span>
                 </div>
-              </div>
-
-              {/* Scrollable logs container */}
-              <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto text-xs font-mono">
-                {aiAuditLogs
-                  .filter((log) => {
-                    if (aiLogFilter === 'DISPATCH') return log.type === 'AUTONOMOUS_DISPATCH' || log.type === 'OFFICIAL_APPROVAL';
-                    if (aiLogFilter === 'WAITLIST') return log.type === 'WORKER_BUSY_WAITLIST' || log.type === 'WORKER_FREED';
-                    if (aiLogFilter === 'COMPLETE') return log.type === 'REMEDIATION_COMPLETE';
-                    return true;
-                  })
-                  .map((log) => {
-                    let badgeClass = 'bg-slate-100 text-slate-800 border-slate-200';
-                    let badgeLabel = 'AI LOG';
-
-                    if (log.type === 'AUTONOMOUS_DISPATCH') {
-                      badgeClass = 'bg-purple-100 text-purple-900 border-purple-300 font-bold';
-                      badgeLabel = '🤖 ZERO-TOUCH DISPATCH';
-                    } else if (log.type === 'OFFICIAL_APPROVAL') {
-                      badgeClass = 'bg-blue-100 text-blue-900 border-blue-300 font-bold';
-                      badgeLabel = '👤 SUPERVISOR APPROVED';
-                    } else if (log.type === 'WORKER_BUSY_WAITLIST') {
-                      badgeClass = 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
-                      badgeLabel = '⏳ WORKER BUSY / QUEUED';
-                    } else if (log.type === 'WORKER_FREED') {
-                      badgeClass = 'bg-cyan-100 text-cyan-900 border-cyan-300 font-bold';
-                      badgeLabel = '✅ WORKER FREED';
-                    } else if (log.type === 'REMEDIATION_COMPLETE') {
-                      badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold';
-                      badgeLabel = '🎉 REMEDIATION COMPLETE';
-                    } else if (log.type === 'REASSIGNMENT') {
-                      badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300 font-bold';
-                      badgeLabel = '✏️ REASSIGNED / OVERRIDE';
-                    } else if (log.type === 'AI_MATCH_EVAL') {
-                      badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
-                      badgeLabel = '🧠 AI MATCH EVAL';
-                    }
-
-                    return (
-                      <div key={log.id} className="p-3 hover:bg-slate-50/80 transition flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                          <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap mt-0.5">
-                            {log.time}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] border whitespace-nowrap ${badgeClass}`}>
-                            {badgeLabel}
-                          </span>
-                          <span className="font-bold text-blue-900 text-xs whitespace-nowrap">
-                            #{log.issueId}
-                          </span>
-                          <p className="text-slate-700 text-xs font-sans leading-relaxed">
-                            {log.message}
-                          </p>
-                        </div>
-                        {log.officer && (
-                          <span className="text-[11px] text-slate-500 whitespace-nowrap font-sans font-medium hidden md:inline">
-                            {log.officer}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="bg-amber-50/60 rounded-lg p-3 border border-amber-200/80">
+                  <span className="text-amber-800 text-[11px] block font-medium">ACTIVE REMEDIATIONS</span>
+                  <strong className="text-amber-900 text-base font-bold">{Object.keys(activeJobs).length} Ongoing</strong>
+                  <span className="text-[10px] text-amber-700 block mt-0.5">60s on-site timer</span>
+                </div>
+                <div className="bg-emerald-50/60 rounded-lg p-3 border border-emerald-200/80">
+                  <span className="text-emerald-800 text-[11px] block font-medium">AUTONOMOUS DISPATCHES</span>
+                  <strong className="text-emerald-900 text-base font-bold">{aiAuditLogs.filter(l => l.type === 'AUTONOMOUS_DISPATCH').length} Executed</strong>
+                  <span className="text-[10px] text-emerald-700 block mt-0.5">Zero-touch executions</span>
+                </div>
+                <div className="bg-blue-50/60 rounded-lg p-3 border border-blue-200/80">
+                  <span className="text-blue-800 text-[11px] block font-medium">AVAILABLE SPECIALISTS</span>
+                  <strong className="text-blue-900 text-base font-bold">{squads.filter(s => s.status === 'AVAILABLE').length} On-Call</strong>
+                  <span className="text-[10px] text-blue-700 block mt-0.5">Ready for deployment</span>
+                </div>
               </div>
             </div>
 
@@ -2114,6 +2438,17 @@ export const AuthorityDashboard = () => {
                             }`}>
                               {item.priority} Priority
                             </span>
+                            {item.requiresHumanReview || item.status === 'Review Required' ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                <ShieldAlert className="w-3 h-3 text-amber-700" />
+                                <span>Evidence Verification Hold</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                <span>Verified Authentic</span>
+                              </span>
+                            )}
                           </div>
                           <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
                         </div>
@@ -2167,8 +2502,9 @@ export const AuthorityDashboard = () => {
 
                       <div>
                         <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
-                        <strong className="text-blue-900 block mt-0.5">
-                          📍 {item.aiDistanceKm || 0.8} km away (Haversine GPS)
+                        <strong className="text-blue-900 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{item.aiDistanceKm || 0.8} km away (Haversine GPS)</span>
                         </strong>
                         <span className="text-slate-500 text-[11px] block">
                           {workerStatus.state === 'BUSY_ON_THIS' && 'Active remediation in progress on this location.'}
@@ -2200,7 +2536,7 @@ export const AuthorityDashboard = () => {
                           <p className="text-slate-700 mt-1 leading-relaxed">
                             Designated specialist <strong>{workerStatus.workerName}</strong> is actively engaged on ticket <strong>#{workerStatus.activeTicket}</strong>. 
                             {autoDispatchMode 
-                              ? ` 🤖 Zero-Touch Mode is ON: The AI will autonomously assign & dispatch ${workerStatus.workerName} to this issue the moment #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s.`
+                              ? ` Zero-Touch Mode is ON: The AI will autonomously assign & dispatch ${workerStatus.workerName} to this issue the moment #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s.`
                               : ` The AI will automatically assign ${workerStatus.workerName} as soon as #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s. An official supervisor can then click Approve or Edit.`}
                           </p>
                         </div>
@@ -2237,8 +2573,31 @@ export const AuthorityDashboard = () => {
                           Edit / Reassign Squad
                         </button>
 
-                        {/* Action depending on availability and state */}
-                        {workerStatus.state === 'BUSY_ON_THIS' ? (
+                        {/* Action depending on availability, review requirement, and state */}
+                        {item.requiresHumanReview || item.status === 'Review Required' ? (
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-xs font-semibold flex items-center gap-1.5">
+                              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Evidence Review Hold</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAuthenticityDecision(item.id, 'APPROVE')}
+                              className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Approve & Dispatch</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAuthenticityDecision(item.id, 'REJECT')}
+                              className="px-3 py-1.5 rounded bg-rose-700 hover:bg-rose-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Reject Media</span>
+                            </button>
+                          </div>
+                        ) : workerStatus.state === 'BUSY_ON_THIS' ? (
                           <div className="flex items-center gap-2">
                             <span className="px-3 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5">
                               <Clock className="w-3.5 h-3.5 text-amber-700 animate-spin" />
@@ -2289,6 +2648,27 @@ export const AuthorityDashboard = () => {
           </div>
         )}
 
+        {/* VIEW: DEDICATED AI AUTONOMOUS DISPATCH & WORKER ACTIVITY AUDIT LOG */}
+        {activeNav === 'audit_logs' && (
+          <div className="space-y-4">
+            <AuditLogsPage 
+              auditLogs={aiAuditLogs}
+              onResetLogs={() => setAiAuditLogs(INITIAL_AI_LOGS)}
+              autoDispatchMode={autoDispatchMode}
+              onToggleAutoDispatch={handleToggleAutoDispatch}
+              onSelectDispatchMode={handleSelectDispatchMode}
+              activeJobsCount={Object.keys(activeJobs).length}
+              totalIssuesCount={issues.length}
+              availableSquadsCount={squads.filter(s => s.status === 'AVAILABLE').length}
+              onOpenTicketInTriage={(ticketId) => {
+                setActiveNav('triage');
+                setSearchParams({ search: ticketId });
+              }}
+              isEmbedded={true}
+            />
+          </div>
+        )}
+
         {/* VIEW D: OPERATIONS MAP */}
         {activeNav === 'map' && (
           <div className="space-y-4">
@@ -2310,106 +2690,7 @@ export const AuthorityDashboard = () => {
           </div>
         )}
 
-        {/* VIEW G: WORK ORDERS */}
-        {activeNav === 'orders' && (
-          <div className="space-y-6">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5">
-              <Link to="/" className="hover:text-slate-600">Home</Link>
-              <span>&rsaquo;</span>
-              <span className="text-slate-500">Operations</span>
-              <span>&rsaquo;</span>
-              <span className="text-slate-700 font-medium">Work Orders</span>
-            </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">
-                  Municipal Work Orders & Repair Directives
-                </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Track field crew task orders, material allocations, and civic defect remediation milestones.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsNewOrderModalOpen(true)}
-                className="px-3.5 py-2 rounded bg-blue-800 text-white font-medium text-xs hover:bg-blue-900 transition flex items-center gap-1.5 shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New Work Order</span>
-              </button>
-            </div>
-
-            {/* Work Orders Table */}
-            <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3 px-4 font-semibold">Order ID</th>
-                    <th className="py-3 px-4 font-semibold">Task Description</th>
-                    <th className="py-3 px-4 font-semibold">Department</th>
-                    <th className="py-3 px-4 font-semibold">Priority</th>
-                    <th className="py-3 px-4 font-semibold">Assigned Squad</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {issues.map((it, idx) => {
-                    const cleanId = it.id.replace('#', '');
-                    const job = activeJobs[cleanId];
-
-                    return (
-                      <tr key={idx} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-800">
-                          WO-{cleanId}
-                        </td>
-                        <td className="py-3 px-4 font-medium text-slate-900">
-                          {it.title} &bull; <span className="text-slate-500 text-[11px]">{it.location}</span>
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">{it.department}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            it.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                          }`}>
-                            {it.priority}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-slate-800 font-medium">
-                          {it.assignedTo || 'Pending Assignment'} {it.squad ? `(${it.squad})` : ''}
-                        </td>
-                        <td className="py-3 px-4">
-                          {job ? (
-                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] animate-pulse">
-                              Busy ({job.remainingSeconds}s)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-medium text-[11px]">
-                              {it.status}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedIssueId(cleanId);
-                              setIsUpdateModalOpen(true);
-                            }}
-                            className="text-blue-800 hover:underline font-semibold"
-                          >
-                            Update Status
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* VIEW H: FIELD CREW RADAR */}
         {activeNav === 'crew' && (
@@ -2698,14 +2979,18 @@ export const AuthorityDashboard = () => {
               </div>
 
               {/* Main Evidence Photo */}
-              <div className="relative rounded-md overflow-hidden border border-slate-200 bg-slate-950 aspect-video flex items-center justify-center">
+              <div className={`relative rounded-md overflow-hidden border aspect-video flex items-center justify-center ${
+                checkIsUnverified(currentIssue) ? 'border-2 border-rose-500 ring-2 ring-rose-200' : 'border-slate-200 bg-slate-950'
+              }`}>
                 <img
                   src={activeEvidenceImg || currentIssue.image}
                   alt={currentIssue.title}
                   className="w-full h-full object-cover"
                 />
-                <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] font-mono">
-                  Verified Evidence Photo
+                <span className={`absolute bottom-2 left-2 px-2 py-0.5 rounded text-white text-[10px] font-mono ${
+                  checkIsUnverified(currentIssue) ? 'bg-rose-900/90 text-rose-100 font-bold' : 'bg-black/60'
+                }`}>
+                  {checkIsUnverified(currentIssue) ? 'Flagged Unverified Evidence' : 'Evidence Photo'}
                 </span>
               </div>
 
@@ -2762,9 +3047,9 @@ export const AuthorityDashboard = () => {
                 </div>
               )}
 
-              {/* Drawer Sub-Tabs: Overview, Timeline, Location, Work Orders */}
-              <div className="grid grid-cols-4 border-b border-slate-200 text-xs text-center select-none">
-                {['Overview', 'Timeline', 'Location', 'Work Orders'].map((tab) => (
+              {/* Drawer Sub-Tabs: Overview, Timeline, Location */}
+              <div className="grid grid-cols-3 border-b border-slate-200 text-xs text-center select-none">
+                {['Overview', 'Timeline', 'Location'].map((tab) => (
                   <button
                     key={tab}
                     type="button"
@@ -2895,6 +3180,103 @@ export const AuthorityDashboard = () => {
                       <span>{isAiScanning ? 'Scanning...' : 'Re-verify with Computer Vision'}</span>
                     </button>
                   </div>
+                  {/* EVIDENCE AUTHENTICITY & FORENSICS DOSSIER CARD */}
+                  <div className={`rounded-lg p-3.5 text-xs space-y-3 border ${
+                    checkIsUnverified(currentIssue)
+                      ? 'bg-rose-50/70 border-2 border-rose-400'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                        {checkIsUnverified(currentIssue) ? (
+                          <ShieldAlert className="w-4 h-4 text-rose-700" />
+                        ) : (
+                          <ShieldCheck className="w-4 h-4 text-blue-700" />
+                        )}
+                        <span>Evidence Authenticity & Forensics</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        checkIsUnverified(currentIssue)
+                          ? 'bg-rose-100 text-rose-900 border-rose-300'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      }`}>
+                        {checkIsUnverified(currentIssue) ? 'UNVERIFIED DETECTED' : 'VERIFIED AUTHENTIC'}
+                      </span>
+                    </div>
+
+                    {/* Forensic Score & Indicators */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-white p-2 rounded border border-slate-200">
+                        <span className="text-slate-400 block text-[10px]">Trust & Authenticity</span>
+                        <strong className={`text-sm ${
+                          (currentIssue.authenticityScore || 94) >= 70 && !checkIsUnverified(currentIssue) ? 'text-emerald-700' : 'text-rose-700'
+                        }`}>
+                          {Math.round(currentIssue.authenticityScore || (checkIsUnverified(currentIssue) ? 54 : 94))} / 100
+                        </strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-slate-200">
+                        <span className="text-slate-400 block text-[10px]">Synthetic / AI Likelihood</span>
+                        <strong className="text-sm text-slate-800">
+                          {currentIssue.aiGeneratedProbability !== undefined && currentIssue.aiGeneratedProbability !== null 
+                            ? `${Math.round(currentIssue.aiGeneratedProbability * 100)}%` 
+                            : (checkIsUnverified(currentIssue) ? '48% (Flagged)' : '2% (Natural Sensor)')}
+                        </strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-slate-200">
+                        <span className="text-slate-400 block text-[10px]">Tampering / ELA Delta</span>
+                        <strong className="text-sm text-slate-800">
+                          {currentIssue.tamperingScore !== undefined && currentIssue.tamperingScore !== null 
+                            ? `${Math.round(currentIssue.tamperingScore)}%` 
+                            : (checkIsUnverified(currentIssue) ? '42% (Anomalous)' : '4% (Uniform)')}
+                        </strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-slate-200">
+                        <span className="text-slate-400 block text-[10px]">EXIF & GPS Integrity</span>
+                        <strong className={`text-sm ${checkIsUnverified(currentIssue) ? 'text-amber-700' : 'text-emerald-700'}`}>
+                          {checkIsUnverified(currentIssue) ? 'Discrepancy Detected' : 'Match Confirmed'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Flags if any */}
+                    {Array.isArray(currentIssue.authenticityFlags) && currentIssue.authenticityFlags.length > 0 && (
+                      <div className="bg-rose-100/70 border border-rose-200 rounded p-2 text-[11px] text-rose-950 space-y-1">
+                        <span className="font-bold block text-[10px] text-rose-900 uppercase tracking-wider">Forensic Audit Triggers</span>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {currentIssue.authenticityFlags.map((f, idx) => (
+                            <li key={idx}>{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Supervisor Decision Gateway Action when Hold is active */}
+                    {checkIsUnverified(currentIssue) && (
+                      <div className="pt-2 border-t border-rose-200 space-y-2">
+                        <p className="text-[11px] text-rose-900 font-medium">
+                          Supervisor Decision Required: Confirm physical authenticity to remove red boundary hold or dismiss invalid report.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleMarkReal(currentIssue.id)}
+                            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Mark Real</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDismiss(currentIssue.id)}
+                            className="px-3 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Dismiss</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Description */}
                   <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
@@ -2906,7 +3288,7 @@ export const AuthorityDashboard = () => {
 
                   {/* Multi-Photo Evidence Gallery */}
                   <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
-                    <span className="font-semibold text-slate-900 block">Evidence Photos (Click to preview)</span>
+                    <span className="font-semibold text-slate-900 block">Initial Evidence Photos (Click to preview)</span>
                     <div className="grid grid-cols-3 gap-2">
                       {currentIssue.evidenceGallery?.map((imgUrl, i) => (
                         <img
@@ -2921,6 +3303,66 @@ export const AuthorityDashboard = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* WORKER COMPLETED REMEDIATION PROOF (BEFORE/AFTER PHOTO & VIDEO) */}
+                  {currentIssue.status === 'Resolved' && (
+                    <div className="border-t border-slate-200 pt-3 space-y-3 text-xs bg-slate-50/70 p-3 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 flex items-center gap-1.5 text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                          <span>Worker Completed Work Proof (Verified)</span>
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-semibold text-[10px]">
+                          Resolved & Verified
+                        </span>
+                      </div>
+
+                      {/* Before / After side by side comparison */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-slate-500 font-medium block">BEFORE (REPORT PHOTO)</span>
+                          <img 
+                            src={resolveBeforeImage(currentIssue)} 
+                            alt="Before Remediation" 
+                            className="w-full h-24 object-cover rounded border border-slate-200"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-emerald-700 font-semibold block">AFTER (WORKER PROOF)</span>
+                          <img 
+                            src={currentIssue.proofMedia?.afterImage || resolveProofMedia(currentIssue).afterImage} 
+                            alt="After Remediation" 
+                            className="w-full h-24 object-cover rounded border border-emerald-300 shadow-2xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Completed Video Proof */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-slate-600 font-medium flex items-center gap-1">
+                          <Video className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Worker Completed Work Video Proof</span>
+                        </span>
+                        <video 
+                          src={currentIssue.proofMedia?.videoProof || resolveProofMedia(currentIssue).videoProof}
+                          controls
+                          loop
+                          muted
+                          className="w-full h-32 object-cover rounded-lg bg-black border border-slate-300"
+                        />
+                      </div>
+
+                      <div className="bg-white border border-emerald-200 rounded p-2.5 text-[11px] text-slate-700 space-y-1">
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-slate-500">AI Visual Clearance:</span>
+                          <span className="text-emerald-700 font-bold">{currentIssue.proofMedia?.verificationScore || resolveProofMedia(currentIssue).verificationScore}% Defect Cleared</span>
+                        </div>
+                        <p className="text-slate-600 text-[11px] italic">
+                          "{currentIssue.proofMedia?.repairSummary || resolveProofMedia(currentIssue).repairSummary}"
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3075,9 +3517,12 @@ export const AuthorityDashboard = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-400">Nearest Fleet:</span>
-                      <span className="font-semibold text-blue-900">📍 {currentIssue.aiDistanceKm || 0.8} km away</span>
+                      <span className="font-semibold text-blue-900 inline-flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{currentIssue.aiDistanceKm || 0.8} km away</span>
+                      </span>
                     </div>
                   </div>
 
@@ -3092,67 +3537,50 @@ export const AuthorityDashboard = () => {
                 </div>
               )}
 
-              {/* TAB 4: WORK ORDERS */}
-              {drawerTab === 'Work Orders' && (
-                <div className="space-y-4 text-xs pt-1">
-                  <div className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
-                    <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
-                      <div>
-                        <span className="text-[10px] font-mono text-slate-400 font-semibold block">DIRECTIVE ID</span>
-                        <strong className="text-sm font-bold text-blue-900">WO-{currentIssue.id.replace('#', '')}-R1</strong>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        {currentIssue.status}
-                      </span>
-                    </div>
 
-                    <div className="space-y-2 text-slate-600">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Assigned Squad:</span>
-                        <strong className="text-slate-800">{currentIssue.assignedTo || 'Unassigned'} {currentIssue.squad ? `(${currentIssue.squad})` : ''}</strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Target SLA:</span>
-                        <span className="font-medium text-slate-800">24 Hours (Standard Municipal SLA)</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Allocated Materials:</span>
-                        <span className="font-medium text-slate-800">Cold Asphalt Patch / Heavy Tamper</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block mb-0.5">Operational Directive:</span>
-                        <p className="text-[11px] text-slate-700 bg-white p-2 rounded border border-slate-200 leading-relaxed">
-                          {currentIssue.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsUpdateModalOpen(true)}
-                        className="flex-1 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition"
-                      >
-                        Update Status
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="px-3 py-2 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition flex items-center justify-center gap-1"
-                        title="Print Work Order Directive"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Action Buttons at bottom of Drawer */}
             <div className="p-5 border-t border-slate-200 bg-white space-y-2">
-              {/* PRIMARY 1-MINUTE REMEDIATION ACTION BASED ON AVAILABILITY */}
-              {activeJobForCurrent ? (
+              {/* PRIMARY ACTION: UNVERIFIED / ACTIVE TIMER / QUEUED / AVAILABLE / RESOLVED */}
+              {checkIsUnverified(currentIssue) ? (
+                <div className="space-y-2">
+                  <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-lg text-rose-950 text-xs shadow-xs space-y-1">
+                    <span className="font-bold flex items-center gap-1.5 text-rose-900">
+                      <ShieldAlert className="w-4 h-4 text-rose-700" />
+                      <span>Unverified Evidence Flagged &bull; Hold Active</span>
+                    </span>
+                    <p className="text-[11px] text-slate-700 leading-snug">
+                      Authenticity verification pending. Mark real to clear hold and approve dispatch, or dismiss as fraudulent.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleMarkReal(currentIssue.id)}
+                      className="py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Mark Real & Verify</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDismiss(currentIssue.id)}
+                      className="py-2.5 rounded bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Dismiss as Fake</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedIssueId(currentIssue.id.replace('#', '')); setIsUpdateModalOpen(true); }}
+                    className="w-full py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-xs transition flex items-center justify-center gap-1.5 border border-slate-300 cursor-pointer"
+                  >
+                    <span>Assign Squad & Perform Actions &rarr;</span>
+                  </button>
+                </div>
+              ) : activeJobForCurrent ? (
                 <button
                   type="button"
                   onClick={() => handleFastForwardJob(currentIssue.id)}
@@ -3398,6 +3826,260 @@ export const AuthorityDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ============================================================ */}
+      {/* AUDIT LOG & COMPLETED WORK INSPECTION MODAL (IN AUTHORITY DASHBOARD) */}
+      {/* ============================================================ */}
+      {selectedAuditLogInAuthority && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setSelectedAuditLogInAuthority(null)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto my-auto text-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-800 border-blue-200">
+                  <ClipboardList className="w-3.5 h-3.5 text-blue-700" />
+                  <span>{selectedAuditLogInAuthority.type.replace(/_/g, ' ')}</span>
+                </span>
+                <span className="font-bold text-slate-900 text-sm">
+                  Ticket #{selectedAuditLogInAuthority.issueId}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Event ID: {selectedAuditLogInAuthority.id}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLogInAuthority(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 space-y-6 text-xs">
+              {/* Event Metadata Strip (Theme-matched light tiles) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">TARGET DEFECT</span>
+                  <strong className="text-slate-900 text-xs font-bold block mt-0.5">
+                    {selectedAuditLogInAuthority.issueTitle || 'Civic Infrastructure Defect'}
+                  </strong>
+                  <span className="text-[10px] text-slate-400">{selectedAuditLogInAuthority.dept || 'Municipal Ops'}</span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">ASSIGNED SPECIALIST</span>
+                  <strong className="text-slate-900 text-xs font-bold block mt-0.5">
+                    {selectedAuditLogInAuthority.officer || 'Er. Rajesh Patil'}
+                  </strong>
+                  <span className="text-[10px] text-slate-400">On-Site Field Squad</span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">TIMESTAMP & MODE</span>
+                  <strong className="text-slate-900 text-xs font-bold block mt-0.5">
+                    {selectedAuditLogInAuthority.time}
+                  </strong>
+                  <span className="text-[10px] text-blue-700 font-medium">
+                    {selectedAuditLogInAuthority.mode || (autoDispatchMode ? 'Autonomous Zero-Touch' : 'Supervisor Oversight')}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">AI VERIFICATION SCORE</span>
+                  <strong className="text-emerald-700 text-xs font-bold block mt-0.5">
+                    {selectedAuditLogInAuthority.verificationScore || 98.8}% Defect Cleared
+                  </strong>
+                  <span className="text-[10px] text-emerald-600 font-medium">Visual Proof Validated</span>
+                </div>
+              </div>
+
+              {/* BEFORE & AFTER PHOTO COMPARISON SECTION */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Image className="w-4 h-4 text-blue-800" />
+                    <h3 className="font-bold text-sm text-slate-900">
+                      Visual Evidence: Before vs Completed Work (After)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    Captured on-site and verified by municipal computer vision
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* BEFORE PHOTO CARD */}
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="px-3.5 py-2 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-700 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Before Remediation (Initial Report)
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">Citizen / Sensor Photo</span>
+                    </div>
+
+                    <div className="relative aspect-4/3 bg-slate-200 overflow-hidden">
+                      <img 
+                        src={selectedAuditLogInAuthority.beforeImage || '/sample_evidence/pothole.jpg'} 
+                        alt="Before Remediation" 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono px-2 py-0.5 rounded">
+                        DEFECT REPORT EVIDENCE
+                      </div>
+                    </div>
+
+                    <div className="p-3 text-xs text-slate-600 space-y-1 bg-white border-t border-slate-100 flex-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Report Location:</span>
+                        <span className="font-medium text-slate-700">{selectedAuditLogInAuthority.location || 'MG Road, Ward 12'}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">GPS Coordinates:</span>
+                        <span className="font-mono text-slate-700">{selectedAuditLogInAuthority.coordinates || '22.7196° N, 75.8577° E'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AFTER PHOTO CARD */}
+                  <div className="bg-slate-50 rounded-xl border border-emerald-200 overflow-hidden flex flex-col">
+                    <div className="px-3.5 py-2 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between text-xs font-semibold text-emerald-900">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                        After Remediation (Worker Posted Proof)
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-medium">Verified Clean</span>
+                    </div>
+
+                    <div className="relative aspect-4/3 bg-slate-200 overflow-hidden">
+                      <img 
+                        src={selectedAuditLogInAuthority.afterImage || '/sample_evidence/pothole_after.jpg'} 
+                        alt="After Remediation" 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-emerald-900/80 backdrop-blur-xs text-white text-[10px] font-mono px-2 py-0.5 rounded flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                        WORK COMPLETE PROOF
+                      </div>
+                    </div>
+
+                    <div className="p-3 text-xs text-slate-600 space-y-1 bg-white border-t border-slate-100 flex-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Completion Status:</span>
+                        <span className="font-bold text-emerald-700">Remediated & Inspected</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Verified By:</span>
+                        <span className="font-medium text-slate-700">{selectedAuditLogInAuthority.officer || 'Er. Rajesh Patil'}</span>
+                      </div>
+                      {selectedAuditLogInAuthority.repairSummary && (
+                        <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 italic">
+                          "{selectedAuditLogInAuthority.repairSummary}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* WORKER COMPLETED WORK VIDEO PROOF SECTION */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-blue-800" />
+                    <h3 className="font-bold text-sm text-slate-900">
+                      Worker On-Site Field Inspection & Completed Work Video Proof
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Playable Inspection Footage
+                  </span>
+                </div>
+
+                <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-md">
+                  <div className="p-3 bg-slate-950 text-white flex items-center justify-between text-xs border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="font-mono font-bold tracking-wider">
+                        ON-SITE COMPLETED WORK VIDEO VERIFICATION • 1080P
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      GPS LOCKED • FIELD CAMERA
+                    </span>
+                  </div>
+
+                  <div className="relative aspect-video bg-black flex items-center justify-center">
+                    <video
+                      src={selectedAuditLogInAuthority.videoProof || '/sample_evidence/cctv_feed_1.mp4'}
+                      controls
+                      autoPlay
+                      loop
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-950 text-slate-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>
+                        Field Video Authenticated: Worker completed task, recorded area, and submitted video proof for official municipal closure.
+                      </span>
+                    </div>
+                    <span className="text-emerald-400 font-semibold font-mono text-[11px]">
+                      STATUS: VERIFIED
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Audit Log Message */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Official Audit Event Log Details
+                </span>
+                <p className="text-slate-800 text-xs leading-relaxed font-sans">
+                  {selectedAuditLogInAuthority.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 sticky bottom-0">
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLogInAuthority(null)}
+                className="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-medium text-xs hover:bg-slate-100 transition shadow-xs"
+              >
+                Close Inspection
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const targetId = selectedAuditLogInAuthority.issueId;
+                  setSelectedAuditLogInAuthority(null);
+                  setActiveNav('triage');
+                  setSearchParams({ search: targetId });
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-800 text-white font-medium text-xs hover:bg-blue-900 transition flex items-center gap-1.5 shadow-xs"
+              >
+                <span>Open Ticket #{selectedAuditLogInAuthority.issueId} in Triage</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -35,6 +35,16 @@ class Complaint(Base):
     grounded_explanation = Column(Text, nullable=True)
     recommended_action = Column(Text, nullable=True)
     follow_up_count = Column(Integer, default=0)
+    
+    # Evidence Authenticity & Forensics Subsystem Fields
+    authenticity_score = Column(Float, default=95.0, nullable=True)
+    authenticity_verdict = Column(String(30), default="PASS", nullable=True)  # PASS, REVIEW
+    authenticity_risk = Column(String(30), default="LOW", nullable=True)        # LOW, MEDIUM, HIGH
+    authenticity_flags = Column(Text, nullable=True)                            # JSON list of forensic flags
+    requires_human_review = Column(Integer, default=0, nullable=False)          # 0 = Auto-dispatch safe, 1 = Review required
+    tampering_score = Column(Float, default=0.05, nullable=True)
+    ai_generated_probability = Column(Float, default=0.04, nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

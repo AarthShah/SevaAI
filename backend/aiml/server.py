@@ -40,6 +40,9 @@ class AnalyzeTextRequest(BaseModel):
     voice_transcription: Optional[str] = None
     location: Optional[Dict[str, Any]] = None
     user_info: Optional[Dict[str, Any]] = None
+    image_path: Optional[str] = None
+    image_filename: Optional[str] = None
+    image_url: Optional[str] = None
 
 @app.get("/health")
 def health_check():
@@ -65,11 +68,14 @@ async def analyze_complaint(payload: AnalyzeTextRequest):
     Executes Input Analyzer -> Classifier -> Severity -> Department -> Generator.
     """
     try:
+        resolved_img = payload.image_path or payload.image_url
         result = civic_agent.analyze_complaint(
             text=payload.text,
             voice_transcription=payload.voice_transcription,
             location=payload.location,
-            user_info=payload.user_info
+            user_info=payload.user_info,
+            image_path=resolved_img,
+            image_filename=payload.image_filename
         )
         return result
     except Exception as e:
@@ -107,6 +113,41 @@ async def analyze_complaint_form(
         location=location_data
     )
     return result
+
+from aiml.forensics.authenticity_verifier import authenticity_verifier
+
+@app.post("/api/agent/verify-evidence")
+async def verify_evidence_endpoint(
+    image: Optional[UploadFile] = File(None),
+    image_url: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None)
+):
+    """
+    Dedicated endpoint for Evidence Authenticity & Digital Forensics Verification.
+    Runs Error Level Analysis (ELA), AI-Generated Media Check (2D FFT),
+    Metadata/EXIF inspection, Provenance verification, Context consistency,
+    and returns Authenticity Risk Score with Decision Gateway action (PASS vs REVIEW).
+    """
+    image_input = None
+    filename = None
+    if image:
+        image_input = await image.read()
+        filename = image.filename
+    elif image_url:
+        image_input = image_url
+        filename = image_url.split("/")[-1]
+
+    loc = None
+    if latitude is not None and longitude is not None:
+        loc = {"latitude": latitude, "longitude": longitude, "address": address}
+
+    return authenticity_verifier.verify_evidence(
+        image_input=image_input,
+        filename=filename,
+        reported_location=loc
+    )
 
 from aiml.vision.cctv_detector import cctv_detector
 

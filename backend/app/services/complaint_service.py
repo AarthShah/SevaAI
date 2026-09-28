@@ -18,6 +18,8 @@ from ..models.department import Department
 from ..schemas.complaint import ComplaintSubmitRequest, ComplaintStatusUpdate
 from ..config import SLA_HIGH_HOURS, SLA_MEDIUM_HOURS, SLA_LOW_HOURS, DEMO_FAST_SLA_SIMULATION
 
+import json
+
 VALID_STATUSES = [
     "Draft",
     "Submitted",
@@ -27,7 +29,9 @@ VALID_STATUSES = [
     "Awaiting Verification",
     "Resolved",
     "Rejected",
-    "Escalated"
+    "Escalated",
+    "Review Required",
+    "Under Review"
 ]
 
 class ComplaintService:
@@ -104,6 +108,14 @@ class ComplaintService:
             except (ValueError, TypeError):
                 lng_val = 75.8577
 
+        # Authenticity & Evidence Verification Gateway Evaluation
+        req_human_review = int(request.requires_human_review or 0)
+        auth_verdict = request.authenticity_verdict or "PASS"
+        if auth_verdict == "REVIEW" or (request.authenticity_score is not None and request.authenticity_score < 70):
+            req_human_review = 1
+
+        initial_status = "Review Required" if req_human_review == 1 else "Submitted"
+
         complaint = Complaint(
             id=cid,
             citizen_id=citizen_id,
@@ -115,12 +127,19 @@ class ComplaintService:
             longitude=lng_val,
             address=request.address or "Location verified via coordinates",
             severity=request.severity.upper() if request.severity else "MEDIUM",
-            status="Submitted",
+            status=initial_status,
             department_id=dept_id,
             ai_confidence=request.ai_confidence or 0.90,
             severity_reason=request.severity_reason,
             grounded_explanation=request.grounded_explanation,
             recommended_action=request.recommended_action,
+            authenticity_score=request.authenticity_score,
+            authenticity_verdict=auth_verdict,
+            authenticity_risk=request.authenticity_risk or ("HIGH" if req_human_review else "LOW"),
+            authenticity_flags=request.authenticity_flags,
+            requires_human_review=req_human_review,
+            tampering_score=request.tampering_score,
+            ai_generated_probability=request.ai_generated_probability,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
@@ -128,12 +147,17 @@ class ComplaintService:
         db.flush()
 
         # Record Initial History
+        history_remarks = (
+            f"Complaint submitted. Held by Evidence Authenticity Gateway for municipal supervisor review (Score: {request.authenticity_score or 0}%). Reason: {request.authenticity_flags or 'Suspicious forensic patterns detected.'}"
+            if req_human_review == 1 else
+            "Complaint submitted after citizen review and confirmation. Evidence integrity verified."
+        )
         history = ComplaintHistory(
             complaint_id=cid,
             old_status="Draft",
-            new_status="Submitted",
+            new_status=initial_status,
             changed_by=citizen_name or "Citizen",
-            remarks="Complaint submitted after citizen review and confirmation.",
+            remarks=history_remarks,
             timestamp=datetime.now(timezone.utc)
         )
         db.add(history)
@@ -143,6 +167,8 @@ class ComplaintService:
         if request.image_url and request.image_url not in all_ev_urls:
             all_ev_urls.append(request.image_url)
 
+        forensic_json = json.dumps(request.forensic_details) if request.forensic_details else None
+
         for url in all_ev_urls:
             if url:
                 ev = Evidence(
@@ -150,9 +176,25 @@ class ComplaintService:
                     type="image",
                     file_url=url,
                     description="Photographic evidence uploaded by citizen.",
-                    ai_analysis="Visual features inspected and corroborated with complaint text."
+                    ai_analysis="Visual features inspected and corroborated with complaint text.",
+                    authenticity_score=request.authenticity_score,
+                    authenticity_verdict=auth_verdict,
+                    tampering_score=request.tampering_score,
+                    ai_generated_probability=request.ai_generated_probability,
+                    forensic_details=forensic_json
                 )
                 db.add(ev)
+
+        # Log Authenticity Audit Action
+        if request.authenticity_score is not None:
+            db.add(AgentAction(
+                complaint_id=cid,
+                agent_name="Evidence Authenticity & Forensics Gateway",
+                action="Forensic Integrity Assessment",
+                input_summary=f"Score: {request.authenticity_score}%, Tampering: {request.tampering_score or 0}%, AI Gen Prob: {request.ai_generated_probability or 0}%",
+                output_summary=f"Verdict: {auth_verdict}. Requires Human Review: {'YES' if req_human_review else 'NO'}. Flags: {request.authenticity_flags or 'None'}",
+                timestamp=datetime.now(timezone.utc)
+            ))
 
         # Record Decision Trace
         if request.decision_trace:

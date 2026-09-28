@@ -6,6 +6,7 @@ export const StatusBadge = ({ status }) => {
     'Submitted': 'bg-blue-50 text-blue-800 border-blue-200',
     'Acknowledged': 'bg-slate-100 text-slate-800 border-slate-300',
     'Under Review': 'bg-amber-50 text-amber-800 border-amber-200',
+    'Review Required': 'bg-amber-50 text-amber-800 border-amber-200',
     'Assigned': 'bg-sky-50 text-sky-800 border-sky-200',
     'In Progress': 'bg-blue-50 text-blue-800 border-blue-200',
     'Awaiting Verification': 'bg-slate-100 text-slate-800 border-slate-200',

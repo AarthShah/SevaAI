@@ -12,6 +12,11 @@ class EvidenceSchema(BaseModel):
     file_url: str
     description: Optional[str] = None
     ai_analysis: Optional[str] = None
+    authenticity_score: Optional[float] = None
+    authenticity_verdict: Optional[str] = None
+    tampering_score: Optional[float] = None
+    ai_generated_probability: Optional[float] = None
+    forensic_details: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -85,6 +90,14 @@ class ComplaintSubmitRequest(BaseModel):
     image_url: Optional[str] = None
     evidence_urls: Optional[List[str]] = []
     decision_trace: Optional[List[Dict[str, Any]]] = []
+    authenticity_score: Optional[float] = None
+    authenticity_verdict: Optional[str] = None
+    authenticity_risk: Optional[str] = None
+    authenticity_flags: Optional[str] = None
+    requires_human_review: Optional[int] = 0
+    tampering_score: Optional[float] = None
+    ai_generated_probability: Optional[float] = None
+    forensic_details: Optional[Dict[str, Any]] = None
 
     @field_validator("latitude", "longitude", mode="before")
     @classmethod
@@ -149,6 +162,13 @@ class ComplaintResponse(BaseModel):
     severity_reason: Optional[str] = None
     grounded_explanation: Optional[str] = None
     recommended_action: Optional[str] = None
+    authenticity_score: Optional[float] = None
+    authenticity_verdict: Optional[str] = None
+    authenticity_risk: Optional[str] = None
+    authenticity_flags: Optional[str] = None
+    requires_human_review: Optional[int] = 0
+    tampering_score: Optional[float] = None
+    ai_generated_probability: Optional[float] = None
     follow_up_count: int = 0
     evidence_list: Optional[List[EvidenceSchema]] = []
     created_at: datetime
