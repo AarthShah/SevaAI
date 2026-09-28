@@ -390,8 +390,8 @@ const mapApiComplaintToIssue = (c) => {
     department: deptName,
     departmentId: c.department_id ? String(c.department_id) : 'ROAD_DEPT',
     status: status,
-    assignedTo: c.assigned_officer_name || designated.name,
-    squad: c.assigned_officer_name ? (c.assigned_officer_name.includes('Patil') ? 'Field Squad A' : 'Field Squad B') : designated.squad,
+    assignedTo: c.assigned_officer_name || null,
+    squad: c.assigned_officer_name ? (c.assigned_officer_name.includes('Patil') ? 'Field Squad A' : (c.assigned_officer_name.includes('Deshmukh') ? 'Field Squad B' : 'Field Squad A')) : null,
     createdOnDate,
     createdOnTime,
     isLiveReport: isRecent,
@@ -581,8 +581,8 @@ const DEFAULT_ISSUES = [
     department: 'Road Department',
     departmentId: 'ROAD_DEPT',
     status: 'Submitted',
-    assignedTo: 'Er. Rajesh Patil',
-    squad: 'Field Squad A',
+    assignedTo: null,
+    squad: null,
     createdOnDate: '26 Sep 2026',
     createdOnTime: '12:34 PM',
     reportedBy: 'Citizen (via Web)',
@@ -730,11 +730,19 @@ export const AuthorityDashboard = () => {
 
   // Inspect designated worker availability & busy status for any issue
   const getWorkerStatusForIssue = (issue) => {
-    if (!issue) return { state: 'AVAILABLE', workerName: 'Er. Rajesh Patil', squadName: 'Field Squad A', activeTicket: null, remainingSeconds: 0, isAvailable: true };
+    if (!issue || !issue.assignedTo) {
+      return { 
+        state: 'UNASSIGNED', 
+        workerName: null, 
+        squadName: null, 
+        activeTicket: null, 
+        remainingSeconds: 0, 
+        isAvailable: true 
+      };
+    }
     const cleanId = issue.id.replace('#', '');
-    const designated = resolveDesignatedWorker(issue);
-    const workerName = issue.assignedTo || designated.name;
-    const squadName = issue.squad || designated.squad;
+    const workerName = issue.assignedTo;
+    const squadName = issue.squad || 'Field Squad A';
 
     // 1. Is active job running on THIS ticket?
     if (activeJobs[cleanId]) {
@@ -744,22 +752,6 @@ export const AuthorityDashboard = () => {
         squadName,
         activeTicket: cleanId,
         remainingSeconds: activeJobs[cleanId].remainingSeconds,
-        isAvailable: false
-      };
-    }
-
-    // 2. Is designated worker engaged on ANOTHER ticket?
-    const otherJobEntry = Object.entries(activeJobs).find(
-      ([issKey, j]) => j.officerName === workerName && issKey !== cleanId
-    );
-
-    if (otherJobEntry) {
-      return {
-        state: 'BUSY_ON_OTHER',
-        workerName,
-        squadName,
-        activeTicket: otherJobEntry[0],
-        remainingSeconds: otherJobEntry[1].remainingSeconds,
         isAvailable: false
       };
     }
@@ -776,7 +768,7 @@ export const AuthorityDashboard = () => {
     }
 
     return {
-      state: 'AVAILABLE',
+      state: 'ASSIGNED',
       workerName,
       squadName,
       activeTicket: null,
@@ -1017,9 +1009,7 @@ export const AuthorityDashboard = () => {
           const cid = iss.id.replace('#', '');
           if (cid === finishedCleanId) return false;
           if (iss.status === 'Resolved' || iss.status === 'In Progress') return false;
-          const des = resolveDesignatedWorker(iss);
-          const desName = iss.assignedTo || des.name;
-          return desName === officerName;
+          return iss.assignedTo === officerName;
         });
 
         if (waitingIssue) {
@@ -1846,7 +1836,7 @@ export const AuthorityDashboard = () => {
             </div>
 
             {/* Header Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                   Triage & Dispatch
@@ -1856,31 +1846,31 @@ export const AuthorityDashboard = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-xs text-xs">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:50 PM</span>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-xs text-xs whitespace-nowrap shrink-0">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="text-slate-700 font-medium whitespace-nowrap">Friday, 26 Sep 2026 &bull; 07:50 PM</span>
                 </div>
 
                 {!isDetailsDrawerOpen && (
                   <button
                     type="button"
                     onClick={() => setIsDetailsDrawerOpen(true)}
-                    className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
                     title="Open details drawer"
                   >
-                    <Eye className="w-3.5 h-3.5 text-blue-700" />
-                    <span>Show Details ({currentIssue ? (currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`) : 'Drawer'})</span>
+                    <Eye className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                    <span className="whitespace-nowrap">Show Details ({currentIssue ? (currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`) : 'Drawer'})</span>
                   </button>
                 )}
 
                 <button
                   type="button"
                   onClick={() => setIsNewOrderModalOpen(true)}
-                  className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>New Work Order</span>
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">New Work Order</span>
                 </button>
               </div>
             </div>
@@ -2033,32 +2023,32 @@ export const AuthorityDashboard = () => {
                     <span>{selectedRows.length} tickets selected</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleBulkStatusChange('In Progress')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded font-medium text-xs transition"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded font-medium text-xs transition whitespace-nowrap shrink-0"
                     >
                       Mark In Progress
                     </button>
                     <button
                       type="button"
                       onClick={() => handleBulkStatusChange('Resolved')}
-                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-medium text-xs transition"
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-medium text-xs transition whitespace-nowrap shrink-0"
                     >
                       Mark Resolved
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsAssignModalOpen(true)}
-                      className="px-2.5 py-1 bg-blue-800 hover:bg-blue-900 text-white rounded font-medium text-xs transition"
+                      className="px-2.5 py-1 bg-blue-800 hover:bg-blue-900 text-white rounded font-medium text-xs transition whitespace-nowrap shrink-0"
                     >
                       Assign Squad
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedRows([])}
-                      className="text-slate-500 hover:underline px-1 text-xs"
+                      className="text-slate-500 hover:underline px-1 text-xs whitespace-nowrap shrink-0"
                     >
                       Deselect
                     </button>
@@ -2081,13 +2071,13 @@ export const AuthorityDashboard = () => {
                           className="rounded border-slate-300 text-blue-800 focus:ring-blue-700"
                         />
                       </th>
-                      <th className="px-3 py-3">ID</th>
-                      <th className="px-4 py-3">Issue & Location</th>
-                      <th className="px-3 py-3">Priority</th>
-                      <th className="px-3 py-3">Department</th>
-                      <th className="px-3 py-3">Status</th>
-                      <th className="px-3 py-3">Assigned To</th>
-                      <th className="px-3 py-3">Created On</th>
+                      <th className="px-3 py-3 whitespace-nowrap">ID</th>
+                      <th className="px-4 py-3 whitespace-nowrap">Issue & Location</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Priority</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Department</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Status</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Assigned To</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Created On</th>
                       <th className="px-2 py-3 w-8"></th>
                     </tr>
                   </thead>
@@ -2127,13 +2117,13 @@ export const AuthorityDashboard = () => {
                               />
                             </td>
 
-                            <td className="px-3 py-3 font-mono font-semibold text-blue-800">
+                            <td className="px-3 py-3 font-mono font-semibold text-blue-800 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
                                 <span className={isUnverified ? 'text-rose-900 font-bold' : ''}>
                                   {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
                                 </span>
                                 {issue.isLiveReport && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300 whitespace-nowrap">
                                     LIVE
                                   </span>
                                 )}
@@ -2158,7 +2148,7 @@ export const AuthorityDashboard = () => {
                                   </span>
                                   {isUnverified && (
                                     <div className="mt-1.5 flex items-center gap-1.5">
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 shadow-2xs">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 shadow-2xs whitespace-nowrap">
                                         <ShieldAlert className="w-3 h-3 text-rose-700" />
                                         <span>Unverified Evidence Flagged &bull; Open Details to Review</span>
                                       </span>
@@ -2168,108 +2158,120 @@ export const AuthorityDashboard = () => {
                               </div>
                             </td>
 
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               {issue.priority === 'High' ? (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
                                   High
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
                                   Medium
                                 </span>
                               )}
                             </td>
 
-                            <td className="px-3 py-3 text-slate-700 font-medium">
+                            <td className="px-3 py-3 text-slate-700 font-medium whitespace-nowrap">
                               {issue.department}
                             </td>
 
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               {job ? (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5 shadow-xs animate-pulse">
-                                  <Clock className="w-3 h-3 text-amber-700 animate-spin" />
-                                  <span>Busy ({job.remainingSeconds}s)</span>
-                                </span>
-                              ) : workerStatus.state === 'BUSY_ON_OTHER' ? (
-                                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-xs" title={`Worker ${workerStatus.workerName} busy on #${workerStatus.activeTicket}`}>
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                  <span>Queued ({workerStatus.remainingSeconds}s)</span>
+                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1.5 shadow-xs animate-pulse whitespace-nowrap">
+                                  <Clock className="w-3 h-3 text-amber-700 animate-spin shrink-0" />
+                                  <span className="whitespace-nowrap">Busy ({job.remainingSeconds}s)</span>
                                 </span>
                               ) : (
                                 <>
                                   {isUnverified && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
-                                      <ShieldAlert className="w-3 h-3 text-rose-700" />
-                                      <span>Unverified</span>
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1 whitespace-nowrap">
+                                      <ShieldAlert className="w-3 h-3 text-rose-700 shrink-0" />
+                                      <span className="whitespace-nowrap">Unverified</span>
                                     </span>
                                   )}
                                   {issue.status === 'Assigned' && !isUnverified && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 inline-block whitespace-nowrap">
                                       Assigned
                                     </span>
                                   )}
                                   {issue.status === 'In Progress' && !isUnverified && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 inline-block whitespace-nowrap">
                                       In Progress
                                     </span>
                                   )}
                                   {issue.status === 'Submitted' && !isUnverified && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 inline-block whitespace-nowrap">
                                       Submitted
                                     </span>
                                   )}
                                   {issue.status === 'Escalated' && !isUnverified && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200 inline-block whitespace-nowrap">
                                       Escalated
                                     </span>
                                   )}
                                   {issue.status === 'Resolved' && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                      <span>Resolved</span>
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1 whitespace-nowrap">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span className="whitespace-nowrap">Resolved</span>
                                     </span>
                                   )}
                                   {issue.status === 'Dismissed' && (
-                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
-                                      <X className="w-3 h-3 text-slate-500" />
-                                      <span>Dismissed</span>
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300 inline-flex items-center gap-1 whitespace-nowrap">
+                                      <X className="w-3 h-3 text-slate-500 shrink-0" />
+                                      <span className="whitespace-nowrap">Dismissed</span>
                                     </span>
                                   )}
                                 </>
                               )}
                             </td>
 
-                            <td className="px-3 py-3">
-                              <div className="leading-tight">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-semibold text-slate-900 block truncate max-w-[130px]">
-                                    {issue.assignedTo || workerStatus.workerName}
-                                  </span>
-                                  {workerStatus.state === 'BUSY_ON_THIS' && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
-                                      BUSY
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {issue.assignedTo ? (
+                                <div className="leading-tight">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-slate-900 block truncate max-w-[130px] whitespace-nowrap">
+                                      {issue.assignedTo}
                                     </span>
-                                  )}
-                                  {workerStatus.state === 'BUSY_ON_OTHER' && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title={`Busy on #${workerStatus.activeTicket}`}>
-                                      BUSY ({workerStatus.remainingSeconds}s)
-                                    </span>
-                                  )}
-                                  {workerStatus.state === 'AVAILABLE' && issue.status !== 'Resolved' && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      FREE
+                                    {workerStatus.state === 'BUSY_ON_THIS' && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300 whitespace-nowrap">
+                                        BUSY
+                                      </span>
+                                    )}
+                                    {workerStatus.state === 'ASSIGNED' && issue.status !== 'Resolved' && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                        ASSIGNED
+                                      </span>
+                                    )}
+                                  </div>
+                                  {issue.squad && (
+                                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">
+                                      {issue.squad}
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] text-slate-400 block truncate">
-                                  {issue.squad || workerStatus.squadName}
-                                </span>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-400 text-xs font-normal italic whitespace-nowrap">
+                                    Unassigned
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedIssueId(cleanId);
+                                      setIsAssignModalOpen(true);
+                                    }}
+                                    className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 hover:underline px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 cursor-pointer whitespace-nowrap"
+                                    title="Assign field squad to this issue"
+                                  >
+                                    Assign
+                                  </button>
+                                </div>
+                              )}
                             </td>
 
-                            <td className="px-3 py-3 text-slate-500 leading-tight">
-                              <span className="block text-slate-700 text-[11px]">{issue.createdOnDate}</span>
-                              <span className="block text-[10px] text-slate-400">{issue.createdOnTime}</span>
+                            <td className="px-3 py-3 text-slate-500 leading-tight whitespace-nowrap">
+                              <span className="block text-slate-700 text-[11px] whitespace-nowrap">{issue.createdOnDate}</span>
+                              <span className="block text-[10px] text-slate-400 whitespace-nowrap">{issue.createdOnTime}</span>
                             </td>
 
                             <td 

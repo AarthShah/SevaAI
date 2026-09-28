@@ -19,7 +19,7 @@ export const StatusBadge = ({ status }) => {
   const currentStyle = styles[status] || 'bg-slate-100 text-slate-700 border-slate-200';
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${currentStyle}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap ${currentStyle}`}>
       {status}
     </span>
   );
@@ -36,7 +36,7 @@ export const SeverityBadge = ({ severity }) => {
   const currentStyle = styles[severity?.toUpperCase()] || 'bg-slate-100 text-slate-700 border-slate-200';
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${currentStyle}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap ${currentStyle}`}>
       {severity || 'MEDIUM'}
     </span>
   );
