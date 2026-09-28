@@ -591,6 +591,38 @@ const DEFAULT_ISSUES = [
     aiDistanceKm: 0.9,
     aiConfidence: '95%',
     aiReasoning: 'Arterial bridge approach. Matched to primary specialist Er. Rajesh Patil for urgent hot-mix asphalt patching.'
+  },
+  {
+    id: 'CS1002',
+    title: 'Commercial Solid Waste Cleared',
+    location: 'Market Square, Sector 2, Indore',
+    priority: 'Medium',
+    department: 'Sanitation Department',
+    departmentId: 'SOLID_WASTE',
+    status: 'Resolved',
+    assignedTo: 'Priya Deshmukh',
+    squad: 'Field Squad B',
+    createdOnDate: '24 Sep 2026',
+    createdOnTime: '09:15 AM',
+    resolvedAt: '11:45 AM',
+    reportedBy: 'Citizen (via Mobile App)',
+    description: 'Accumulated commercial solid waste cleared and disinfected by morning sanitation squad.',
+    image: '/sample_evidence/garbage.jpg',
+    evidenceGallery: ['/sample_evidence/garbage.jpg', '/sample_evidence/garbage_after.jpg'],
+    extraEvidenceCount: 1,
+    aiDistanceKm: 1.2,
+    aiConfidence: '97%',
+    aiReasoning: 'Remediation completed and verified with photographic completion proof.',
+    proofMedia: {
+      beforeImage: '/sample_evidence/garbage.jpg',
+      afterImage: '/sample_evidence/garbage_after.jpg',
+      videoProof: '/sample_evidence/cctv_feed_1.mp4',
+      verificationScore: 99.1,
+      repairSummary: 'Full waste accumulation removed, street sidewalk sanitized, green municipal container deployed.',
+      completedAt: '11:45 AM',
+      officer: 'Priya Deshmukh',
+      squad: 'Field Squad B'
+    }
   }
 ];
 
@@ -619,6 +651,7 @@ export const AuthorityDashboard = () => {
     if (t === 'ANALYTICS' || t === 'REPORTS') return 'analytics';
     if (t === 'USERS') return 'users';
     if (t === 'SETTINGS') return 'settings';
+    if (t === 'RESOLVED' || t === 'RESOLVED_ISSUES') return 'resolved_issues';
     return 'triage';
   };
 
@@ -755,8 +788,8 @@ export const AuthorityDashboard = () => {
   const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
 
   // CivicSeva Contextual Assistant live authority context registration
-  // Only send selected complaint if in triage and user explicitly opened drawer
-  const effectiveSelectedComplaintId = (activeNav === 'triage' && isDrawerOpenMobile)
+  // Only send selected complaint if in triage or resolved_issues and user explicitly opened drawer
+  const effectiveSelectedComplaintId = ((activeNav === 'triage' || activeNav === 'resolved_issues') && isDrawerOpenMobile)
     ? selectedIssueId
     : null;
 
@@ -814,6 +847,7 @@ export const AuthorityDashboard = () => {
     else if (t === 'ANALYTICS' || t === 'REPORTS') setActiveNav('analytics');
     else if (t === 'USERS') setActiveNav('users');
     else if (t === 'SETTINGS') setActiveNav('settings');
+    else if (t === 'RESOLVED' || t === 'RESOLVED_ISSUES') setActiveNav('resolved_issues');
     else setActiveNav('triage');
 
     const searchArg = searchParams.get('search');
@@ -1203,13 +1237,13 @@ export const AuthorityDashboard = () => {
     }
 
     // 4. Status Tabs
-    if (activeTab === 'All Issues') return true;
-    if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item);
-    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item);
-    if (activeTab === 'High Priority') return item.priority === 'High';
+    if (activeTab === 'All Issues') return item.status !== 'Resolved';
+    if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item) && item.status !== 'Resolved';
+    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item) && item.status !== 'Resolved';
+    if (activeTab === 'High Priority') return item.priority === 'High' && item.status !== 'Resolved';
     if (activeTab === 'In Progress') return item.status === 'In Progress';
     if (activeTab === 'Escalated') return item.status === 'Escalated';
-    if (activeTab === 'Resolved') return item.status === 'Resolved';
+    if (activeTab === 'Resolved' || activeTab === 'Resolved Issues') return item.status === 'Resolved';
     return true;
   });
 
@@ -1249,7 +1283,29 @@ export const AuthorityDashboard = () => {
 
     // 1. Optimistic local state update
     setIssues((prev) =>
-      prev.map((i) => (i.id === currentIssue.id || i.id.replace('#', '') === cleanId ? { ...i, status: newStatus } : i))
+      prev.map((i) => {
+        if (i.id === currentIssue.id || i.id.replace('#', '') === cleanId) {
+          const proof = resolveProofMedia(i);
+          return {
+            ...i,
+            status: newStatus,
+            ...(newStatus === 'Resolved' && !i.proofMedia ? {
+              resolvedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              proofMedia: {
+                beforeImage: resolveBeforeImage(i),
+                afterImage: proof.afterImage,
+                videoProof: proof.videoProof,
+                verificationScore: proof.verificationScore,
+                repairSummary: proof.repairSummary,
+                completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                officer: i.assignedTo || 'Municipal Duty Squad',
+                squad: i.squad || 'Field Squad A'
+              }
+            } : {})
+          };
+        }
+        return i;
+      })
     );
     setIsUpdateModalOpen(false);
 
@@ -1272,7 +1328,11 @@ export const AuthorityDashboard = () => {
       console.warn('API updateStatus failed, keeping local override:', err);
     });
 
-    showToast(`Complaint #${cleanId} status updated to "${newStatus}".`);
+    if (newStatus === 'Resolved') {
+      showToast(`Complaint #${cleanId} marked as Resolved and moved to Resolved Issues.`);
+    } else {
+      showToast(`Complaint #${cleanId} status updated to "${newStatus}".`);
+    }
   };
 
   // Squad assignment
@@ -1307,9 +1367,41 @@ export const AuthorityDashboard = () => {
   const handleBulkStatusChange = (status) => {
     if (selectedRows.length === 0) return;
     setIssues((prev) =>
-      prev.map((i) => (selectedRows.includes(i.id.replace('#', '')) ? { ...i, status } : i))
+      prev.map((i) => {
+        if (selectedRows.includes(i.id.replace('#', ''))) {
+          const proof = resolveProofMedia(i);
+          return {
+            ...i,
+            status,
+            ...(status === 'Resolved' && !i.proofMedia ? {
+              resolvedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              proofMedia: {
+                beforeImage: resolveBeforeImage(i),
+                afterImage: proof.afterImage,
+                videoProof: proof.videoProof,
+                verificationScore: proof.verificationScore,
+                repairSummary: proof.repairSummary,
+                completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                officer: i.assignedTo || 'Municipal Duty Squad',
+                squad: i.squad || 'Field Squad A'
+              }
+            } : {})
+          };
+        }
+        return i;
+      })
     );
-    showToast(`Updated ${selectedRows.length} selected tickets to "${status}".`);
+    selectedRows.forEach((cleanId) => {
+      complaintApi.updateStatus(cleanId, status, `Bulk status transitioned to "${status}" by Municipal Authority`).catch((err) => {
+        console.warn('API updateStatus failed:', err);
+      });
+    });
+    if (status === 'Resolved') {
+      showToast(`Updated ${selectedRows.length} selected tickets to "Resolved" and moved to Resolved Issues.`);
+    } else {
+      showToast(`Updated ${selectedRows.length} selected tickets to "${status}".`);
+    }
+    setSelectedRows([]);
   };
 
   // ============================================================
@@ -1513,15 +1605,44 @@ export const AuthorityDashboard = () => {
             {/* Triage & Dispatch */}
             <button
               type="button"
-              onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition text-left font-medium ${
-                activeNav === 'triage'
+              onClick={() => { setActiveNav('triage'); setActiveTab('All Issues'); setSearchParams({}); }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'triage' && activeTab !== 'Resolved Issues'
                   ? 'bg-blue-50 text-blue-800 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <ClipboardList className={`w-4 h-4 ${activeNav === 'triage' ? 'text-blue-800' : 'text-slate-400'}`} />
-              <span>Triage & Dispatch</span>
+              <div className="flex items-center gap-2.5">
+                <ClipboardList className={`w-4 h-4 ${activeNav === 'triage' && activeTab !== 'Resolved Issues' ? 'text-blue-800' : 'text-slate-400'}`} />
+                <span>Triage &amp; Dispatch</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                {issues.filter((i) => i.status !== 'Resolved').length}
+              </span>
+            </button>
+
+            {/* Resolved Issues Section */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('resolved_issues');
+                setSearchParams({ tab: 'RESOLVED_ISSUES' });
+                setActiveTab('Resolved Issues');
+                setCurrentPage(1);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition text-left font-medium ${
+                activeNav === 'resolved_issues' || (activeNav === 'triage' && activeTab === 'Resolved Issues')
+                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className={`w-4 h-4 ${activeNav === 'resolved_issues' || (activeNav === 'triage' && activeTab === 'Resolved Issues') ? 'text-emerald-700' : 'text-slate-400'}`} />
+                <span>Resolved Issues</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                {issues.filter((i) => i.status === 'Resolved').length}
+              </span>
             </button>
 
 
@@ -1739,8 +1860,11 @@ export const AuthorityDashboard = () => {
             {/* Filter Tabs & Filter Toggle */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pt-1">
               <div className="flex items-center space-x-3 sm:space-x-5 text-xs overflow-x-auto pb-1">
-                {['All Issues', 'Unverified Detected', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved'].map((tab) => {
+                {['All Issues', 'Unverified Detected', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved Issues'].map((tab) => {
                   const unverifiedCount = issues.filter(checkIsUnverified).length;
+                  const activeIssuesCount = issues.filter((i) => i.status !== 'Resolved').length;
+                  const resolvedCount = issues.filter((i) => i.status === 'Resolved').length;
+
                   return (
                     <button
                       key={tab}
@@ -1753,9 +1877,19 @@ export const AuthorityDashboard = () => {
                       }`}
                     >
                       <span>{tab}</span>
+                      {tab === 'All Issues' && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                          {activeIssuesCount}
+                        </span>
+                      )}
                       {tab === 'Unverified Detected' && unverifiedCount > 0 && (
                         <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
                           {unverifiedCount}
+                        </span>
+                      )}
+                      {tab === 'Resolved Issues' && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {resolvedCount}
                         </span>
                       )}
                     </button>
@@ -2199,6 +2333,317 @@ export const AuthorityDashboard = () => {
                     <option value={25}>25</option>
                   </select>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: RESOLVED ISSUES REGISTRY */}
+        {activeNav === 'resolved_issues' && (
+          <div className="space-y-6">
+            {/* Breadcrumb */}
+            <div className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Link to="/" className="hover:text-slate-600">Home</Link>
+              <span>&rsaquo;</span>
+              <span className="text-slate-500">Operations</span>
+              <span>&rsaquo;</span>
+              <span className="text-slate-700 font-medium">Resolved Issues</span>
+            </div>
+
+            {/* Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                    Resolved Issues
+                  </h1>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    {issues.filter((i) => i.status === 'Resolved').length} Closed &amp; Verified
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Audit registry of completed municipal remediations, field crew before/after photographic proof, and citizen sign-offs.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setActiveNav('triage'); setActiveTab('All Issues'); setSearchParams({}); }}
+                  className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>Go to Active Triage</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Resolved Summary Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200 rounded-md p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500">Total Resolved</span>
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900 mt-2">
+                  {issues.filter((i) => i.status === 'Resolved').length}
+                </div>
+                <span className="text-[11px] text-emerald-700 font-medium mt-0.5 block">
+                  100% Closed in System
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-md p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500">Verification Proofs</span>
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900 mt-2">
+                  {issues.filter((i) => i.status === 'Resolved').length}
+                </div>
+                <span className="text-[11px] text-blue-700 font-medium mt-0.5 block">
+                  Before &amp; After Photo Logged
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-md p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500">Average Turnaround</span>
+                  <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900 mt-2">
+                  14.2 hrs
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium mt-0.5 block">
+                  Within 24h municipal SLA
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-md p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500">Citizen Satisfaction</span>
+                  <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-200">
+                    <CheckCheck className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900 mt-2">
+                  98.6%
+                </div>
+                <span className="text-[11px] text-purple-700 font-medium mt-0.5 block">
+                  High Quality Resolution
+                </span>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="bg-white p-3.5 rounded-md border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  placeholder="Search resolved issues by ID, location, or department..."
+                  className="w-full text-xs pl-9 pr-8 py-2 rounded border border-slate-300 focus:ring-1 focus:ring-blue-800 text-slate-900"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={deptFilter}
+                onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
+                className="p-2 border border-slate-300 rounded bg-white text-slate-800 text-xs focus:ring-1 focus:ring-blue-800"
+              >
+                <option value="All">All Departments</option>
+                <option value="Road">Road Department</option>
+                <option value="Sanitation">Sanitation Department</option>
+                <option value="Electricity">Electricity Department</option>
+                <option value="Water">Water Supply Department</option>
+                <option value="Drainage">Drainage Board</option>
+              </select>
+            </div>
+
+            {/* Resolved Issues Table */}
+            <div className="bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4">Docket ID</th>
+                      <th className="py-3 px-4">Grievance &amp; Location</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4">Resolved By</th>
+                      <th className="py-3 px-4">Completion Proof</th>
+                      <th className="py-3 px-4">Completed At</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {issues.filter((i) => {
+                      if (i.status !== 'Resolved') return false;
+                      if (searchQuery) {
+                        const q = searchQuery.toLowerCase();
+                        const match = i.id.toLowerCase().includes(q) ||
+                          i.title.toLowerCase().includes(q) ||
+                          i.location.toLowerCase().includes(q) ||
+                          i.department.toLowerCase().includes(q);
+                        if (!match) return false;
+                      }
+                      if (deptFilter !== 'All' && !i.department.toLowerCase().includes(deptFilter.toLowerCase())) {
+                        return false;
+                      }
+                      return true;
+                    }).length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                          <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="font-semibold text-slate-700">No Resolved Issues Found</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Issues resolved by field crews will appear in this registry with photographic completion proof.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      issues
+                        .filter((i) => {
+                          if (i.status !== 'Resolved') return false;
+                          if (searchQuery) {
+                            const q = searchQuery.toLowerCase();
+                            const match = i.id.toLowerCase().includes(q) ||
+                              i.title.toLowerCase().includes(q) ||
+                              i.location.toLowerCase().includes(q) ||
+                              i.department.toLowerCase().includes(q);
+                            if (!match) return false;
+                          }
+                          if (deptFilter !== 'All' && !i.department.toLowerCase().includes(deptFilter.toLowerCase())) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((issue) => {
+                          const cleanId = issue.id.replace('#', '');
+                          const beforeImg = resolveBeforeImage(issue);
+                          const proof = issue.proofMedia || resolveProofMedia(issue);
+                          const afterImg = proof.afterImage || '/sample_evidence/pothole_after.jpg';
+
+                          return (
+                            <tr
+                              key={issue.id}
+                              onClick={() => {
+                                setSelectedIssueId(cleanId);
+                                setIsDrawerOpenMobile(true);
+                              }}
+                              className="hover:bg-slate-50/80 transition cursor-pointer"
+                            >
+                              <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                                <div className="flex items-center gap-1.5">
+                                  <span>{issue.id}</span>
+                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-0.5">
+                                    <Check className="w-2.5 h-2.5" />
+                                    <span>Resolved</span>
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4 max-w-xs">
+                                <div className="font-semibold text-slate-900 truncate">{issue.title}</div>
+                                <div className="text-slate-500 text-[11px] flex items-center gap-1 truncate mt-0.5">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span className="truncate">{issue.location}</span>
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">
+                                  {issue.department}
+                                </span>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <div className="font-medium text-slate-800">{issue.assignedTo || 'Municipal Duty Squad'}</div>
+                                <div className="text-[11px] text-slate-400">{issue.squad || 'Field Unit'}</div>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="relative group cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveEvidenceImg(beforeImg);
+                                    }}
+                                    title="View Before photo"
+                                  >
+                                    <img 
+                                      src={beforeImg} 
+                                      alt="Before" 
+                                      className="w-9 h-9 object-cover rounded border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600 transition" 
+                                    />
+                                    <span className="absolute -bottom-1 -left-1 px-1 rounded text-[8px] font-bold bg-slate-800 text-white">
+                                      Before
+                                    </span>
+                                  </div>
+
+                                  <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />
+
+                                  <div 
+                                    className="relative group cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveEvidenceImg(afterImg);
+                                    }}
+                                    title="View After photo"
+                                  >
+                                    <img 
+                                      src={afterImg} 
+                                      alt="After" 
+                                      className="w-9 h-9 object-cover rounded border border-emerald-300 group-hover:ring-2 group-hover:ring-emerald-600 transition" 
+                                    />
+                                    <span className="absolute -bottom-1 -right-1 px-1 rounded text-[8px] font-bold bg-emerald-700 text-white">
+                                      After
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4 text-slate-600 text-[11px]">
+                                {issue.resolvedAt || issue.createdOnTime || 'Today'}
+                              </td>
+
+                              <td className="py-3 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedIssueId(cleanId);
+                                    setIsDrawerOpenMobile(true);
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition inline-flex items-center gap-1"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View Dossier</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -2987,7 +3432,7 @@ export const AuthorityDashboard = () => {
       {/* ============================================================ */}
       {/* 3. RIGHT DETAILS DRAWER ("Issue Details") */}
       {/* ============================================================ */}
-      {currentIssue && activeNav === 'triage' && (
+      {currentIssue && (activeNav === 'triage' || activeNav === 'resolved_issues') && (
         <>
           {/* Mobile Backdrop */}
           {isDrawerOpenMobile && (
