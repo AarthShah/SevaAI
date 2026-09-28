@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight } from 'lucide-react';
+import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight, FileQuestion } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAssistantContext } from '../context/AssistantContext';
@@ -41,15 +41,25 @@ export const TrackComplaintPage = () => {
 
   const fetchComplaint = async (targetId, isSilent = false) => {
     if (!targetId) return;
-    if (!isSilent) setLoading(true);
-    setError(null);
+    if (!isSilent) {
+      setLoading(true);
+      setError(null);
+    }
+
+    const cleanId = targetId.trim().toUpperCase();
 
     try {
-      const data = await complaintApi.getComplaintById(targetId.trim().toUpperCase());
-      setComplaint(data);
-    } catch {
-      // In case backend is unreachable or ticket not found, provide realistic fallback for testing
-      if (targetId.toUpperCase() === 'CS1001') {
+      const data = await complaintApi.getComplaintById(cleanId);
+      if (data && data.id) {
+        setComplaint(data);
+        setError(null);
+      } else {
+        setComplaint(null);
+        setError(`No information available for Complaint ID #${cleanId}. Please check the ID or verify that it was submitted correctly.`);
+      }
+    } catch (err) {
+      // In case backend is unreachable during demo testing, support standard seeded samples only
+      if (cleanId === 'CS1001') {
         setComplaint({
           id: 'CS1001',
           issue_type: 'Pothole / Road Damage',
@@ -61,7 +71,7 @@ export const TrackComplaintPage = () => {
           created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
           description: 'Deep road surface pothole reported near junction.'
         });
-      } else if (targetId.toUpperCase() === 'CS1002') {
+      } else if (cleanId === 'CS1002') {
         setComplaint({
           id: 'CS1002',
           issue_type: 'Garbage Accumulation',
@@ -73,46 +83,13 @@ export const TrackComplaintPage = () => {
           created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
           description: 'Accumulated commercial solid waste cleared by morning sanitation squad.'
         });
-      } else if (targetId.toUpperCase() === 'CS1005' || targetId.toUpperCase() === 'CS1039') {
-        setComplaint({
-          id: targetId.toUpperCase(),
-          issue_type: 'Road Cavitation / Deep Pothole',
-          category: 'Road Infrastructure',
-          address: 'Shivajinagar Junction Arterial Crossing, Indore',
-          department_name: 'Road Department',
-          status: 'Assigned',
-          severity: 'HIGH',
-          created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
-          description: 'Large asphalt crater causing vehicle avoidance hazard and rim damage risk.'
-        });
-      } else if (targetId.toUpperCase() === 'CS1008') {
-        setComplaint({
-          id: 'CS1008',
-          issue_type: 'Streetlight Fixture Outage',
-          category: 'Street Lighting',
-          address: 'Outer Bypass Highway KM 14, Indore',
-          department_name: 'Electricity Department',
-          status: 'In Progress',
-          severity: 'HIGH',
-          created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-          description: 'High-mast luminaire blackout across 200m road section.'
-        });
       } else {
-        // Generic fallback for any ID
-        setComplaint({
-          id: targetId.toUpperCase(),
-          issue_type: 'Municipal Grievance Docket',
-          category: 'Civic Infrastructure',
-          address: 'Urban Sector 4, Ward 22, Indore',
-          department_name: 'Municipal Operations Division',
-          status: 'Assigned',
-          severity: 'MEDIUM',
-          created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-          description: `Grievance docket #${targetId.toUpperCase()} active in municipal dispatch triage queue.`
-        });
+        // Unknown or non-existent ID - Never show random mock data
+        setComplaint(null);
+        setError(`No information available for Complaint ID #${cleanId}. This docket reference was not found in the municipal records.`);
       }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -123,7 +100,13 @@ export const TrackComplaintPage = () => {
     fetchComplaint(activeTrackingId);
 
     const interval = setInterval(() => {
-      fetchComplaint(activeTrackingId, true);
+      // Only poll if complaint is loaded and not closed
+      setComplaint((curr) => {
+        if (curr && curr.id) {
+          fetchComplaint(activeTrackingId, true);
+        }
+        return curr;
+      });
     }, 3500);
 
     return () => clearInterval(interval);
@@ -215,6 +198,39 @@ export const TrackComplaintPage = () => {
         <div className="p-12 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin text-blue-800" />
           <span>Retrieving complaint status...</span>
+        </div>
+      )}
+
+      {/* Empty State when no information is available */}
+      {!complaint && !loading && (
+        <div className="bg-white border border-slate-200 rounded-md p-8 sm:p-12 text-center max-w-lg mx-auto space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 mx-auto flex items-center justify-center border border-slate-200">
+            <FileQuestion className="w-6 h-6 text-slate-500" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-slate-900">
+              No Information Available
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              No municipal records found for Docket Reference <span className="font-mono font-semibold text-slate-800">#{activeTrackingId}</span>. Please verify the ID or submit a new grievance report.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+            <Link
+              to="/report"
+              className="px-4 py-2 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition shadow-xs flex items-center gap-1.5"
+            >
+              <span>Report a New Issue</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => handleSelectSample('CS1001')}
+              className="px-4 py-2 rounded border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs transition cursor-pointer"
+            >
+              View Sample Docket (CS1001)
+            </button>
+          </div>
         </div>
       )}
 
