@@ -331,7 +331,9 @@ export const checkIsUnverified = (issue) => {
   if (
     issue.authenticityVerdict === 'APPROVED_BY_SUPERVISOR' ||
     issue.authenticityVerdict === 'PASS' ||
+    issue.authenticityVerdict === 'REJECTED_FAKE' ||
     issue.status === 'Dismissed' ||
+    issue.status === 'Rejected' ||
     issue.status === 'Resolved' ||
     issue.isUnverified === false ||
     issue.requiresHumanReview === false
@@ -658,7 +660,7 @@ export const AuthorityDashboard = () => {
   const [activeNav, setActiveNav] = useState(getInitialView());
   const [activeTab, setActiveTab] = useState('All Issues');
   const [drawerTab, setDrawerTab] = useState('Overview'); // 'Overview' | 'Timeline' | 'Location' | 'Work Orders'
-  const [isDrawerOpenMobile, setIsDrawerOpenMobile] = useState(false);
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(true);
 
 
   // Issues, Squads & Active Remediation Timers
@@ -789,7 +791,7 @@ export const AuthorityDashboard = () => {
 
   // CivicSeva Contextual Assistant live authority context registration
   // Only send selected complaint if in triage or resolved_issues and user explicitly opened drawer
-  const effectiveSelectedComplaintId = ((activeNav === 'triage' || activeNav === 'resolved_issues') && isDrawerOpenMobile)
+  const effectiveSelectedComplaintId = ((activeNav === 'triage' || activeNav === 'resolved_issues') && isDetailsDrawerOpen)
     ? selectedIssueId
     : null;
 
@@ -1237,10 +1239,10 @@ export const AuthorityDashboard = () => {
     }
 
     // 4. Status Tabs
-    if (activeTab === 'All Issues') return item.status !== 'Resolved';
+    if (activeTab === 'All Issues') return item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
     if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item) && item.status !== 'Resolved';
-    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item) && item.status !== 'Resolved';
-    if (activeTab === 'High Priority') return item.priority === 'High' && item.status !== 'Resolved';
+    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item) && item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
+    if (activeTab === 'High Priority') return item.priority === 'High' && item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
     if (activeTab === 'In Progress') return item.status === 'In Progress';
     if (activeTab === 'Escalated') return item.status === 'Escalated';
     if (activeTab === 'Resolved' || activeTab === 'Resolved Issues') return item.status === 'Resolved';
@@ -1255,6 +1257,7 @@ export const AuthorityDashboard = () => {
   const handleSelectRow = (id) => {
     const cleanId = id.replace('#', '');
     setSelectedIssueId(cleanId);
+    setIsDetailsDrawerOpen(true);
     if (selectedRows.includes(cleanId)) {
       setSelectedRows(selectedRows.filter((r) => r !== cleanId));
     } else {
@@ -1273,7 +1276,7 @@ export const AuthorityDashboard = () => {
   const handleRowClick = (issue) => {
     const cleanId = issue.id.replace('#', '');
     setSelectedIssueId(cleanId);
-    setIsDrawerOpenMobile(true);
+    setIsDetailsDrawerOpen(true);
   };
 
   // Status updates
@@ -1846,6 +1849,18 @@ export const AuthorityDashboard = () => {
                   <span className="text-slate-700 font-medium">Friday, 26 Sep 2026 &bull; 07:50 PM</span>
                 </div>
 
+                {!isDetailsDrawerOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailsDrawerOpen(true)}
+                    className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    title="Open details drawer"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-700" />
+                    <span>Show Details ({currentIssue ? (currentIssue.id.startsWith('#') ? currentIssue.id : `#${currentIssue.id}`) : 'Drawer'})</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setIsNewOrderModalOpen(true)}
@@ -2128,32 +2143,14 @@ export const AuthorityDashboard = () => {
                                   <span className="text-[11px] text-slate-400 block line-clamp-1">
                                     {issue.location}
                                   </span>
-                                  {isUnverified ? (
-                                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-300">
+                                  {isUnverified && (
+                                    <div className="mt-1.5 flex items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 shadow-2xs">
                                         <ShieldAlert className="w-3 h-3 text-rose-700" />
-                                        <span>Unverified Evidence</span>
+                                        <span>Unverified Evidence Flagged &bull; Open Details to Review</span>
                                       </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleMarkReal(issue.id)}
-                                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition shadow-2xs cursor-pointer"
-                                        title="Mark Real (Verify Evidence)"
-                                      >
-                                        <Check className="w-2.5 h-2.5" />
-                                        <span>Mark Real</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDismiss(issue.id)}
-                                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 flex items-center gap-1 transition shadow-2xs cursor-pointer"
-                                        title="Dismiss / Reject Fake Evidence"
-                                      >
-                                        <X className="w-2.5 h-2.5" />
-                                        <span>Dismiss</span>
-                                      </button>
                                     </div>
-                                  ) : null}
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -2545,7 +2542,7 @@ export const AuthorityDashboard = () => {
                               key={issue.id}
                               onClick={() => {
                                 setSelectedIssueId(cleanId);
-                                setIsDrawerOpenMobile(true);
+                                setIsDetailsDrawerOpen(true);
                               }}
                               className="hover:bg-slate-50/80 transition cursor-pointer"
                             >
@@ -2630,7 +2627,7 @@ export const AuthorityDashboard = () => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedIssueId(cleanId);
-                                    setIsDrawerOpenMobile(true);
+                                    setIsDetailsDrawerOpen(true);
                                   }}
                                   className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition inline-flex items-center gap-1"
                                 >
@@ -3432,24 +3429,15 @@ export const AuthorityDashboard = () => {
       {/* ============================================================ */}
       {/* 3. RIGHT DETAILS DRAWER ("Issue Details") */}
       {/* ============================================================ */}
-      {currentIssue && (activeNav === 'triage' || activeNav === 'resolved_issues') && (
+      {currentIssue && isDetailsDrawerOpen && (activeNav === 'triage' || activeNav === 'resolved_issues') && (
         <>
           {/* Mobile Backdrop */}
-          {isDrawerOpenMobile && (
-            <div 
-              className="lg:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs"
-              onClick={() => setIsDrawerOpenMobile(false)}
-            />
-          )}
+          <div 
+            className="lg:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs"
+            onClick={() => setIsDetailsDrawerOpen(false)}
+          />
 
-          <aside className={`
-            fixed lg:sticky top-0 lg:top-16 right-0 z-50 lg:z-10
-            w-full sm:w-[420px] lg:w-80 xl:w-96
-            h-screen lg:h-[calc(100vh-64px)]
-            bg-white border-l border-slate-200 shadow-2xl lg:shadow-none
-            flex flex-col justify-between overflow-y-auto transition-transform duration-300
-            ${isDrawerOpenMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
-          `}>
+          <aside className="fixed lg:sticky top-0 lg:top-16 right-0 z-50 lg:z-10 w-full sm:w-[420px] lg:w-80 xl:w-96 h-screen lg:h-[calc(100vh-64px)] bg-white border-l border-slate-200 shadow-2xl lg:shadow-none flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
             <div className="p-5 space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -3461,10 +3449,8 @@ export const AuthorityDashboard = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsDrawerOpenMobile(false);
-                  }}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-slate-100"
+                  onClick={() => setIsDetailsDrawerOpen(false)}
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-slate-100 cursor-pointer transition"
                   title="Close details drawer"
                 >
                   <X className="w-4 h-4" />
@@ -4108,6 +4094,23 @@ export const AuthorityDashboard = () => {
                   >
                     <Users className="w-3.5 h-3.5 text-slate-500" />
                     <span>Override & Reassign Alternative Worker Now</span>
+                  </button>
+                </div>
+              ) : currentIssue.status === 'Dismissed' ? (
+                <div className="w-full p-2.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-300 rounded flex items-center justify-between gap-1.5 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-left">
+                    <X className="w-4 h-4 text-rose-600 shrink-0" />
+                    <div>
+                      <span className="font-bold block">Dismissed as Fraudulent</span>
+                      <span className="text-[10px] text-slate-500 font-normal">Rejected by municipal supervisor.</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkReal(currentIssue.id)}
+                    className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-semibold text-slate-700 transition cursor-pointer"
+                  >
+                    Restore
                   </button>
                 </div>
               ) : currentIssue.status !== 'Resolved' ? (
