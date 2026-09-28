@@ -4,12 +4,22 @@ CivicSeva Backend Configuration
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-load_dotenv(ROOT_DIR / ".env")
-load_dotenv(BASE_DIR / ".env")
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / ".env")
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    for env_path in [ROOT_DIR / ".env", BASE_DIR / ".env"]:
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip())
 
 # Database Configuration
 # Fallback to local SQLite if PostgreSQL DATABASE_URL is not set or empty

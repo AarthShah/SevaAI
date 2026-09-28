@@ -111,25 +111,45 @@ class CivicAgent:
         groq_forensics = vision_data.get("forensics")
         if groq_forensics and authenticity_report:
             if groq_forensics.get("is_synthetic_ai"):
-                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 32.0)
+                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 28.0)
                 authenticity_report["authenticity_risk"] = "HIGH"
                 authenticity_report["decision_gateway"] = "REVIEW"
+                authenticity_report["verdict"] = "REVIEW"
                 authenticity_report["requires_human_review"] = True
+                authenticity_report["is_synthetic"] = True
+                if "ai_generated" in authenticity_report:
+                    authenticity_report["ai_generated"]["is_synthetic"] = True
+                    authenticity_report["ai_generated"]["probability"] = max(
+                        authenticity_report["ai_generated"].get("probability", 0.0),
+                        groq_forensics.get("synthetic_probability", 0.95)
+                    )
+                authenticity_report["ai_generated_probability"] = max(
+                    authenticity_report.get("ai_generated_probability", 0.0),
+                    groq_forensics.get("synthetic_probability", 0.95)
+                )
+                if "flags" in authenticity_report:
+                    authenticity_report["flags"].append("Vision model detected synthetic/AI-generated visual artifacts")
                 if "audit_flags" in authenticity_report:
-                    authenticity_report["audit_flags"].append("Vision LLM detected synthetic/AI-generated visual artifacts")
+                    authenticity_report["audit_flags"].append("Vision model detected synthetic/AI-generated visual artifacts")
                 if "forensic_breakdown" in authenticity_report and "ai_generation_analysis" in authenticity_report["forensic_breakdown"]:
                     authenticity_report["forensic_breakdown"]["ai_generation_analysis"]["is_synthetic"] = True
                     authenticity_report["forensic_breakdown"]["ai_generation_analysis"]["ai_generated_probability"] = max(
                         authenticity_report["forensic_breakdown"]["ai_generation_analysis"].get("ai_generated_probability", 0.0),
-                        groq_forensics.get("synthetic_probability", 0.90)
+                        groq_forensics.get("synthetic_probability", 0.95)
                     )
             if groq_forensics.get("is_tampered"):
-                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 38.0)
+                authenticity_report["authenticity_score"] = min(authenticity_report.get("authenticity_score", 95.0), 35.0)
                 authenticity_report["authenticity_risk"] = "HIGH"
                 authenticity_report["decision_gateway"] = "REVIEW"
+                authenticity_report["verdict"] = "REVIEW"
                 authenticity_report["requires_human_review"] = True
+                authenticity_report["is_tampered"] = True
+                if "tampering" in authenticity_report:
+                    authenticity_report["tampering"]["is_tampered"] = True
+                if "flags" in authenticity_report:
+                    authenticity_report["flags"].append("Vision model detected digital manipulation/splicing in image")
                 if "audit_flags" in authenticity_report:
-                    authenticity_report["audit_flags"].append("Vision LLM detected digital manipulation/splicing in image")
+                    authenticity_report["audit_flags"].append("Vision model detected digital manipulation/splicing in image")
                 if "forensic_breakdown" in authenticity_report and "tampering_analysis" in authenticity_report["forensic_breakdown"]:
                     authenticity_report["forensic_breakdown"]["tampering_analysis"]["is_tampered"] = True
 

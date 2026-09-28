@@ -145,7 +145,7 @@ async def analyze_complaint(
     result["confidence_score"] = preds.get("confidence")
     result["description"] = preds.get("evidence_summary")
     result["explanation"] = preds.get("grounded_explanation")
-    result["evidence_authenticity"] = preds.get("evidence_authenticity")
+    result["evidence_authenticity"] = result.get("evidence_authenticity") or preds.get("evidence_authenticity")
     return result
 
 @router.post("", response_model=ComplaintResponse, status_code=status.HTTP_201_CREATED)

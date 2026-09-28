@@ -119,7 +119,10 @@ class AIMLClient:
         metadata integrity (EXIF), provenance, and context consistency.
         """
         try:
-            from aiml.forensics.authenticity_verifier import authenticity_verifier
+            try:
+                from aiml.forensics.authenticity_verifier import authenticity_verifier
+            except ImportError:
+                from backend.aiml.forensics.authenticity_verifier import authenticity_verifier
             return authenticity_verifier.verify_evidence(
                 image_input=image_bytes or image_path,
                 filename=filename,

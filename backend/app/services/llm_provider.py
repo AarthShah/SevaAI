@@ -22,14 +22,20 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-from dotenv import load_dotenv
-
-import httpx
-
-# Load .env from project root
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent
-load_dotenv(_ROOT / ".env")
-load_dotenv(_ROOT / "backend" / ".env")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_ROOT / ".env")
+    load_dotenv(_ROOT / "backend" / ".env")
+except ImportError:
+    for env_path in [_ROOT / ".env", _ROOT / "backend" / ".env"]:
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip())
 
 logger = logging.getLogger(__name__)
 

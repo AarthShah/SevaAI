@@ -247,26 +247,34 @@ class EvidenceAuthenticityVerifier:
                 (512, 512), (768, 768), (1024, 1024), (2048, 2048),
                 (1024, 576), (576, 1024), (1344, 768), (768, 1344),
                 (2816, 1536), (1536, 2816), (1024, 1792), (1792, 1024),
-                (1152, 896), (896, 1152), (1216, 832), (832, 1216)
+                (1152, 896), (896, 1152), (1216, 832), (832, 1216),
+                (1200, 800), (800, 1200), (1280, 720), (720, 1280),
+                (1600, 1200), (1200, 1600), (1800, 1200), (1200, 1800),
+                (1920, 1080), (1080, 1920), (1280, 750), (750, 1280)
             }
             is_standard_ai_res = (w, h) in STANDARD_AI_DIMS
             is_square = abs(w - h) <= 4 and w in [512, 768, 1024, 1536, 2048]
+            is_diffusion_grid = (w % 64 == 0 and h % 64 == 0) and (min(w, h) >= 384 and max(w, h) <= 3072)
 
-            if (is_standard_ai_res or is_square) and not has_exif:
-                ai_score += 0.42
+            if (is_standard_ai_res or is_square or is_diffusion_grid) and not has_exif:
+                ai_score = max(ai_score, 0.55)
                 signatures.append(f"Synthetic canvas dimensions ({w}x{h}) lacking physical camera EXIF")
 
             # 2. Check PNG/WebP text chunks for AI generation prompts and parameters
             info_str = str(getattr(img, "info", {})).lower()
-            ai_tags = ["prompt", "parameters", "stablediffusion", "midjourney", "dall-e", "comfyui", "automatic1111", "novelai", "c2pa", "civitai", "cfg scale", "sampler", "steps:"]
+            ai_tags = [
+                "prompt", "parameters", "stablediffusion", "midjourney", "dall-e",
+                "comfyui", "automatic1111", "novelai", "c2pa", "civitai", "cfg scale",
+                "sampler", "steps:", "fooocus", "invokeai", "flux", "leonardo"
+            ]
             if any(t in info_str for t in ai_tags):
                 ai_score = max(ai_score, 0.98)
                 signatures.append("AI prompt/generation parameters discovered in image chunk metadata")
 
             # Check filename hints for known synthetic demo generators
             fn_lower = (filename or "").lower()
-            if any(k in fn_lower for k in ["midjourney", "dalle", "stablediffusion", "genai", "deepfake", "flux", "civitai", "ai_generated"]):
-                ai_score = max(ai_score, 0.94)
+            if any(k in fn_lower for k in ["midjourney", "dalle", "stablediffusion", "genai", "deepfake", "flux", "civitai", "ai_generated", "prompt"]):
+                ai_score = max(ai_score, 0.95)
                 signatures.append("Filename contains synthetic AI generator tag")
 
             # 3. High-Pass Noise Residual FFT & Latent Diffusion Lattice Detection
@@ -278,23 +286,36 @@ class EvidenceAuthenticityVerifier:
             med_arr = np.array(med, dtype=np.float32)
             noise_residual = gray_arr - med_arr
 
-            # Extract unscaled center 256x256 patch for frequency analysis (unaltered by resampling)
-            cx, cy = w // 2, h // 2
-            crop_noise = noise_residual[max(0, cy-128):cy+128, max(0, cx-128):cx+128]
-            
-            if crop_noise.shape[0] == 256 and crop_noise.shape[1] == 256:
-                fft_noise = np.abs(np.fft.fftshift(np.fft.fft2(crop_noise)))
-                fft_noise[128, 128] = 0  # Zero DC
-                noise_peak_ratio = round(float(np.max(fft_noise) / (np.mean(fft_noise) + 1e-4)), 2)
-            else:
-                noise_peak_ratio = 5.0
+            # Multi-patch sampling across center and quadrants to detect localized periodic lattices
+            offsets = [
+                (w // 2, h // 2),
+                (w // 4, h // 4),
+                (3 * w // 4, h // 4),
+                (w // 4, 3 * h // 4),
+                (3 * w // 4, 3 * h // 4)
+            ]
+            peak_ratios = []
+            for cx, cy in offsets:
+                crop = noise_residual[max(0, cy-128):min(h, cy+128), max(0, cx-128):min(w, cx+128)]
+                if crop.shape == (256, 256):
+                    fft_patch = np.abs(np.fft.fftshift(np.fft.fft2(crop)))
+                    fft_patch[128, 128] = 0  # Zero DC
+                    peak_ratios.append(float(np.max(fft_patch) / (np.mean(fft_patch) + 1e-4)))
 
-            if noise_peak_ratio > 10.0:
-                ai_score += 0.45
+            noise_peak_ratio = round(float(max(peak_ratios)), 2) if peak_ratios else 5.0
+
+            if noise_peak_ratio >= 12.0:
+                ai_score = max(ai_score, 0.95)
+                signatures.append(f"Severe latent diffusion periodic lattice spikes in noise spectrum (peak ratio {noise_peak_ratio})")
+            elif noise_peak_ratio >= 8.5:
+                ai_score = max(ai_score, 0.85)
                 signatures.append(f"Latent diffusion periodic lattice spikes in noise spectrum (peak ratio {noise_peak_ratio})")
-            elif noise_peak_ratio > 8.0:
-                ai_score += 0.28
+            elif noise_peak_ratio >= 7.0:
+                ai_score = max(ai_score, 0.70)
                 signatures.append(f"Elevated periodic spectral spikes characteristic of VAE upsampling ({noise_peak_ratio})")
+            elif noise_peak_ratio >= 5.8 and not has_exif:
+                ai_score = max(ai_score, 0.52)
+                signatures.append(f"Anomalous high-frequency spectral noise residual ({noise_peak_ratio}) lacking camera EXIF")
 
             # 4. Whole-image Fourier Spectral Decay & Texture Gradient Entropy
             small_gray = gray.resize((256, 256), Image.Resampling.BILINEAR)
@@ -316,16 +337,17 @@ class EvidenceAuthenticityVerifier:
             diff_y = np.abs(arr[1:, :] - arr[:-1, :])
             gradient_entropy = float(np.std(diff_x) + np.std(diff_y))
 
-            if spectral_peak_ratio > 2.2:
-                ai_score += 0.20
-                signatures.append("High-frequency spectral peaks in image Fourier power spectrum")
+            if spectral_peak_ratio > 2.0:
+                ai_score = max(ai_score, 0.65)
+                signatures.append(f"High-frequency spectral peaks in image Fourier power spectrum ({spectral_peak_ratio})")
 
             if gradient_entropy < 12.0:
-                ai_score += 0.20
-                signatures.append("Synthetic texture over-smoothing detected (lacks natural sensor grain)")
+                ai_score = max(ai_score, 0.60)
+                signatures.append(f"Synthetic texture over-smoothing detected (gradient entropy {gradient_entropy:.1f})")
 
             ai_probability = round(min(0.99, max(0.02, ai_score)), 3)
-            is_synthetic = ai_probability >= 0.50
+            # A photo is flagged synthetic if probability >= 0.45 or if definitive signatures are present
+            is_synthetic = (ai_probability >= 0.45) or (len(signatures) > 0 and ai_probability >= 0.35)
 
             return {
                 "ai_generated_probability": ai_probability,
@@ -333,7 +355,7 @@ class EvidenceAuthenticityVerifier:
                 "spectral_peak_ratio": spectral_peak_ratio,
                 "noise_peak_ratio": noise_peak_ratio,
                 "texture_gradient_entropy": round(gradient_entropy, 2),
-                "is_standard_ai_res": is_standard_ai_res or is_square,
+                "is_standard_ai_res": is_standard_ai_res or is_square or is_diffusion_grid,
                 "detected_signatures": signatures if signatures else ["Natural optical physics and camera sensor decay verified"],
                 "model_category_guess": "Diffusion / Deepfake" if is_synthetic else "Authentic Optical Capture"
             }
@@ -415,9 +437,6 @@ class EvidenceAuthenticityVerifier:
             pass
 
         # Calculate metadata integrity score
-        # Camera photos with intact Make/Model and timestamps have high integrity (0.95)
-        # Web screenshots or stripped photos have moderate integrity (0.60)
-        # Photos explicitly saved by Photoshop or editing tools receive low integrity (0.25)
         if software_detected and any(tool in software_detected.lower() for tool in self.KNOWN_EDITING_SOFTWARE):
             integrity_score = 0.20
             metadata_status = "TAMPERING_SOFTWARE_HEADER"
@@ -425,19 +444,19 @@ class EvidenceAuthenticityVerifier:
             integrity_score = 0.95
             metadata_status = "AUTHENTIC_CAMERA_HARDWARE"
         elif has_exif:
-            integrity_score = 0.75
+            integrity_score = 0.70
             metadata_status = "PARTIAL_EXIF_PRESENT"
         else:
-            integrity_score = 0.60
-            metadata_status = "STRIPPED_OR_OPTIMIZED"
+            integrity_score = 0.30
+            metadata_status = "NO_CAMERA_HARDWARE_EXIF"
 
         return {
             "has_exif": has_exif,
             "metadata_integrity_score": integrity_score,
             "metadata_status": metadata_status,
-            "camera_make": camera_make or "Unknown / Mobile Sensor",
-            "camera_model": camera_model or "Standard Camera Module",
-            "software_tool": software_detected or "None (Direct Sensor Capture)",
+            "camera_make": camera_make or "No Physical Camera Hardware EXIF",
+            "camera_model": camera_model or "Web / Synthetic Image Canvas",
+            "software_tool": software_detected or ("Original Camera Firmware" if has_exif else "None (Missing Device Headers)"),
             "capture_timestamp": str(capture_time) if capture_time else None,
             "exif_gps": gps_info,
             "editing_software_detected": bool(software_detected and any(tool in software_detected.lower() for tool in self.KNOWN_EDITING_SOFTWARE))
@@ -574,7 +593,11 @@ class EvidenceAuthenticityVerifier:
         if is_tampered:
             flags.append("Localized image splicing or Error Level Analysis anomaly")
         if is_synthetic:
-            flags.append("Synthetic generative model signatures detected in frequency domain")
+            sig_list = ai_gen.get("detected_signatures", [])
+            primary_sig = sig_list[0] if sig_list else "Diffusion lattice spikes"
+            flags.append(f"Synthetic generative model signatures detected in frequency domain ({primary_sig})")
+        if not metadata.get("has_exif"):
+            flags.append("Missing physical camera hardware EXIF metadata")
         if metadata.get("editing_software_detected"):
             flags.append(f"Image edited with manipulation tool ({metadata.get('software_tool')})")
         for cf in context.get("context_flags", []):
@@ -628,10 +651,17 @@ class EvidenceAuthenticityVerifier:
 
         # Critical violation: synthetic AI or spliced tampering IMMEDIATELY forces REVIEW
         if is_synthetic or is_tampered or score < 70.0:
+            if is_synthetic:
+                summary = "Evidence authenticity alert: Synthetic AI-generated media detected. Flagged for supervisor review before field dispatch."
+            elif is_tampered:
+                summary = "Evidence authenticity alert: Splicing / tampering detected. Flagged for supervisor review before field dispatch."
+            else:
+                summary = f"Evidence authenticity alert ({score}/100). Flagged for supervisor review before field dispatch."
+
             return {
                 "action": "REVIEW",
                 "requires_human_review": True,
-                "summary": f"Evidence authenticity alert ({score}/100). Flagged for supervisor review before field dispatch.",
+                "summary": summary,
                 "rationale": f"Potential evidence manipulation or synthetic generation detected. Flags: {'; '.join(flags) if flags else 'Authenticity score below 70 threshold'}."
             }
 

@@ -1005,15 +1005,21 @@ export const ReportIssuePage = () => {
                     <div className="p-2.5 bg-white border border-slate-200 rounded space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-medium text-slate-600">Metadata & Provenance</span>
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {authenticityData?.metadata?.software ? 'Validated' : 'Clean'}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          (!authenticityData?.metadata?.has_exif || authenticityData?.metadata?.camera_make?.includes('No Physical') || authenticityData?.metadata?.metadata_status === 'NO_CAMERA_HARDWARE_EXIF')
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {(!authenticityData?.metadata?.has_exif || authenticityData?.metadata?.camera_make?.includes('No Physical') || authenticityData?.metadata?.metadata_status === 'NO_CAMERA_HARDWARE_EXIF')
+                            ? 'Unverified Header'
+                            : 'Validated Hardware'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-800 font-medium truncate">
-                        {authenticityData?.metadata?.camera_make || 'Optical Image Hardware'}
+                        {authenticityData?.metadata?.camera_make || 'No Physical Camera Hardware EXIF'}
                       </p>
                       <p className="text-[10px] text-slate-500 truncate">
-                        Software: {authenticityData?.metadata?.software || 'Native Capture'} | dHash: {authenticityData?.provenance?.dhash || 'Intact'}
+                        Software: {authenticityData?.metadata?.software || authenticityData?.metadata?.software_tool || 'None (Missing Device Headers)'} | dHash: {authenticityData?.provenance?.perceptual_hash?.substring(0, 8) || authenticityData?.provenance?.dhash || 'Intact'}
                       </p>
                     </div>
 
