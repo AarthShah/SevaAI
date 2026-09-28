@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
@@ -15,10 +15,23 @@ const TRACKING_STEPS = [
 
 export const TrackComplaintPage = () => {
   const { id: routeId } = useParams();
-  const [searchId, setSearchId] = useState(routeId || 'CS1001');
+  const navigate = useNavigate();
+
+  const initialId = (routeId || 'CS1001').trim().toUpperCase();
+  const [activeTrackingId, setActiveTrackingId] = useState(initialId);
+  const [searchId, setSearchId] = useState(initialId);
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Sync if URL parameter routeId changes
+  useEffect(() => {
+    if (routeId) {
+      const clean = routeId.trim().toUpperCase();
+      setActiveTrackingId(clean);
+      setSearchId(clean);
+    }
+  }, [routeId]);
 
   // CivicSeva Contextual Assistant live complaint registration
   useAssistantContext({
@@ -103,20 +116,32 @@ export const TrackComplaintPage = () => {
     }
   };
 
+  // Polling for live status updates on activeTrackingId ONLY
   useEffect(() => {
-    const tid = routeId || 'CS1001';
-    setSearchId(tid);
-    fetchComplaint(tid);
+    if (!activeTrackingId) return;
+
+    fetchComplaint(activeTrackingId);
 
     const interval = setInterval(() => {
-      fetchComplaint(tid, true);
-    }, 3000);
+      fetchComplaint(activeTrackingId, true);
+    }, 3500);
+
     return () => clearInterval(interval);
-  }, [routeId]);
+  }, [activeTrackingId]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    fetchComplaint(searchId);
+    if (e) e.preventDefault();
+    const clean = (searchId || '').trim().toUpperCase();
+    if (!clean) return;
+    setActiveTrackingId(clean);
+    navigate(`/track/${clean}`);
+  };
+
+  const handleSelectSample = (cid) => {
+    const clean = cid.trim().toUpperCase();
+    setSearchId(clean);
+    setActiveTrackingId(clean);
+    navigate(`/track/${clean}`);
   };
 
   // Determine timeline step status
@@ -170,8 +195,8 @@ export const TrackComplaintPage = () => {
             <button
               key={cid}
               type="button"
-              onClick={() => { setSearchId(cid); fetchComplaint(cid); }}
-              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-semibold border border-slate-200"
+              onClick={() => handleSelectSample(cid)}
+              className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px] font-semibold border border-slate-200 cursor-pointer"
             >
               {cid}
             </button>
