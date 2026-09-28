@@ -1144,6 +1144,11 @@ export const AuthorityDashboard = () => {
   const handleAuthenticityDecision = async (issueId, decision) => {
     const cleanId = issueId.replace('#', '');
     try {
+      // Immediately close the Issue Details drawer when dismissed
+      if (decision === 'REJECT') {
+        setIsDetailsDrawerOpen(false);
+      }
+
       let res = null;
       try {
         res = await complaintApi.submitAuthenticityDecision(cleanId, decision, 'Supervisor manual evidence verification');
@@ -1179,6 +1184,14 @@ export const AuthorityDashboard = () => {
         })
       );
 
+      // If dismissed, advance selectedIssueId if current issue was dismissed
+      if (decision === 'REJECT') {
+        const remaining = filteredIssues.filter((i) => i.id.replace('#', '') !== cleanId);
+        if (remaining.length > 0) {
+          setSelectedIssueId(remaining[0].id.replace('#', ''));
+        }
+      }
+
       addAiLog({
         type: decision === 'APPROVE' ? 'OFFICIAL_APPROVAL' : 'SUPERVISOR_EVIDENCE_REJECTION',
         level: decision === 'APPROVE' ? 'SUCCESS' : 'WARNING',
@@ -1186,13 +1199,13 @@ export const AuthorityDashboard = () => {
         officer: 'Municipal Supervisor',
         message: decision === 'APPROVE' 
           ? `Evidence verified and marked REAL by Municipal Supervisor. Docket #${cleanId} cleared for squad deployment.`
-          : `Docket #${cleanId} dismissed and rejected: Evidence identified as fraudulent or synthetic media.`
+          : `Docket #${cleanId} dismissed and rejected: Evidence identified as fraudulent or synthetic media. Citizen notified.`
       });
 
       showToast(
         decision === 'APPROVE'
           ? `Docket #${cleanId} marked Real & Verified Authentic.`
-          : `Docket #${cleanId} dismissed as fraudulent.`
+          : `Docket #${cleanId} dismissed as fraudulent. The user who submitted the report has been notified that the evidence was detected as fake.`
       );
     } catch (err) {
       showToast(`Action failed: ${err.message || 'Could not record supervisor decision'}`);

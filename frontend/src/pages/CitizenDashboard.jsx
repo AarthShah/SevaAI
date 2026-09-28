@@ -115,6 +115,8 @@ export const CitizenDashboard = () => {
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
               <option value="Escalated">Escalated</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Dismissed">Dismissed</option>
             </select>
           </div>
 

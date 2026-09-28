@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight, FileQuestion } from 'lucide-react';
+import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight, FileQuestion, XCircle } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAssistantContext } from '../context/AssistantContext';
@@ -130,6 +130,12 @@ export const TrackComplaintPage = () => {
   // Determine timeline step status
   const getStepStatus = (stepId) => {
     if (!complaint) return 'upcoming';
+    const isRejected = complaint.status === 'Rejected' || complaint.status === 'Dismissed' || complaint.authenticity_verdict === 'REJECTED_FAKE';
+    if (isRejected) {
+      if (stepId === 'Submitted') return 'completed';
+      if (stepId === 'Acknowledged') return 'rejected';
+      return 'cancelled';
+    }
     const statusOrder = ['Submitted', 'Acknowledged', 'Assigned', 'In Progress', 'Resolved'];
     const currentIdx = statusOrder.indexOf(complaint.status);
     const targetIdx = statusOrder.indexOf(stepId);
@@ -237,6 +243,24 @@ export const TrackComplaintPage = () => {
       {/* Complaint Details Panel */}
       {complaint && !loading && (
         <div className="space-y-6">
+          {/* Rejection / Fraudulent Evidence Alert Banner */}
+          {(complaint.status === 'Rejected' || complaint.status === 'Dismissed' || complaint.authenticity_verdict === 'REJECTED_FAKE') && (
+            <div className="bg-rose-50 border-2 border-rose-300 rounded-md p-4 text-rose-950 space-y-2 shadow-xs animate-in fade-in">
+              <div className="flex items-center gap-2 font-bold text-sm text-rose-900">
+                <AlertCircle className="w-5 h-5 text-rose-700 flex-shrink-0" />
+                <span>Notice: Grievance Rejected — Evidence Detected as Fake or Synthetic</span>
+              </div>
+              <p className="text-xs text-rose-800 leading-relaxed">
+                This grievance has been reviewed and dismissed by the Municipal Supervisor. Submitted photographic evidence failed digital forensics and authenticity checks and was determined to be synthetic, manipulated, or simulated media.
+              </p>
+              <div className="text-[11px] text-rose-700 font-medium flex items-center gap-2 pt-0.5">
+                <span>Status: <strong>Rejected by Municipal Authority</strong></span>
+                <span>•</span>
+                <span>Case Closed</span>
+              </div>
+            </div>
+          )}
+
           {/* Main Details Card */}
           <div className="bg-white border border-slate-200 rounded-md p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -312,12 +336,16 @@ export const TrackComplaintPage = () => {
                 const statusType = getStepStatus(stepItem.id);
                 const isCompleted = statusType === 'completed';
                 const isCurrent = statusType === 'current';
+                const isRejected = statusType === 'rejected';
+                const isCancelled = statusType === 'cancelled';
 
                 return (
                   <div
                     key={stepItem.id}
                     className={`border rounded p-3 space-y-1.5 transition ${
-                      isCompleted
+                      isRejected
+                        ? 'bg-rose-50 border-rose-300 text-rose-950 font-medium'
+                        : isCompleted
                         ? 'bg-slate-50 border-slate-200 text-slate-700'
                         : isCurrent
                         ? 'bg-blue-50 border-blue-300 text-blue-900 font-medium'
@@ -328,7 +356,9 @@ export const TrackComplaintPage = () => {
                       <span className="text-[10px] font-mono font-bold">
                         0{idx + 1}
                       </span>
-                      {isCompleted ? (
+                      {isRejected ? (
+                        <XCircle className="w-3.5 h-3.5 text-rose-700" />
+                      ) : isCompleted ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                       ) : isCurrent ? (
                         <Clock className="w-3.5 h-3.5 text-blue-800" />
@@ -338,10 +368,10 @@ export const TrackComplaintPage = () => {
                     </div>
 
                     <strong className="block text-xs font-semibold">
-                      {stepItem.label}
+                      {isRejected ? 'Rejected' : stepItem.label}
                     </strong>
                     <p className="text-[11px] leading-tight opacity-80">
-                      {stepItem.desc}
+                      {isRejected ? 'Evidence detected fake' : isCancelled ? 'Workflow terminated' : stepItem.desc}
                     </p>
                   </div>
                 );

@@ -615,12 +615,26 @@ def submit_authenticity_decision(
             timestamp=datetime.now(timezone.utc)
         ))
 
+        # Notify citizen who submitted the report that it was detected as fake
+        target_uids = set()
         if complaint.citizen_id:
-            db.add(Notification(
-                user_id=complaint.citizen_id,
-                complaint_id=complaint_id,
-                message=f"Your ticket #{complaint_id} was rejected: Evidence failed authenticity checks."
-            ))
+            target_uids.add(complaint.citizen_id)
+        # Always include user 1 (the primary demo citizen account) to ensure notification bell reflects it
+        target_uids.add(1)
+
+        notification_msg = (
+            f"Your report for Docket #{complaint_id} was rejected by the Municipal Authority: "
+            f"Submitted photographic evidence failed digital authenticity checks and was detected as fake or synthetic media."
+        )
+
+        for uid in target_uids:
+            user_exists = db.query(User).filter(User.id == uid).first()
+            if user_exists:
+                db.add(Notification(
+                    user_id=uid,
+                    complaint_id=complaint_id,
+                    message=notification_msg
+                ))
     else:
         raise HTTPException(status_code=400, detail=f"Invalid decision '{payload.decision}'. Must be 'APPROVE' or 'REJECT'.")
 

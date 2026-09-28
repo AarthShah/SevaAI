@@ -11,7 +11,8 @@ export const StatusBadge = ({ status }) => {
     'In Progress': 'bg-blue-50 text-blue-800 border-blue-200',
     'Awaiting Verification': 'bg-slate-100 text-slate-800 border-slate-200',
     'Resolved': 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    'Rejected': 'bg-slate-100 text-slate-600 border-slate-200',
+    'Rejected': 'bg-rose-50 text-rose-800 border-rose-200',
+    'Dismissed': 'bg-rose-50 text-rose-800 border-rose-200',
     'Escalated': 'bg-rose-50 text-rose-800 border-rose-200'
   };
 
