@@ -264,7 +264,7 @@ def get_complaint_detail(complaint_id: str, db: Session = Depends(get_db)):
     Returns full complaint dossier including attached evidence, status transitions,
     agent action trace, and escalations.
     """
-    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    complaint = ComplaintService.find_complaint(db, complaint_id)
     if not complaint:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -391,7 +391,7 @@ def assign_officer_to_complaint(
     Recalculates proximity distance and ETA, updates ticket status,
     and logs agent decision trace.
     """
-    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    complaint = ComplaintService.find_complaint(db, complaint_id)
     if not complaint:
         raise HTTPException(status_code=404, detail=f"Complaint #{complaint_id} not found.")
 
@@ -520,7 +520,7 @@ def submit_authenticity_decision(
     and assigns/dispatches the designated field squad.
     If REJECT: marks docket as Rejected due to synthetic/fraudulent evidence.
     """
-    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    complaint = ComplaintService.find_complaint(db, complaint_id)
     if not complaint:
         raise HTTPException(status_code=404, detail=f"Complaint #{complaint_id} not found.")
 

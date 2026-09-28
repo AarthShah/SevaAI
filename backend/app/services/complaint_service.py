@@ -36,6 +36,20 @@ VALID_STATUSES = [
 
 class ComplaintService:
     @staticmethod
+    def find_complaint(db: Session, complaint_id: str) -> Optional[Complaint]:
+        if not complaint_id:
+            return None
+        clean_cid = str(complaint_id).replace("#", "").strip()
+        return db.query(Complaint).filter(
+            (Complaint.id == clean_cid) |
+            (Complaint.id == f"CS{clean_cid}") |
+            (Complaint.id == clean_cid.replace("CS", "")) |
+            (Complaint.id == f"#{clean_cid}") |
+            (Complaint.id == f"#{complaint_id}") |
+            (Complaint.id == str(complaint_id))
+        ).first()
+
+    @staticmethod
     def generate_next_id(db: Session) -> str:
         last_complaint = db.query(Complaint).order_by(desc(Complaint.created_at)).first()
         if not last_complaint or not last_complaint.id.startswith("CS"):
@@ -239,7 +253,7 @@ class ComplaintService:
         update_data: ComplaintStatusUpdate,
         changed_by: str = "Authority Official"
     ) -> Complaint:
-        complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+        complaint = ComplaintService.find_complaint(db, complaint_id)
         if not complaint:
             raise ValueError(f"Complaint with ID {complaint_id} not found.")
 
@@ -297,7 +311,7 @@ class ComplaintService:
         remarks: Optional[str] = None,
         requested_by: str = "Citizen"
     ) -> Dict[str, Any]:
-        complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+        complaint = ComplaintService.find_complaint(db, complaint_id)
         if not complaint:
             raise ValueError(f"Complaint {complaint_id} not found.")
 
@@ -342,7 +356,7 @@ class ComplaintService:
         level: int = 1,
         initiated_by: str = "Authority / SLA System"
     ) -> Escalation:
-        complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+        complaint = ComplaintService.find_complaint(db, complaint_id)
         if not complaint:
             raise ValueError(f"Complaint {complaint_id} not found.")
 

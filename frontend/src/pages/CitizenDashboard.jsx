@@ -21,8 +21,8 @@ export const CitizenDashboard = () => {
     pageName: 'CitizenDashboard'
   });
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const data = await complaintApi.getComplaints({
         status: statusFilter !== 'All' ? statusFilter : undefined,
@@ -32,12 +32,16 @@ export const CitizenDashboard = () => {
     } catch {
       // In case of error, keep list
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 3500);
+    return () => clearInterval(interval);
   }, [statusFilter]);
 
   const handleSearchSubmit = (e) => {

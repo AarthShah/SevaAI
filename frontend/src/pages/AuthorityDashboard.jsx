@@ -330,9 +330,11 @@ export const checkIsUnverified = (issue) => {
   if (!issue) return false;
   if (
     issue.authenticityVerdict === 'APPROVED_BY_SUPERVISOR' ||
+    issue.authenticityVerdict === 'PASS' ||
     issue.status === 'Dismissed' ||
     issue.status === 'Resolved' ||
-    issue.isUnverified === false
+    issue.isUnverified === false ||
+    issue.requiresHumanReview === false
   ) {
     return false;
   }
@@ -341,8 +343,7 @@ export const checkIsUnverified = (issue) => {
     issue.requiresHumanReview ||
     issue.status === 'Review Required' ||
     issue.status === 'Under Review' ||
-    issue.authenticityVerdict === 'REVIEW' ||
-    (issue.authenticityScore !== null && issue.authenticityScore !== undefined && issue.authenticityScore < 70)
+    issue.authenticityVerdict === 'REVIEW'
   );
 };
 
@@ -400,12 +401,16 @@ const mapApiComplaintToIssue = (c) => {
     aiDistanceKm: c.officer_distance_km !== null && c.officer_distance_km !== undefined ? c.officer_distance_km : 0.8,
     aiConfidence: c.ai_confidence ? `${Math.round(c.ai_confidence * 100)}%` : '92%',
     aiReasoning: c.grounded_explanation || c.severity_reason || `Matched to specialist ${designated.name} (${designated.squad}) based on civic infrastructure defect analysis.`,
-    authenticityScore: c.authenticity_score,
+    authenticityScore: c.authenticity_verdict === 'APPROVED_BY_SUPERVISOR' ? 98 : c.authenticity_score,
     authenticityVerdict: c.authenticity_verdict,
-    authenticityRisk: c.authenticity_risk,
-    authenticityFlags: c.authenticity_flags,
-    requiresHumanReview: Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
-    isUnverified: Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
+    authenticityRisk: c.authenticity_verdict === 'APPROVED_BY_SUPERVISOR' ? 'LOW' : c.authenticity_risk,
+    authenticityFlags: c.authenticity_verdict === 'APPROVED_BY_SUPERVISOR' ? [] : c.authenticity_flags,
+    requiresHumanReview: c.authenticity_verdict === 'APPROVED_BY_SUPERVISOR' || c.status === 'Resolved'
+      ? false
+      : Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || c.status === 'Review Required' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
+    isUnverified: c.authenticity_verdict === 'APPROVED_BY_SUPERVISOR' || c.status === 'Resolved'
+      ? false
+      : Boolean(c.requires_human_review || c.authenticity_verdict === 'REVIEW' || c.status === 'Review Required' || (c.authenticity_score !== null && c.authenticity_score !== undefined && c.authenticity_score < 70)),
     tamperingScore: c.tampering_score,
     aiGeneratedProbability: c.ai_generated_probability
   };
@@ -927,6 +932,15 @@ export const AuthorityDashboard = () => {
       )
     );
 
+    // Persist completion status to backend database
+    complaintApi.updateStatus(
+      finishedCleanId,
+      'Resolved',
+      `Remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Photographic & video proof logged.`
+    ).catch((err) => {
+      console.warn('API updateStatus for finished job failed, keeping local state:', err);
+    });
+
     // 3. Add timeline resolution entry with media proof reference
     const completionNote = {
       text: `Remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Infrastructure defect repaired and verified safe. On-site after photo and inspection video proof uploaded.`,
@@ -1113,6 +1127,7 @@ export const AuthorityDashboard = () => {
               authenticityVerdict: 'APPROVED_BY_SUPERVISOR',
               authenticityScore: 98,
               authenticityRisk: 'LOW',
+              authenticityFlags: [],
               assignedTo: res?.assigned_officer_name || iss.assignedTo
             };
           } else {
@@ -1230,11 +1245,34 @@ export const AuthorityDashboard = () => {
   // Status updates
   const handleUpdateStatus = (newStatus) => {
     if (!currentIssue) return;
+    const cleanId = currentIssue.id.replace('#', '');
+
+    // 1. Optimistic local state update
     setIssues((prev) =>
-      prev.map((i) => (i.id === currentIssue.id ? { ...i, status: newStatus } : i))
+      prev.map((i) => (i.id === currentIssue.id || i.id.replace('#', '') === cleanId ? { ...i, status: newStatus } : i))
     );
     setIsUpdateModalOpen(false);
-    showToast(`Complaint #${currentIssue.id} status updated to "${newStatus}".`);
+
+    // 2. Clear any active countdown timer if resolving
+    if (newStatus === 'Resolved') {
+      if (activeJobsRef.current && activeJobsRef.current[cleanId]) {
+        const nextRef = { ...activeJobsRef.current };
+        delete nextRef[cleanId];
+        activeJobsRef.current = nextRef;
+        setActiveJobs((prev) => {
+          const next = { ...prev };
+          delete next[cleanId];
+          return next;
+        });
+      }
+    }
+
+    // 3. Persist to backend database so polling & citizen portal see new status
+    complaintApi.updateStatus(cleanId, newStatus, `Status transitioned to "${newStatus}" by Municipal Authority`).catch((err) => {
+      console.warn('API updateStatus failed, keeping local override:', err);
+    });
+
+    showToast(`Complaint #${cleanId} status updated to "${newStatus}".`);
   };
 
   // Squad assignment
@@ -1243,12 +1281,17 @@ export const AuthorityDashboard = () => {
     const cleanId = currentIssue.id.replace('#', '');
     setIssues((prev) =>
       prev.map((i) =>
-        i.id === currentIssue.id
+        i.id === currentIssue.id || i.id.replace('#', '') === cleanId
           ? { ...i, assignedTo: squadObj.name, squad: squadObj.squad, status: 'Assigned' }
           : i
       )
     );
     setIsAssignModalOpen(false);
+
+    // Persist to backend database
+    complaintApi.updateStatus(cleanId, 'Assigned', `Assigned to ${squadObj.name} (${squadObj.squad})`).catch((err) => {
+      console.warn('API updateStatus for assign squad failed:', err);
+    });
     addAiLog({
       type: 'REASSIGNMENT',
       level: 'INFO',
@@ -1300,6 +1343,11 @@ export const AuthorityDashboard = () => {
           : i
       )
     );
+
+    // Persist dispatch status to backend database
+    complaintApi.updateStatus(cleanId, 'In Progress', `Field squad ${officerName} (${squadName}) dispatched on-site for remediation.`).catch((err) => {
+      console.warn('API updateStatus for dispatch failed:', err);
+    });
 
     // 2. Mark officer as BUSY (ON SITE)
     setSquads((prev) =>

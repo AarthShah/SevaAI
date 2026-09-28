@@ -26,9 +26,9 @@ export const TrackComplaintPage = () => {
     selectedComplaintId: complaint?.id || null
   });
 
-  const fetchComplaint = async (targetId) => {
+  const fetchComplaint = async (targetId, isSilent = false) => {
     if (!targetId) return;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
     setError(null);
 
     try {
@@ -104,12 +104,14 @@ export const TrackComplaintPage = () => {
   };
 
   useEffect(() => {
-    if (routeId) {
-      setSearchId(routeId);
-      fetchComplaint(routeId);
-    } else {
-      fetchComplaint('CS1001');
-    }
+    const tid = routeId || 'CS1001';
+    setSearchId(tid);
+    fetchComplaint(tid);
+
+    const interval = setInterval(() => {
+      fetchComplaint(tid, true);
+    }, 3000);
+    return () => clearInterval(interval);
   }, [routeId]);
 
   const handleSearch = (e) => {
