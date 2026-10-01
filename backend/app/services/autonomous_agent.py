@@ -11,7 +11,7 @@ Fully autonomous operations:
 
 import json
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -25,6 +25,8 @@ from ..models.officer import Officer
 from ..models.escalation import Escalation
 from ..models.evidence import Evidence
 from ..services.complaint_service import ComplaintService
+from ..services.department_mapping import resolve_department_id
+from ..services.field_workload import daily_assignment_limit_for_distance
 from ..services.aiml_client import aiml_client
 from aiml.agents.followup_agent import followup_agent, DEFAULT_SLA_THRESHOLDS
 
@@ -53,22 +55,22 @@ class AutonomousAgentEngine:
         Geospatially locates the closest unencumbered municipal field engineer in the responsible department.
         Combines distance, active ticket workload, and availability status for optimal assignment.
         """
+        today = date.today().isoformat()
         officers = db.query(Officer).filter(
             Officer.department_id == department_id,
             Officer.status != "OFFLINE"
         ).all()
-
-        if not officers:
-            # Fallback to any active officer in the city
-            officers = db.query(Officer).filter(Officer.status != "OFFLINE").all()
+        # Daily capacity is adjusted for travel distance below, per candidate.
 
         if not officers:
             return {
                 "officer": None,
-                "distance_km": 1.2,
-                "eta_minutes": 15,
-                "officer_name": "Ward Emergency Flying Squad",
-                "officer_phone": "+91 20 2550 1100"
+                "officer_id": None,
+                "distance_km": None,
+                "eta_minutes": None,
+                "officer_name": None,
+                "officer_phone": None,
+                "dispatch_message": "No active crew in the responsible department has daily capacity. AI left the work order queued for municipal dispatch."
             }
 
         best_officer = None
@@ -77,6 +79,9 @@ class AutonomousAgentEngine:
 
         for off in officers:
             dist = calculate_haversine_distance(target_lat, target_lon, off.current_lat, off.current_lon)
+            daily_count = (off.daily_assignment_count or 0) if off.daily_assignment_date == today else 0
+            if daily_count >= daily_assignment_limit_for_distance(dist):
+                continue
             # Composite assignment score: lower is better
             # distance (km) + workload penalty (active_tickets * 1.5) - available bonus (-4.0)
             score = dist + (off.active_tickets * 1.5) - (4.0 if off.status == "AVAILABLE" else 0.0)
@@ -85,12 +90,27 @@ class AutonomousAgentEngine:
                 best_officer = off
                 best_dist = dist
 
+        if best_officer is None:
+            return {
+                "officer": None,
+                "officer_id": None,
+                "distance_km": None,
+                "eta_minutes": None,
+                "officer_name": None,
+                "officer_phone": None,
+                "dispatch_message": "No active crew in the responsible department has distance-adjusted daily capacity. AI left the work order queued for municipal dispatch."
+            }
+
         # Calculate estimated arrival time: assume 22 km/h average municipal squad speed + 5 min dispatch buffer
         transit_mins = int((best_dist / 22.0) * 60)
         eta_minutes = max(6, transit_mins + 4)
 
         # Update officer workload
         best_officer.active_tickets += 1
+        if best_officer.daily_assignment_date != today:
+            best_officer.daily_assignment_date = today
+            best_officer.daily_assignment_count = 0
+        best_officer.daily_assignment_count = (best_officer.daily_assignment_count or 0) + 1
         if best_officer.active_tickets >= 3:
             best_officer.status = "BUSY"
         elif best_officer.status == "AVAILABLE":
@@ -103,29 +123,40 @@ class AutonomousAgentEngine:
             "officer_role": best_officer.role,
             "officer_phone": best_officer.phone,
             "distance_km": round(best_dist, 2),
-            "eta_minutes": eta_minutes
+            "eta_minutes": eta_minutes,
+            "daily_assignment_limit": daily_assignment_limit_for_distance(best_dist)
         }
 
     @staticmethod
     def detect_duplicate_or_cluster(
         db: Session,
         category: str,
+        issue_type: str,
         target_lat: float,
         target_lon: float,
-        threshold_km: float = 0.075  # 75 meters radius
+        forensic_details: Optional[dict] = None,
+        threshold_km: float = 0.05  # 50 meters radius
     ) -> Optional[Complaint]:
         """
         Geospatially detects duplicate or overlapping citizen reports for the same infrastructure defect
         within 75 meters to form incident clusters.
         """
+        from .clustering_service import _same_issue
+        from ..models.evidence import Evidence
+        import json
+        probe = Complaint(id="__probe__", category=category, issue_type=issue_type,
+                          description=issue_type, latitude=target_lat, longitude=target_lon)
+        if forensic_details:
+            probe.evidence_list = [Evidence(type="image", file_url="/probe", forensic_details=json.dumps(forensic_details))]
         recent_open = db.query(Complaint).filter(
-            Complaint.category == category,
             Complaint.status.notin_(["Resolved", "Rejected"]),
             Complaint.latitude.isnot(None),
             Complaint.longitude.isnot(None)
         ).all()
 
         for c in recent_open:
+            if not _same_issue(probe, c):
+                continue
             dist = calculate_haversine_distance(target_lat, target_lon, c.latitude, c.longitude)
             if dist <= threshold_km:
                 return c
@@ -171,8 +202,17 @@ class AutonomousAgentEngine:
         dept_name = preds["department"]
 
         # 2. Autonomous Department Resolution via RAG Knowledge Base
-        dept = db.query(Department).filter(Department.category == category).first()
-        dept_id = dept.id if dept else 1
+        dept_id = resolve_department_id(
+            db,
+            category,
+            preds.get("department_code") or dept_name,
+        )
+        if dept_id is None:
+            # Unknown classifications must be explicitly triaged by general administration;
+            # they must never silently consume road-crew capacity.
+            dept_id = resolve_department_id(db, "public_safety_other")
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        dept_name = dept.name if dept else "General Civic Administration"
 
         # 2.5 Evidence Authenticity & Forensics Gateway Evaluation
         auth_data = preds.get("evidence_authenticity") or analysis.get("evidence_authenticity") or {}
@@ -186,6 +226,14 @@ class AutonomousAgentEngine:
         tampering_score = auth_data.get("tampering_score")
         ai_gen_prob = auth_data.get("ai_generated_probability")
 
+        # Find a compatible existing master before matching a crew. A supporting
+        # report must never create another field dispatch for the same defect.
+        existing_cluster = AutonomousAgentEngine.detect_duplicate_or_cluster(
+            db=db, category=category, issue_type=issue_type,
+            target_lat=location_data["latitude"], target_lon=location_data["longitude"],
+            forensic_details=(auth_data.get("forensic_details") if isinstance(auth_data, dict) else None)
+        )
+
         # 3. Autonomous Proximity Officer Matching & Dispatch (Conditional on Gateway PASS)
         officer_match = {}
         assigned_officer_id = None
@@ -194,7 +242,16 @@ class AutonomousAgentEngine:
         dist_km = None
         eta_mins = None
 
-        if req_human_review == 0:
+        if existing_cluster:
+            assigned_officer_id = existing_cluster.assigned_officer_id
+            assigned_officer_name = existing_cluster.assigned_officer_name
+            assigned_officer_phone = existing_cluster.assigned_officer_phone
+            dist_km = existing_cluster.officer_distance_km
+            eta_mins = existing_cluster.officer_eta_minutes
+            officer_match = {"officer_id": assigned_officer_id, "officer_name": assigned_officer_name,
+                             "officer_phone": assigned_officer_phone, "distance_km": dist_km,
+                             "eta_minutes": eta_mins}
+        elif req_human_review == 0:
             officer_match = AutonomousAgentEngine.find_nearest_available_officer(
                 db=db,
                 department_id=dept_id,
@@ -209,19 +266,14 @@ class AutonomousAgentEngine:
         else:
             assigned_officer_name = "Pending Supervisor Review"
 
-        # 4. Autonomous Duplicate & Neighborhood Clustering Check
-        existing_cluster = AutonomousAgentEngine.detect_duplicate_or_cluster(
-            db=db,
-            category=category,
-            target_lat=location_data["latitude"],
-            target_lon=location_data["longitude"]
-        )
-        cluster_id = existing_cluster.id if existing_cluster else None
+        # The persistent master ID is assigned by ClusteringService after this
+        # report row has been inserted; never overload a citizen report ID here.
+        cluster_id = None
         is_duplicate = 1 if existing_cluster else 0
 
         # If clustered, boost severity priority due to multi-citizen impact
-        if existing_cluster:
-            severity = "CRITICAL" if severity in ["HIGH", "CRITICAL"] else "HIGH"
+        if existing_cluster and existing_cluster.severity == "CRITICAL":
+            severity = "CRITICAL"
 
         # 5. Autonomous Grievance Docket Generation
         cid = ComplaintService.generate_next_id(db)
@@ -234,15 +286,23 @@ class AutonomousAgentEngine:
                 f"EVIDENCE GATEWAY: Tampering/Synthetic flags detected (Score: {auth_score or 0}%). Officer dispatch paused."
             )
         else:
-            generated_text = sys_data.get("generated_complaint_text") or (
+            generated_text = (
+                sys_data.get("generated_complaint_text") or
                 f"OFFICIAL CIVIC GRIEVANCE DOCKET\n"
                 f"TO: {dept_name}\n"
                 f"SUBJECT: Priority Remediation Order - {issue_type} at {location_data['address']}\n"
                 f"CLASSIFICATION: {category} (Severity: {severity})\n"
                 f"AUTONOMOUS DISPATCH: Dispatched directly to Field Officer {assigned_officer_name}."
+            ) if assigned_officer_name and not existing_cluster else (
+                f"OFFICIAL CIVIC GRIEVANCE DOCKET\n"
+                f"TO: {dept_name}\n"
+                f"SUBJECT: Priority Remediation Order - {issue_type} at {location_data['address']}\n"
+                f"CLASSIFICATION: {category} (Severity: {severity})\n"
+                "AI CAPACITY CHECK: No active crew has daily capacity. Work order queued for municipal dispatch."
             )
 
-        complaint_status = "Review Required" if req_human_review == 1 else "Assigned"
+        complaint_status = (existing_cluster.status if existing_cluster else
+                            ("Review Required" if req_human_review == 1 else ("Assigned" if assigned_officer_id else "Submitted")))
 
         complaint = Complaint(
             id=cid,
@@ -297,6 +357,13 @@ class AutonomousAgentEngine:
                 forensic_details=forensic_json
             )
             db.add(ev)
+            db.flush()
+
+        from .clustering_service import ClusteringService
+        master = ClusteringService.attach_to_master(db, complaint)
+        cluster_id = master.id if master else None
+        if master:
+            complaint.is_duplicate = 1
 
         # 7. Record History Log with Dispatch or Gateway Hold Details
         if req_human_review == 1:
@@ -305,6 +372,12 @@ class AutonomousAgentEngine:
                 f"Autonomous officer dispatch halted pending municipal supervisor verification. Flags: {auth_flags_str or 'None'}"
             )
             changed_by_name = "CivicSeva Evidence Forensics Gateway"
+        elif existing_cluster:
+            dispatch_remarks = (
+                f"Supporting citizen report linked to master grievance #{cluster_id}. "
+                f"Existing official triage and field assignment for report #{existing_cluster.id} remain in force; no additional dispatch was created."
+            )
+            changed_by_name = "Municipal Grievance Registry"
         else:
             dispatch_remarks = (
                 f"Autonomous Auto-Dispatch: Classified as '{issue_type}'. Auto-routed to {dept_name}. "
@@ -346,7 +419,7 @@ class AutonomousAgentEngine:
                 timestamp=datetime.now(timezone.utc)
             ))
 
-        if req_human_review == 0 and assigned_officer_name:
+        if req_human_review == 0 and assigned_officer_name and not existing_cluster:
             db.add(AgentAction(
                 complaint_id=cid,
                 agent_name="Autonomous Geo-Proximity Dispatcher",
@@ -358,7 +431,7 @@ class AutonomousAgentEngine:
 
         # 9. Officer Alert Notice (Only if assigned)
         mobile_alert = None
-        if req_human_review == 0 and assigned_officer_name:
+        if req_human_review == 0 and assigned_officer_name and not existing_cluster:
             mobile_alert = (
                 f"SQUAD DISPATCH NOTICE:\n"
                 f"[CivicSeva Municipal Work Order #{cid}]\n"
@@ -372,8 +445,12 @@ class AutonomousAgentEngine:
         # 10. Push Autonomous Citizen Notification
         if req_human_review == 1:
             citizen_msg = f"Docket #{cid} registered. Currently under municipal supervisor review for photographic evidence verification."
-        else:
+        elif existing_cluster:
+            citizen_msg = f"Your report #{cid} was added as supporting evidence to master grievance #{cluster_id}. The existing municipal decision remains in place."
+        elif assigned_officer_name:
             citizen_msg = f"Ticket #{cid} assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins)."
+        else:
+            citizen_msg = f"Ticket #{cid} is in the municipal queue. AI dispatch will route it when an on-shift crew has daily capacity."
 
         db.add(Notification(
             user_id=citizen_id or 1,

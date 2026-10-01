@@ -12,14 +12,33 @@ from ..models.agent_action import AgentAction
 from ..models.escalation import Escalation
 from ..models.notification import Notification
 
+from ..models.officer import Officer
+from ..models.resolution_verification import ResolutionEvidence, ResolutionVerification
+from ..models.duplicate_candidate import DuplicateCandidate
+from ..models.complaint_cluster import ComplaintCluster, ComplaintClusterMember
+from ..models.location_intelligence import LocationIntelligence
+from ..models.ai_decision_evidence import AIDecisionEvidence
+from ..models.sla_prediction import SLAPrediction
+from ..models.watchdog_event import WatchdogEvent
+
 __all__ = [
     "Base",
     "User",
     "Department",
+    "Officer",
     "Complaint",
     "Evidence",
     "ComplaintHistory",
     "AgentAction",
     "Escalation",
-    "Notification"
+    "Notification",
+    "ResolutionEvidence",
+    "ResolutionVerification",
+    "DuplicateCandidate",
+    "ComplaintCluster",
+    "ComplaintClusterMember",
+    "LocationIntelligence",
+    "AIDecisionEvidence",
+    "SLAPrediction",
+    "WatchdogEvent"
 ]

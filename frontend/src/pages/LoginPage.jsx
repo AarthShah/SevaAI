@@ -50,7 +50,7 @@ export const LoginPage = () => {
             />
           </div>
           <h1 className="text-xl font-bold text-slate-900">
-            Sign in to CivicSeva
+            Sign in to Seva AI
           </h1>
           <p className="text-xs text-slate-500">
             Access citizen grievance tracking or municipal administration portal

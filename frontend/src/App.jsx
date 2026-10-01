@@ -6,6 +6,8 @@ import { AssistantProvider } from './context/AssistantContext';
 import { AssistantPanel } from './components/AssistantPanel';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { LanguageProvider } from './context/LanguageContext';
+import { LanguagePicker } from './components/LanguagePicker';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -18,14 +20,17 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { FieldCrewPage } from './pages/FieldCrewPage';
+
 
 const AppContent = () => {
   const location = useLocation();
-  const isAuthority = location.pathname.startsWith('/authority');
+  const isAuthority = location.pathname.startsWith('/authority') || location.pathname === '/crew';
 
   return (
     <div className={`flex flex-col min-h-screen ${isAuthority ? 'bg-[#F8FAFC]' : 'bg-white'} text-slate-900`}>
       <Navbar />
+      <LanguagePicker />
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -34,6 +39,7 @@ const AppContent = () => {
           <Route path="/track/:id" element={<TrackComplaintPage />} />
           <Route path="/dashboard" element={<CitizenDashboard />} />
           <Route path="/authority" element={<AuthorityDashboard />} />
+          <Route path="/crew" element={<FieldCrewPage />} />
           <Route path="/map" element={<Navigate to="/authority?tab=MAP" replace />} />
           <Route path="/analytics" element={<Navigate to="/authority?tab=ANALYTICS" replace />} />
           <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
@@ -54,16 +60,18 @@ const AppContent = () => {
 
 export const App = () => {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <AssistantProvider>
-          <Router>
-            <AppContent />
-            <AssistantPanel />
-          </Router>
-        </AssistantProvider>
-      </NotificationProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <AssistantProvider>
+            <Router>
+              <AppContent />
+              <AssistantPanel />
+            </Router>
+          </AssistantProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 

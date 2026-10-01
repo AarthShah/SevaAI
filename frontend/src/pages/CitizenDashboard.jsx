@@ -16,7 +16,7 @@ export const CitizenDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
 
-  // CivicSeva Contextual Assistant page registration
+  // Seva AI Contextual Assistant page registration
   useAssistantContext({
     pageName: 'CitizenDashboard'
   });

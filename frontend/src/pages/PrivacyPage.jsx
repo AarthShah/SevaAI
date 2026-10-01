@@ -49,7 +49,7 @@ export const PrivacyPage = () => {
                 1. Information We Collect
               </h2>
               <p>
-                CivicSeva collects only the information necessary to identify, verify, and resolve reported municipal issues:
+                Seva AI collects only the information necessary to identify, verify, and resolve reported municipal issues:
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li><strong className="text-slate-800">Issue Evidence:</strong> Photos, text descriptions, and voice notes submitted by the user depicting civic defects.</li>
@@ -72,7 +72,7 @@ export const PrivacyPage = () => {
                 3. Automated Machine Learning Processing
               </h2>
               <p>
-                Photographs submitted to CivicSeva are processed by automated vision algorithms exclusively to identify infrastructure defects (such as potholes, garbage accumulation, or broken fixtures).
+                Photographs submitted to Seva AI are processed by automated vision algorithms exclusively to identify infrastructure defects (such as potholes, garbage accumulation, or broken fixtures).
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li>Uploaded images are not used for facial recognition or commercial profiling.</li>

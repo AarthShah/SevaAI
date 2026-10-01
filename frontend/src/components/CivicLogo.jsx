@@ -24,7 +24,7 @@ export const CivicLogo = ({ className = "h-7 w-7 text-blue-800", textClassName =
         <rect x="2" y="27" width="28" height="2.5" rx="0.5" />
       </svg>
       <span className={textClassName}>
-        CivicSeva
+        Seva AI
       </span>
     </div>
   );

@@ -183,12 +183,12 @@ export const AssistantProvider = ({ children }) => {
       }
       return data;
     } catch (err) {
-      const errorMsg = err.message || 'Unable to connect to CivicSeva Assistant';
+      const errorMsg = err.message || 'Unable to connect to Seva AI Assistant';
       setError(errorMsg);
       // Even if network fails, add a friendly offline message so user isn't stuck
       const fallbackMsg = {
         role: 'assistant',
-        content: 'I am temporarily unable to reach the assistant service. You can still use all standard CivicSeva reporting and tracking features directly on this page.'
+        content: 'I am temporarily unable to reach the assistant service. You can still use all standard Seva AI reporting and tracking features directly on this page.'
       };
       setMessages((prev) => [...prev, fallbackMsg].slice(-(MAX_EXCHANGES * 2)));
       return null;

@@ -73,7 +73,7 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-slate-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-slate-500">
-          <p>&copy; {new Date().getFullYear()} CivicSeva. Public Service Digital System.</p>
+          <p>&copy; {new Date().getFullYear()} Seva AI. Public Service Digital System.</p>
           <p className="mt-2 sm:mt-0 text-[11px]">Designed for transparent and accessible municipal service delivery.</p>
         </div>
       </div>

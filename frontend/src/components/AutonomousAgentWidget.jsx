@@ -60,7 +60,7 @@ export const AutonomousAgentWidget = ({ onSweepComplete }) => {
           </div>
           <h2 className="text-xl sm:text-2xl font-black font-heading tracking-tight flex items-center gap-2">
             <Zap className="w-6 h-6 text-amber-400 fill-amber-400" />
-            <span>CivicSeva Autonomous Operations Center</span>
+            <span>Seva AI Autonomous Operations Center</span>
           </h2>
           <p className="text-xs text-slate-300 max-w-xl">
             Continuously monitors active civic complaints, automatically routes work orders to municipal departments, 

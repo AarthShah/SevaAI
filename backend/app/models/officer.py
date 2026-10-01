@@ -23,6 +23,8 @@ class Officer(Base):
     current_address = Column(String(255), nullable=True)
     status = Column(String(30), default="AVAILABLE")  # AVAILABLE, ON_DUTY, BUSY, OFFLINE
     active_tickets = Column(Integer, default=0)
+    daily_assignment_count = Column(Integer, default=0, nullable=False)
+    daily_assignment_date = Column(String(10), nullable=True)
     rating = Column(Float, default=4.8)
     avatar_url = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

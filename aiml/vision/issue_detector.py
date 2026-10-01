@@ -179,8 +179,8 @@ class VisionIssueDetector:
 
             data = json.loads(cleaned_json)
 
-            issue_type = data.get("detected_issue", "road_damage").lower().replace(" ", "_")
-            category = data.get("category", "road_infrastructure").lower().replace(" ", "_").replace("&", "")
+            issue_type = data.get("detected_issue", "unclassified_civic_issue").lower().replace(" ", "_")
+            category = data.get("category", "public_safety_other").lower().replace(" ", "_").replace("&", "")
             raw_sev = str(data.get("severity", "MEDIUM")).upper()
             severity = raw_sev if raw_sev in ["LOW", "MEDIUM", "HIGH", "CRITICAL"] else "MEDIUM"
 
@@ -193,15 +193,32 @@ class VisionIssueDetector:
 
             dept_map = {
                 "ROAD_DEPT": "Road Department",
+                "DEPT_ROAD": "Road Department",
                 "SOLID_WASTE": "Sanitation Department",
+                "DEPT_WASTE": "Sanitation Department",
                 "WATER_SUPPLY": "Water Supply Department",
+                "DEPT_WATER": "Water Supply Department",
                 "DRAINAGE": "Drainage Board",
-                "STREET_LIGHT": "Electricity Department"
+                "DEPT_DRAINAGE": "Drainage Board",
+                "STREET_LIGHT": "Electricity Department",
+                "DEPT_ELECTRICAL": "Electricity Department",
+                "DEPT_GEN_ADMIN": "General Civic Administration"
             }
-            dept_id = data.get("department_id", "ROAD_DEPT")
+            category_dept = {
+                "road_infrastructure": "DEPT_ROAD",
+                "sanitation_waste": "DEPT_WASTE",
+                "waste_management": "DEPT_WASTE",
+                "water_supply": "DEPT_WATER",
+                "drainage_sewerage": "DEPT_DRAINAGE",
+                "drainage_sanitation": "DEPT_DRAINAGE",
+                "electricity_lighting": "DEPT_ELECTRICAL",
+                "electrical_street_lighting": "DEPT_ELECTRICAL",
+                "public_safety_other": "DEPT_GEN_ADMIN",
+            }
+            dept_id = data.get("department_id") or category_dept.get(category, "DEPT_GEN_ADMIN")
             if dept_id not in dept_map:
-                dept_id = "ROAD_DEPT"
-            dept_name = data.get("suggested_department") or dept_map.get(dept_id, "Road Department")
+                dept_id = "DEPT_GEN_ADMIN"
+            dept_name = data.get("suggested_department") or dept_map.get(dept_id, "General Civic Administration")
 
             return {
                 "detected_issue": issue_type,
@@ -343,20 +360,21 @@ class VisionIssueDetector:
             except Exception:
                 pass
 
-        # Standard road damage default with REAL priority (MEDIUM, not HIGH)
+        # Unknown images are sent for general triage; only a positive road signal should
+        # create a road repair task.
         return {
-            "detected_issue": "pothole",
-            "display_title": "Asphalt Road Surface Damage",
-            "category": "road_infrastructure",
-            "suggested_department": "Road Department",
-            "department_id": "ROAD_DEPT",
+            "detected_issue": "unclassified_civic_issue",
+            "display_title": "Unclassified Civic Issue",
+            "category": "public_safety_other",
+            "suggested_department": "General Civic Administration",
+            "department_id": "DEPT_GEN_ADMIN",
             "severity": "MEDIUM",
-            "severity_reason": "Standard road surface depression and asphalt fracture. Pothole poses tire wear risk but no immediate vehicular collision hazard.",
-            "confidence": 0.88,
-            "evidence": "Visible road surface disruption with localized asphalt depression and surface fracture.",
-            "description": "Asphalt road pothole requiring routine municipal cold-mix patching.",
+            "severity_reason": "Automated image classification could not identify a responsible department; manual triage is required.",
+            "confidence": 0.35,
+            "evidence": "The image could not be confidently matched to a supported municipal issue category.",
+            "description": "Unclassified civic report requiring municipal review.",
             "mode": "LOCAL_COMPUTER_VISION",
-            "visual_features": {"inspection": "standard_road_damage"}
+            "visual_features": {"inspection": "unclassified"}
         }
 
 detector = VisionIssueDetector()

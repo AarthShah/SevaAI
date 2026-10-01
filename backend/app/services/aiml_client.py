@@ -68,15 +68,15 @@ class AIMLClient:
                 "ai_predictions": {
                     "issue_type": "civic_defect",
                     "display_issue_type": "Civic Defect",
-                    "category": "road_infrastructure",
+                    "category": "public_safety_other",
                     "severity": "MEDIUM",
                     "display_severity": "AI-estimated severity: MEDIUM",
                     "confidence": 0.88,
-                    "department": "Municipal Works Department",
+                    "department": "General Civic Administration",
                     "evidence_summary": "Civic defect detected in urban area.",
                     "severity_reason": "AI-estimated severity: MEDIUM. Standard municipal remediation queue.",
-                    "grounded_explanation": "Issues relating to road infrastructure are jurisdictionally assigned to the Municipal Road Department.",
-                    "recommended_action": "Assign ward engineer for site verification."
+                    "grounded_explanation": "Automated classification was unavailable. This report needs municipal triage before department assignment.",
+                    "recommended_action": "Review the report and route it to the responsible department."
                 },
                 "user_provided": {
                     "raw_text": text or "",

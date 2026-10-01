@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Search, Clock, CheckCircle2, AlertCircle, RefreshCw, MapPin, Building, Calendar, ArrowRight, FileQuestion, XCircle } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
+import { CivicIntelligenceDossier } from '../components/CivicIntelligenceDossier';
 import { useAssistantContext } from '../context/AssistantContext';
 
 const TRACKING_STEPS = [
@@ -33,7 +34,7 @@ export const TrackComplaintPage = () => {
     }
   }, [routeId]);
 
-  // CivicSeva Contextual Assistant live complaint registration
+  // Seva AI Contextual Assistant live complaint registration
   useAssistantContext({
     pageName: 'TrackComplaintPage',
     selectedComplaintId: complaint?.id || null
@@ -377,6 +378,18 @@ export const TrackComplaintPage = () => {
                 );
               })}
             </div>
+          </div>
+
+          {/* Resolution Proof & Civic Intelligence Dossier */}
+          <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">
+            <CivicIntelligenceDossier
+              complaintId={complaint.id}
+              currentStatus={complaint.status}
+              onStatusUpdated={(newSt) => {
+                fetchComplaint(complaint.id, true);
+              }}
+              isAuthority={false}
+            />
           </div>
         </div>
       )}

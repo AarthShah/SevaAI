@@ -40,6 +40,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def _migrate_schema(target_engine):
     try:
         with target_engine.connect() as conn:
+            if target_engine.dialect.name == "postgresql":
+                conn.execute(text("ALTER TABLE officers ADD COLUMN IF NOT EXISTS daily_assignment_count INTEGER NOT NULL DEFAULT 0"))
+                conn.execute(text("ALTER TABLE officers ADD COLUMN IF NOT EXISTS daily_assignment_date VARCHAR(10)"))
+                conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS landmark VARCHAR(150)"))
+                conn.execute(text("ALTER TABLE complaint_clusters ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id)"))
+                conn.commit()
+                return
             # Check complaints columns
             res = conn.execute(text("PRAGMA table_info(complaints)"))
             existing_cols = {row[1] for row in res.fetchall()}
@@ -51,11 +58,25 @@ def _migrate_schema(target_engine):
                 ("authenticity_flags", "TEXT"),
                 ("requires_human_review", "INTEGER DEFAULT 0"),
                 ("tampering_score", "FLOAT DEFAULT 0.05"),
-                ("ai_generated_probability", "FLOAT DEFAULT 0.04")
+                ("ai_generated_probability", "FLOAT DEFAULT 0.04"),
+                ("landmark", "VARCHAR(150)")
             ]
             for col_name, col_def in new_complaint_cols:
                 if col_name not in existing_cols:
                     conn.execute(text(f"ALTER TABLE complaints ADD COLUMN {col_name} {col_def}"))
+
+            cluster_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(complaint_clusters)")).fetchall()}
+            if "department_id" not in cluster_cols:
+                conn.execute(text("ALTER TABLE complaint_clusters ADD COLUMN department_id INTEGER REFERENCES departments(id)"))
+
+            res_officers = conn.execute(text("PRAGMA table_info(officers)"))
+            existing_officer_cols = {row[1] for row in res_officers.fetchall()}
+            for col_name, col_def in [
+                ("daily_assignment_count", "INTEGER DEFAULT 0 NOT NULL"),
+                ("daily_assignment_date", "VARCHAR(10)")
+            ]:
+                if col_name not in existing_officer_cols:
+                    conn.execute(text(f"ALTER TABLE officers ADD COLUMN {col_name} {col_def}"))
             
             # Check evidence columns
             res_ev = conn.execute(text("PRAGMA table_info(evidence)"))

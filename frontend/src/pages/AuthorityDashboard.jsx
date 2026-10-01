@@ -8,14 +8,17 @@ import {
   RefreshCw, CheckSquare, Layers, Cpu, ShieldCheck, ShieldAlert, ArrowRight, 
   Phone, Eye, Clock, Copy, Printer, Sparkles, Send, Wrench, RotateCcw,
   FastForward, CheckCheck, Bot, Zap, Sliders, AlertTriangle,
-  Video, Image, Play, Download, ExternalLink, CheckCircle, UserCheck
+  Video, Image, Play, Download, ExternalLink, CheckCircle, UserCheck,
+  Route, ListOrdered, Activity
 } from 'lucide-react';
+import { issueImageFor } from '../utils/issueImages';
 import { CivicLogo } from '../components/CivicLogo';
 import { MapViewPage } from './MapViewPage';
 import { CCTVVisionPage } from './CCTVVisionPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { AuditLogsPage } from './AuditLogsPage';
 import { complaintApi } from '../api/complaintApi';
+import { CivicIntelligenceDossier } from '../components/CivicIntelligenceDossier';
 import { useAssistantContext } from '../context/AssistantContext';
 
 // 5 Municipal Departments
@@ -130,15 +133,11 @@ export const resolveDesignatedWorker = (issue) => {
 
 // Auto-resolver to match any issue to its Before defect evidence photo
 export const resolveBeforeImage = (issue) => {
-  if (issue?.image && typeof issue.image === 'string' && issue.image.startsWith('/sample_evidence/')) {
+  if (issue?.image && typeof issue.image === 'string' && !issue.image.startsWith('/sample_evidence/')) {
     return issue.image;
   }
   const cat = (issue?.title || issue?.department || issue?.category || '').toLowerCase();
-  if (cat.includes('garbage') || cat.includes('sanitat') || cat.includes('waste')) return '/sample_evidence/garbage.jpg';
-  if (cat.includes('water') || cat.includes('leak') || cat.includes('pipeline')) return '/sample_evidence/water_leak.jpg';
-  if (cat.includes('light') || cat.includes('electr') || cat.includes('pole')) return '/sample_evidence/streetlight.jpg';
-  if (cat.includes('drain') || cat.includes('manhole') || cat.includes('sewer')) return '/sample_evidence/manhole.jpg';
-  return '/sample_evidence/pothole.jpg';
+  return issueImageFor(cat, 'before');
 };
 
 // Auto-resolver for completed work proof (After photo, Video proof, and verification metrics)
@@ -146,7 +145,7 @@ export const resolveProofMedia = (issue) => {
   const cat = (issue?.title || issue?.department || issue?.category || '').toLowerCase();
   if (cat.includes('garbage') || cat.includes('sanitat') || cat.includes('waste')) {
     return {
-      afterImage: '/sample_evidence/garbage_after.jpg',
+      afterImage: issue?.proofMedia?.afterImage || '/image/garbage/after/0151c5e2-0fae-42cb-846b-a28933d1d887.jpg',
       videoProof: '/sample_evidence/cctv_feed_1.mp4',
       verificationScore: 99.1,
       repairSummary: 'Full waste accumulation removed, street sidewalk sanitized, green municipal container deployed.'
@@ -154,7 +153,7 @@ export const resolveProofMedia = (issue) => {
   }
   if (cat.includes('water') || cat.includes('leak') || cat.includes('pipeline')) {
     return {
-      afterImage: '/sample_evidence/water_leak_after.jpg',
+      afterImage: issue?.proofMedia?.afterImage || '/image/water_leak/after/09fbbc53-0904-4a0a-ba9a-c7d27ffd6c88.jpg',
       videoProof: '/sample_evidence/cctv_feed_2.mp4',
       verificationScore: 98.4,
       repairSummary: 'Underground municipal distribution valve gasket replaced, road surface repaved and sealed dry.'
@@ -162,15 +161,15 @@ export const resolveProofMedia = (issue) => {
   }
   if (cat.includes('light') || cat.includes('electr') || cat.includes('pole')) {
     return {
-      afterImage: '/sample_evidence/streetlight_after.jpg',
+      afterImage: issue?.proofMedia?.afterImage || '/image/Strretlight/after/447dba68-3a58-44d4-ba9c-e19d70001011.jpg',
       videoProof: '/sample_evidence/cctv_feed_1.mp4',
       verificationScore: 99.5,
       repairSummary: 'Defective LED armature replaced, photocell sensor recalibrated, street luminaire fully restored.'
     };
   }
-  if (cat.includes('drain') || cat.includes('manhole') || cat.includes('sewer')) {
+  if (cat.includes('drain') || cat.includes('manhole') || cat.includes('sewer') || cat.includes('storm')) {
     return {
-      afterImage: '/sample_evidence/drainage_after.jpg',
+      afterImage: issue?.proofMedia?.afterImage || '/image/Storm%20drainage/after/0cda410f-1d4b-4b5d-908d-c20e26df910b.jpg',
       videoProof: '/sample_evidence/cctv_feed_2.mp4',
       verificationScore: 97.9,
       repairSummary: 'Reinforced cast iron stormwater grate installed, drainage silt vacuumed, zero water blockage.'
@@ -178,7 +177,7 @@ export const resolveProofMedia = (issue) => {
   }
   // Default road repair
   return {
-    afterImage: '/sample_evidence/pothole_after.jpg',
+    afterImage: issue?.proofMedia?.afterImage || '/image/pathole/after/0dc86bc2-7d3c-4b17-bddb-760e35cc3abd.jpg',
     videoProof: '/sample_evidence/cctv_feed_1.mp4',
     verificationScore: 98.8,
     repairSummary: 'High-density bituminous hot-mix asphalt laid and vibratory compacted. Yellow boundary marking repainted.'
@@ -358,11 +357,11 @@ const mapApiComplaintToIssue = (c) => {
 
   // Map category to appropriate civic visual evidence
   const cat = (c.category || '').toLowerCase();
-  let defaultImg = '/sample_evidence/pothole.jpg';
-  if (cat.includes('garbage') || cat.includes('waste')) defaultImg = '/sample_evidence/garbage.jpg';
-  else if (cat.includes('water') || cat.includes('leak')) defaultImg = '/sample_evidence/water_leak.jpg';
-  else if (cat.includes('light') || cat.includes('electric')) defaultImg = '/sample_evidence/streetlight.jpg';
-  else if (cat.includes('drain') || cat.includes('manhole')) defaultImg = '/sample_evidence/manhole.jpg';
+  let defaultImg = '/image/pathole/before/0428f686-a431-4415-b4f9-9c4d888f2a92.jpg';
+  if (cat.includes('garbage') || cat.includes('waste')) defaultImg = '/image/garbage/before/0e61bca7-361e-466a-868a-36cae942872e.jpg';
+  else if (cat.includes('water') || cat.includes('leak')) defaultImg = '/image/water_leak/before/23c9fbe3-8d33-4dac-8e87-71b0504d787b.jpg';
+  else if (cat.includes('light') || cat.includes('electric')) defaultImg = '/image/Strretlight/before/7980af27-cf7d-4093-9f04-ce507bd7ff4c.jpg';
+  else if (cat.includes('drain') || cat.includes('manhole') || cat.includes('storm')) defaultImg = '/image/Storm%20drainage/before/233e9aff-0079-4caa-a0be-b5bb62ff4ef2.jpg';
 
   const evidenceUrls = (c.evidence_list && c.evidence_list.length > 0)
     ? c.evidence_list.map((e) => e.file_url)
@@ -384,11 +383,23 @@ const mapApiComplaintToIssue = (c) => {
 
   return {
     id: cleanId,
-    title: c.title || (c.issue_type ? c.issue_type.replace(/_/g, ' ') : (c.category ? c.category.replace(/_/g, ' ') : 'Civic Issue')),
+    title: c.master_issue_type || c.title || (c.issue_type ? c.issue_type.replace(/_/g, ' ') : (c.category ? c.category.replace(/_/g, ' ') : 'Civic Issue')),
+    category: c.master_category || c.category || '',
+    clusterId: c.cluster_id || null,
+    masterGrievanceId: c.master_grievance_id || c.cluster_id || c.id,
+    reportCount: c.report_count || 1,
+    reporterCount: c.reporter_count || 1,
+    showReportCount: Boolean(c.show_report_count),
+    isDuplicate: Boolean(c.is_duplicate),
+    latitude: c.latitude,
+    longitude: c.longitude,
+    reporterId: c.citizen_id !== null && c.citizen_id !== undefined ? String(c.citizen_id) : null,
     location: c.address || 'Indore Urban Ward',
     priority: priority,
-    department: deptName,
-    departmentId: c.department_id ? String(c.department_id) : 'ROAD_DEPT',
+    department: c.master_department_name || deptName,
+    departmentId: (c.master_department_id || c.department_id) ? String(c.master_department_id || c.department_id) : 'ROAD_DEPT',
+    masterReports: c.master_reports || [],
+    groupingReasons: c.grouping_reasons || [],
     status: status,
     assignedTo: c.assigned_officer_name || null,
     squad: c.assigned_officer_name ? (c.assigned_officer_name.includes('Patil') ? 'Field Squad A' : (c.assigned_officer_name.includes('Deshmukh') ? 'Field Squad B' : 'Field Squad A')) : null,
@@ -416,6 +427,28 @@ const mapApiComplaintToIssue = (c) => {
     tamperingScore: c.tampering_score,
     aiGeneratedProbability: c.ai_generated_probability
   };
+};
+
+const groupIncidentReports = (items) => {
+  const byMaster = new globalThis.Map();
+  items.forEach((issue) => {
+    const masterId = issue.masterGrievanceId || issue.id;
+    if (!byMaster.has(masterId)) {
+      byMaster.set(masterId, { ...issue, relatedReports: [], reportCount: issue.reportCount || 1,
+        reporterCount: issue.reporterCount || 1, showReportCount: Boolean(issue.showReportCount) });
+    } else {
+      byMaster.get(masterId).relatedReports.push(issue);
+    }
+  });
+  return [...byMaster.values()];
+};
+
+const incidentReportIds = (items, issueId) => {
+  const cleanId = String(issueId || '').replace('#', '');
+  const group = groupIncidentReports(items).find((item) =>
+    item.id.replace('#', '') === cleanId || item.relatedReports.some((report) => report.id.replace('#', '') === cleanId)
+  );
+  return group ? [group.id, ...group.relatedReports.map((report) => report.id)].map((id) => id.replace('#', '')) : [cleanId];
 };
 
 // Baseline issues with real photos
@@ -665,6 +698,11 @@ export const AuthorityDashboard = () => {
 
   // Issues, Squads & Active Remediation Timers
   const [issues, setIssues] = useState(DEFAULT_ISSUES);
+  const issuesRef = useRef(issues);
+  useEffect(() => {
+    issuesRef.current = issues;
+  }, [issues]);
+
   const [squads, setSquads] = useState(INITIAL_SQUADS);
   const [activeJobs, setActiveJobs] = useState({}); // { [issueId]: { remainingSeconds: 60, officerName, squad } }
   const activeJobsRef = useRef(activeJobs);
@@ -702,7 +740,7 @@ export const AuthorityDashboard = () => {
     coordinates
   }) => {
     const cleanId = issueId ? issueId.replace('#', '') : 'SYSTEM';
-    const matchedIssue = issues.find((i) => i.id.replace('#', '') === cleanId);
+    const matchedIssue = (issuesRef.current || issues).find((i) => i.id.replace('#', '') === cleanId);
     const resolvedBefore = beforeImage || (matchedIssue ? resolveBeforeImage(matchedIssue) : '/sample_evidence/pothole.jpg');
     const proof = matchedIssue ? resolveProofMedia(matchedIssue) : resolveProofMedia({ title: 'Pothole' });
 
@@ -730,7 +768,7 @@ export const AuthorityDashboard = () => {
 
   // Inspect designated worker availability & busy status for any issue
   const getWorkerStatusForIssue = (issue) => {
-    if (!issue || !issue.assignedTo) {
+    if (!issue) {
       return { 
         state: 'UNASSIGNED', 
         workerName: null, 
@@ -741,8 +779,9 @@ export const AuthorityDashboard = () => {
       };
     }
     const cleanId = issue.id.replace('#', '');
-    const workerName = issue.assignedTo;
-    const squadName = issue.squad || 'Field Squad A';
+    const des = resolveDesignatedWorker(issue);
+    const workerName = issue.assignedTo || des.name;
+    const squadName = issue.squad || des.squad;
 
     // 1. Is active job running on THIS ticket?
     if (activeJobs[cleanId]) {
@@ -752,6 +791,21 @@ export const AuthorityDashboard = () => {
         squadName,
         activeTicket: cleanId,
         remainingSeconds: activeJobs[cleanId].remainingSeconds,
+        isAvailable: false
+      };
+    }
+
+    // 2. Is this worker currently running an active job on ANOTHER ticket?
+    const busyJobEntry = Object.entries(activeJobs).find(
+      ([tId, j]) => j.officerName === workerName && tId !== cleanId
+    );
+    if (busyJobEntry) {
+      return {
+        state: 'BUSY_ON_OTHER',
+        workerName,
+        squadName,
+        activeTicket: busyJobEntry[0],
+        remainingSeconds: busyJobEntry[1].remainingSeconds,
         isAvailable: false
       };
     }
@@ -768,7 +822,7 @@ export const AuthorityDashboard = () => {
     }
 
     return {
-      state: 'ASSIGNED',
+      state: issue.assignedTo ? 'ASSIGNED' : 'AVAILABLE',
       workerName,
       squadName,
       activeTicket: null,
@@ -777,11 +831,320 @@ export const AuthorityDashboard = () => {
     };
   };
 
-  const [selectedIssueId, setSelectedIssueId] = useState('CS1039');
-  const [selectedRows, setSelectedRows] = useState(['CS1039']);
-  const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
+  // Build sequential route pipeline / task queue for an officer:
+  // e.g. [1. Active on-site #CS1039 (38s)] -> [2. Next #CS1045] -> [3. Target #CS1077 (This Issue)]
+  const getWorkerTaskQueue = (issue) => {
+    if (!issue) return { workerName: '', squadName: '', isBusy: false, activeTicket: null, remainingSeconds: 0, route: [] };
+    const cleanId = issue.id.replace('#', '');
+    const des = resolveDesignatedWorker(issue);
+    const workerName = issue.assignedTo || des.name;
+    const squadName = issue.squad || des.squad;
 
-  // CivicSeva Contextual Assistant live authority context registration
+    // Active job for this worker
+    const activeJobEntry = Object.entries(activeJobs).find(
+      ([tId, j]) => j.officerName === workerName
+    );
+
+    const route = [];
+
+    // Stop 1: If worker has an active job running on-site
+    if (activeJobEntry) {
+      const [actTicketId, actJob] = activeJobEntry;
+      const actIssue = (issuesRef.current || issues).find((i) => i.id.replace('#', '') === actTicketId);
+      route.push({
+        step: 1,
+        ticketId: actTicketId,
+        title: actIssue?.title || 'Civic Infrastructure Defect',
+        location: actIssue?.location || 'Indore Urban Ward',
+        status: 'BUSY_ON_SITE',
+        remainingSeconds: actJob.remainingSeconds,
+        isCurrentIssue: actTicketId === cleanId,
+        label: actTicketId === cleanId ? 'Current Active Job (On-Site)' : 'First: Active On-Site Remediation'
+      });
+    }
+
+    // Stop 2..N: Any OTHER tickets already assigned to this worker in queue
+    const otherQueued = (issuesRef.current || issues).filter((iss) => {
+      const cid = iss.id.replace('#', '');
+      if (iss.status === 'Resolved' || iss.status === 'Dismissed' || iss.status === 'Rejected') return false;
+      if (activeJobEntry && cid === activeJobEntry[0]) return false;
+      if (cid === cleanId) return false;
+      return iss.assignedTo === workerName;
+    });
+
+    otherQueued.forEach((qIss) => {
+      const qCleanId = qIss.id.replace('#', '');
+      route.push({
+        step: route.length + 1,
+        ticketId: qCleanId,
+        title: qIss.title,
+        location: qIss.location,
+        status: 'QUEUED',
+        remainingSeconds: null,
+        isCurrentIssue: false,
+        label: `Next: Queue Pos #${route.length + 1}`
+      });
+    });
+
+    // Target Stop: This issue (if it wasn't already the active on-site job)
+    if (!activeJobEntry || activeJobEntry[0] !== cleanId) {
+      route.push({
+        step: route.length + 1,
+        ticketId: cleanId,
+        title: issue.title,
+        location: issue.location,
+        status: issue.assignedTo ? 'ASSIGNED_QUEUED' : 'DESIGNATED_TARGET',
+        remainingSeconds: null,
+        isCurrentIssue: true,
+        label: `Destination: Ticket #${cleanId} (This Work Order)`
+      });
+    }
+
+    return {
+      workerName,
+      squadName,
+      isBusy: Boolean(activeJobEntry),
+      activeTicket: activeJobEntry ? activeJobEntry[0] : null,
+      remainingSeconds: activeJobEntry ? activeJobEntry[1].remainingSeconds : 0,
+      route
+    };
+  };
+
+  // ============================================================
+  // APPROVE AI DISPATCH & 1-MINUTE REMEDIATION START
+  // ============================================================
+  const handleApproveAiDispatch = (issueId, isAutonomous = false) => {
+    const cleanId = issueId.replace('#', '');
+    const currentList = issuesRef.current || issues;
+    const issue = currentList.find((i) => i.id.replace('#', '') === cleanId);
+    if (!issue) return;
+    const relatedIssueIds = incidentReportIds(currentList, cleanId);
+
+    const designated = resolveDesignatedWorker(issue);
+    const officerName = issue.assignedTo || designated.name;
+    const squadName = issue.squad || designated.squad;
+
+    // Check if designated worker is already busy on another ticket
+    const busyJob = Object.entries(activeJobsRef.current || activeJobs).find(
+      ([issKey, j]) => j.officerName === officerName && issKey !== cleanId
+    );
+    if (busyJob) {
+      setIssues((prev) => {
+        const next = prev.map((i) =>
+          relatedIssueIds.includes(i.id.replace('#', ''))
+            ? { ...i, status: 'Assigned', assignedTo: officerName, squad: squadName }
+            : i
+        );
+        issuesRef.current = next;
+        return next;
+      });
+      complaintApi.updateStatus(cleanId, 'Assigned', `Master grievance #${cleanId}: assigned to ${officerName} (${squadName}) and queued behind active ticket #${busyJob[0]}.`, undefined, { name: officerName }).catch(() => {});
+      addAiLog({
+        type: 'AI_PIPELINE_ENQUEUE',
+        level: 'INFO',
+        issueId: cleanId,
+        issueTitle: issue.title,
+        officer: officerName,
+        dept: squadName,
+        message: `Work order #${cleanId} enqueued into ${officerName}'s task route. Specialist is currently busy on #${busyJob[0]} (${busyJob[1].remainingSeconds}s remaining).`
+      });
+      if (!isAutonomous) {
+        showToast(`Assignment approved into pipeline: ${officerName} is currently busy on #${busyJob[0]} (${busyJob[1].remainingSeconds}s remaining). Ticket queued and will auto-dispatch when freed.`);
+      }
+      return;
+    }
+
+    // 1. Mark issue as In Progress
+    setIssues((prev) => {
+      const next = prev.map((i) =>
+        relatedIssueIds.includes(i.id.replace('#', ''))
+          ? { ...i, status: 'In Progress', assignedTo: officerName, squad: squadName }
+          : i
+      );
+      issuesRef.current = next;
+      return next;
+    });
+
+    // Persist dispatch status to backend database
+    complaintApi.updateStatus(cleanId, 'In Progress', `Master grievance #${cleanId}: field squad ${officerName} (${squadName}) dispatched on-site for remediation.`, undefined, { name: officerName }).catch((err) => {
+      console.warn(`API updateStatus for dispatch failed for ${cleanId}:`, err);
+    });
+
+    // 2. Mark officer as BUSY (ON SITE)
+    setSquads((prev) =>
+      prev.map((sq) =>
+        sq.name === officerName
+          ? { ...sq, status: 'BUSY (ON SITE)', activeTicket: cleanId }
+          : sq
+      )
+    );
+
+    // 3. Start 60-second active job timer (1 minute countdown)
+    const newJob = {
+      remainingSeconds: 60,
+      officerName,
+      squad: squadName,
+      relatedIssueIds
+    };
+    if (activeJobsRef.current) {
+      activeJobsRef.current = {
+        ...activeJobsRef.current,
+        [cleanId]: newJob
+      };
+    }
+    setActiveJobs((prev) => ({
+      ...prev,
+      [cleanId]: newJob
+    }));
+
+    // 4. Add dispatch note to timeline
+    const dispatchNote = {
+      text: isAutonomous
+        ? `[Zero-Touch Auto-Dispatch] Autonomous AI engine approved & dispatched ${officerName} (${squadName}). Field squad deployed on-site for 60s remediation.`
+        : `Approved AI assignment. Work order dispatched to ${officerName} (${squadName}). Field squad deployed on-site. Status marked BUSY for 1-minute remediation repair.`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: 'Today',
+      author: isAutonomous ? 'Autonomous AI Engine' : 'Supervisor Office'
+    };
+    setTimelineNotes((prev) => ({
+      ...prev,
+      [cleanId]: [dispatchNote, ...(prev[cleanId] || [])]
+    }));
+
+    // 5. Add to AI Audit Log
+    addAiLog({
+      type: isAutonomous ? 'AUTONOMOUS_DISPATCH' : 'AI_ASSIGNMENT_APPROVED',
+      level: 'DISPATCH',
+      issueId: cleanId,
+      issueTitle: issue.title,
+      officer: officerName,
+      dept: squadName,
+      message: isAutonomous
+        ? `[Zero-Touch Mode] AI autonomously selected & dispatched ${officerName} to #${cleanId}. 60s remediation countdown initiated.`
+        : `Supervisor confirmed & approved AI assignment for #${cleanId}. Dispatched ${officerName} (${squadName}). 60s remediation countdown initiated.`
+    });
+
+    showToast(
+      isAutonomous
+        ? `[Zero-Touch] Auto-dispatched ${officerName} to #${cleanId} (60s timer started).`
+        : `Approved AI assignment for issue #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`
+    );
+  };
+
+  // Autonomous Zero-Touch Dispatch Engine Tick (Evaluates availability and auto-dispatches)
+  const executeAutoDispatchTick = () => {
+    if (!autoDispatchModeRef.current) return;
+
+    const currentIssues = issuesRef.current || [];
+    const activeJobsSnapshot = activeJobsRef.current || {};
+    const busyOfficers = new Set(
+      Object.values(activeJobsSnapshot).map((j) => j.officerName)
+    );
+
+    // Eligible pending tickets
+    const eligibleTickets = currentIssues.filter((iss) => {
+      const cid = iss.id.replace('#', '');
+      if (iss.status === 'Resolved' || iss.status === 'Dismissed' || iss.status === 'Rejected') return false;
+      if (iss.status === 'In Progress' || activeJobsSnapshot[cid]) return false;
+      if (checkIsUnverified(iss)) return false;
+      return true;
+    });
+
+    if (eligibleTickets.length === 0) return;
+
+    const newlyDispatched = {};
+    for (const ticketGroup of groupIncidentReports(eligibleTickets)) {
+      const ticket = ticketGroup;
+      const des = resolveDesignatedWorker(ticket);
+      let officer = ticket.assignedTo || des.name;
+      let squad = ticket.squad || des.squad;
+
+      if (busyOfficers.has(officer) && des.backup && !busyOfficers.has(des.backup.name)) {
+        officer = des.backup.name;
+        squad = des.backup.squad;
+      }
+
+      if (!busyOfficers.has(officer)) {
+        busyOfficers.add(officer);
+        const cid = ticket.id.replace('#', '');
+        newlyDispatched[cid] = {
+          remainingSeconds: 60,
+          officerName: officer,
+          squad: squad,
+          ticketTitle: ticket.title,
+          ticketId: cid,
+          relatedIssueIds: [cid, ...ticketGroup.relatedReports.map((report) => report.id.replace('#', ''))]
+        };
+      }
+    }
+
+    const dispatchedKeys = Object.keys(newlyDispatched);
+    if (dispatchedKeys.length === 0) return;
+
+    // Synchronously update activeJobsRef
+    if (activeJobsRef.current) {
+      activeJobsRef.current = {
+        ...activeJobsRef.current,
+        ...newlyDispatched
+      };
+    }
+    setActiveJobs((prev) => ({
+      ...prev,
+      ...newlyDispatched
+    }));
+
+    // Update issues and synchronously update issuesRef
+    const updatedIssues = (issuesRef.current || currentIssues).map((iss) => {
+      const cid = iss.id.replace('#', '');
+      const info = Object.values(newlyDispatched).find((job) => job.relatedIssueIds.includes(cid));
+      if (info) {
+        return {
+          ...iss,
+          status: 'In Progress',
+          assignedTo: info.officerName,
+          squad: info.squad
+        };
+      }
+      return iss;
+    });
+    issuesRef.current = updatedIssues;
+    setIssues(updatedIssues);
+
+    // Update squads
+    setSquads((prevSquads) =>
+      prevSquads.map((sq) => {
+        const entry = Object.entries(newlyDispatched).find(([, j]) => j.officerName === sq.name);
+        if (entry) {
+          return { ...sq, status: 'BUSY (ON SITE)', activeTicket: entry[0] };
+        }
+        return sq;
+      })
+    );
+
+    // Audit logs & backend
+    dispatchedKeys.forEach((cid) => {
+      const job = newlyDispatched[cid];
+      addAiLog({
+        type: 'AUTONOMOUS_DISPATCH',
+        level: 'DISPATCH',
+        issueId: cid,
+        officer: job.officerName,
+        dept: job.squad,
+        message: `[Zero-Touch Auto-Dispatch] Autonomous AI engine matched and dispatched ${job.officerName} (${job.squad}) to #${cid} (${job.ticketTitle}). 60s on-site remediation started.`
+      });
+
+      complaintApi.updateStatus(cid, 'In Progress', `Master grievance #${cid}: [Municipal auto dispatch] field squad ${job.officerName} dispatched on-site.`, undefined, { name: job.officerName }).catch(() => {});
+    });
+
+    showToast(`[Zero-Touch AI] Autonomously dispatched ${dispatchedKeys.length} specialist(s). 60s remediation active.`);
+  };
+
+  const [selectedIssueId, setSelectedIssueId] = useState('CS1001');
+  const [selectedRows, setSelectedRows] = useState(['CS1001']);
+  const [activeEvidenceImg, setActiveEvidenceImg] = useState(null);
+  const [hasLoadedLiveIssues, setHasLoadedLiveIssues] = useState(false);
+
+  // Seva AI Contextual Assistant live authority context registration
   // Only send selected complaint if in triage or resolved_issues and user explicitly opened drawer
   const effectiveSelectedComplaintId = ((activeNav === 'triage' || activeNav === 'resolved_issues') && isDetailsDrawerOpen)
     ? selectedIssueId
@@ -844,11 +1207,23 @@ export const AuthorityDashboard = () => {
     else if (t === 'RESOLVED' || t === 'RESOLVED_ISSUES') setActiveNav('resolved_issues');
     else setActiveNav('triage');
 
+    const issueArg = searchParams.get('id') || searchParams.get('issue') || searchParams.get('complaint');
+    if (issueArg) {
+      const clean = issueArg.replace('#', '').trim();
+      setSelectedIssueId(clean);
+      setIsDetailsDrawerOpen(true);
+      setSelectedRows([clean]);
+      setActiveNav('triage');
+      setDeptFilter('All');
+      setPriorityFilter('All');
+    }
+
     const searchArg = searchParams.get('search');
     if (searchArg) {
       const clean = searchArg.replace('#', '');
       setSearchQuery(clean);
       setSelectedIssueId(clean);
+      setIsDetailsDrawerOpen(true);
       setSelectedRows([clean]);
       setCurrentPage(1);
       setActiveTab('All Issues');
@@ -869,6 +1244,7 @@ export const AuthorityDashboard = () => {
     try {
       const liveComplaints = await complaintApi.getComplaints();
       if (Array.isArray(liveComplaints) && liveComplaints.length > 0) {
+        setHasLoadedLiveIssues(true);
         const mappedLiveIssues = liveComplaints.map(mapApiComplaintToIssue);
 
         // Sort descending so highest / newest ticket number appears at the top of Page 1
@@ -885,9 +1261,7 @@ export const AuthorityDashboard = () => {
             showToast(`New Citizen Report: #${newlyDiscovered[0].id} (${newlyDiscovered[0].title}) received in queue.`);
           }
 
-          const liveIds = new Set(mappedLiveIssues.map((m) => m.id.replace('#', '')));
-          const nonDupePrev = prev.filter((p) => !liveIds.has(p.id.replace('#', '')));
-          return [...mappedLiveIssues, ...nonDupePrev];
+          return mappedLiveIssues;
         });
 
         if (manual) showToast(`Synced ${liveComplaints.length} live issues from municipal database.`);
@@ -915,7 +1289,10 @@ export const AuthorityDashboard = () => {
   // - Officer is marked back to AVAILABLE
   // - Any queued ticket waiting for this worker is auto-assigned/dispatched!
   // ============================================================
-  const handleJobFinished = (finishedCleanId, officerName, squadName) => {
+  const handleJobFinished = (finishedCleanId, officerName, squadName, relatedIssueIds = null) => {
+    const resolvedIssueIds = relatedIssueIds?.length
+      ? relatedIssueIds
+      : incidentReportIds(issuesRef.current || issues, finishedCleanId);
     // Synchronously remove from activeJobsRef
     if (activeJobsRef.current) {
       const nextRef = { ...activeJobsRef.current };
@@ -931,7 +1308,7 @@ export const AuthorityDashboard = () => {
     // 1. Mark finished issue as Resolved with proof media
     setIssues((prevIssues) =>
       prevIssues.map((iss) =>
-        iss.id.replace('#', '') === finishedCleanId
+        resolvedIssueIds.includes(iss.id.replace('#', ''))
           ? { 
               ...iss, 
               status: 'Resolved',
@@ -964,9 +1341,9 @@ export const AuthorityDashboard = () => {
     complaintApi.updateStatus(
       finishedCleanId,
       'Resolved',
-      `Remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Photographic & video proof logged.`
+      `Incident #${finishedCleanId}: remediation completed and verified on-site by ${officerName} (${squadName || 'Field Squad'}). Photographic & video proof logged.`
     ).catch((err) => {
-      console.warn('API updateStatus for finished job failed, keeping local state:', err);
+      console.warn(`API updateStatus for master grievance ${finishedCleanId} failed, keeping local state:`, err);
     });
 
     // 3. Add timeline resolution entry with media proof reference
@@ -1002,34 +1379,31 @@ export const AuthorityDashboard = () => {
 
     showToast(`Work Complete: Issue #${finishedCleanId} marked as RESOLVED. Officer ${officerName} posted completion photo and video proof.`);
 
-    // 5. Look for any waiting queued ticket for this officer!
+    // 5. Run auto-dispatch tick or notify supervisor that officer is free
     setTimeout(() => {
-      setIssues((currentIssues) => {
-        const waitingIssue = currentIssues.find((iss) => {
+      if (autoDispatchModeRef.current) {
+        executeAutoDispatchTick();
+      } else {
+        const waitingIssue = (issuesRef.current || issues).find((iss) => {
           const cid = iss.id.replace('#', '');
           if (cid === finishedCleanId) return false;
-          if (iss.status === 'Resolved' || iss.status === 'In Progress') return false;
+          if (iss.status === 'Resolved' || iss.status === 'In Progress' || iss.status === 'Dismissed' || iss.status === 'Rejected') return false;
           return iss.assignedTo === officerName;
         });
 
         if (waitingIssue) {
           const waitCleanId = waitingIssue.id.replace('#', '');
-          if (autoDispatchModeRef.current) {
-            handleApproveAiDispatch(waitCleanId, true);
-          } else {
-            addAiLog({
-              type: 'WORKER_FREED',
-              level: 'INFO',
-              issueId: waitCleanId,
-              officer: officerName,
-              dept: squadName,
-              message: `Specialist ${officerName} is now FREE. Ticket #${waitCleanId} assigned and ready for supervisor 1-click Approval or Edit.`
-            });
-            showToast(`Officer ${officerName} is now FREE. Issue #${waitCleanId} is ready for supervisor 1-click Approval or Edit.`);
-          }
+          addAiLog({
+            type: 'WORKER_FREED',
+            level: 'INFO',
+            issueId: waitCleanId,
+            officer: officerName,
+            dept: squadName,
+            message: `Specialist ${officerName} is now FREE. Ticket #${waitCleanId} is next in task queue and ready for supervisor 1-click Approval or Edit.`
+          });
+          showToast(`Officer ${officerName} is now FREE. Issue #${waitCleanId} is ready for supervisor 1-click Approval or Edit.`);
         }
-        return currentIssues;
-      });
+      }
     }, 250);
   };
 
@@ -1047,7 +1421,7 @@ export const AuthorityDashboard = () => {
 
           if (item.remainingSeconds <= 1) {
             delete next[key];
-            handleJobFinished(key, item.officerName, item.squad);
+            handleJobFinished(key, item.officerName, item.squad, item.relatedIssueIds);
           } else {
             next[key] = { ...item, remainingSeconds: item.remainingSeconds - 1 };
           }
@@ -1072,7 +1446,7 @@ export const AuthorityDashboard = () => {
       return next;
     });
 
-    handleJobFinished(cleanId, job.officerName, job.squad);
+    handleJobFinished(cleanId, job.officerName, job.squad, job.relatedIssueIds);
   };
 
   // Autonomous Mode Handler - Supports direct selection or toggle
@@ -1083,7 +1457,7 @@ export const AuthorityDashboard = () => {
       setAutoDispatchMode(true);
       autoDispatchModeRef.current = true;
       addAiLog({
-        type: 'AUTONOMONOMOUS_DISPATCH' === 'AUTONOMOUS_DISPATCH' ? 'AUTONOMOUS_DISPATCH' : 'AUTONOMOUS_DISPATCH',
+        type: 'AUTONOMOUS_DISPATCH',
         level: 'DISPATCH',
         issueId: 'SYSTEM',
         officer: 'AI Engine',
@@ -1091,27 +1465,10 @@ export const AuthorityDashboard = () => {
       });
       showToast('Autonomous AI Dispatch (Zero-Touch) ENABLED. Available specialists will be dispatched.');
 
-      // Immediately check and auto-dispatch pending tickets for available workers (1 job per worker max!)
+      // Immediately run auto-dispatch tick
       setTimeout(() => {
-        setIssues((currIssues) => {
-          const busyWorkersSet = new Set(
-            Object.values(activeJobsRef.current || {}).map((j) => j.officerName)
-          );
-          const pendingIssues = currIssues.filter(
-            (i) => i.status !== 'Resolved' && i.status !== 'In Progress' && !i.requiresHumanReview && i.status !== 'Review Required' && !(activeJobsRef.current || {})[i.id.replace('#', '')]
-          );
-
-          for (const iss of pendingIssues) {
-            const des = resolveDesignatedWorker(iss);
-            const workerName = iss.assignedTo || des.name;
-            if (!busyWorkersSet.has(workerName)) {
-              busyWorkersSet.add(workerName);
-              handleApproveAiDispatch(iss.id, true);
-            }
-          }
-          return currIssues;
-        });
-      }, 150);
+        executeAutoDispatchTick();
+      }, 100);
     } else {
       setAutoDispatchMode(false);
       autoDispatchModeRef.current = false;
@@ -1130,9 +1487,20 @@ export const AuthorityDashboard = () => {
     handleSelectDispatchMode(!autoDispatchMode);
   };
 
+  // Continuous Auto-Dispatch Runner when Zero-Touch mode is active
+  useEffect(() => {
+    if (!autoDispatchMode) return;
+    executeAutoDispatchTick();
+    const interval = setInterval(() => {
+      executeAutoDispatchTick();
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [autoDispatchMode]);
+
   // Municipal Supervisor Evidence Authenticity Decision Gateway
   const handleAuthenticityDecision = async (issueId, decision) => {
     const cleanId = issueId.replace('#', '');
+    const relatedIssueIds = incidentReportIds(issuesRef.current || issues, cleanId);
     try {
       // Immediately close the Issue Details drawer when dismissed
       if (decision === 'REJECT') {
@@ -1141,14 +1509,14 @@ export const AuthorityDashboard = () => {
 
       let res = null;
       try {
-        res = await complaintApi.submitAuthenticityDecision(cleanId, decision, 'Supervisor manual evidence verification');
+        res = await complaintApi.submitAuthenticityDecision(cleanId, decision, `Supervisor manual evidence verification for master grievance #${cleanId}`);
       } catch (apiErr) {
         console.warn('API submitAuthenticityDecision failed, proceeding with state update:', apiErr);
       }
 
       setIssues((prev) =>
         prev.map((iss) => {
-          if (iss.id.replace('#', '') !== cleanId) return iss;
+          if (!relatedIssueIds.includes(iss.id.replace('#', ''))) return iss;
           if (decision === 'APPROVE') {
             return {
               ...iss,
@@ -1176,7 +1544,7 @@ export const AuthorityDashboard = () => {
 
       // If dismissed, advance selectedIssueId if current issue was dismissed
       if (decision === 'REJECT') {
-        const remaining = filteredIssues.filter((i) => i.id.replace('#', '') !== cleanId);
+        const remaining = filteredIssues.filter((i) => !relatedIssueIds.includes(i.id.replace('#', '')));
         if (remaining.length > 0) {
           setSelectedIssueId(remaining[0].id.replace('#', ''));
         }
@@ -1194,8 +1562,8 @@ export const AuthorityDashboard = () => {
 
       showToast(
         decision === 'APPROVE'
-          ? `Docket #${cleanId} marked Real & Verified Authentic.`
-          : `Docket #${cleanId} dismissed as fraudulent. The user who submitted the report has been notified that the evidence was detected as fake.`
+          ? `Incident #${cleanId} verified across ${relatedIssueIds.length} related report(s).`
+          : `Incident #${cleanId} dismissed across ${relatedIssueIds.length} related report(s).`
       );
     } catch (err) {
       showToast(`Action failed: ${err.message || 'Could not record supervisor decision'}`);
@@ -1220,6 +1588,16 @@ export const AuthorityDashboard = () => {
 
   // Filtered issues
   const filteredIssues = issues.filter((item) => {
+    // Fake / Dismissed / Rejected issues NEVER appear in operational Triage (only in Audit Logs)
+    if (item.status === 'Dismissed' || item.status === 'Rejected' || item.authenticityVerdict === 'REJECTED_FAKE') {
+      return false;
+    }
+
+    // Resolved issues ONLY appear in the dedicated 'Resolved Issues' tab or view
+    if (item.status === 'Resolved' && activeTab !== 'Resolved' && activeTab !== 'Resolved Issues') {
+      return false;
+    }
+
     // 1. Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -1242,19 +1620,20 @@ export const AuthorityDashboard = () => {
     }
 
     // 4. Status Tabs
-    if (activeTab === 'All Issues') return item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
-    if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item) && item.status !== 'Resolved';
-    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item) && item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
-    if (activeTab === 'High Priority') return item.priority === 'High' && item.status !== 'Resolved' && item.status !== 'Dismissed' && item.status !== 'Rejected';
+    if (activeTab === 'All Issues') return true;
+    if (activeTab === 'Unverified Detected' || activeTab === 'Review Required') return checkIsUnverified(item);
+    if (activeTab === 'Needs Assignment') return (!item.assignedTo || item.status === 'Submitted') && !checkIsUnverified(item);
+    if (activeTab === 'High Priority') return item.priority === 'High';
     if (activeTab === 'In Progress') return item.status === 'In Progress';
     if (activeTab === 'Escalated') return item.status === 'Escalated';
     if (activeTab === 'Resolved' || activeTab === 'Resolved Issues') return item.status === 'Resolved';
     return true;
   });
 
-  // Paginated issues
-  const totalPages = Math.ceil(filteredIssues.length / pageSize) || 1;
-  const paginatedIssues = filteredIssues.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Triage shows one parent row per shared incident, with related reports nested underneath.
+  const triageGroups = groupIncidentReports(filteredIssues);
+  const totalPages = Math.ceil(triageGroups.length / pageSize) || 1;
+  const paginatedIssues = triageGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Row selection
   const handleSelectRow = (id) => {
@@ -1270,7 +1649,7 @@ export const AuthorityDashboard = () => {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedRows(filteredIssues.map((i) => i.id.replace('#', '')));
+      setSelectedRows(triageGroups.map((i) => i.id.replace('#', '')));
     } else {
       setSelectedRows([]);
     }
@@ -1286,11 +1665,12 @@ export const AuthorityDashboard = () => {
   const handleUpdateStatus = (newStatus) => {
     if (!currentIssue) return;
     const cleanId = currentIssue.id.replace('#', '');
+    const relatedIssueIds = incidentReportIds(issuesRef.current || issues, cleanId);
 
     // 1. Optimistic local state update
     setIssues((prev) =>
       prev.map((i) => {
-        if (i.id === currentIssue.id || i.id.replace('#', '') === cleanId) {
+        if (relatedIssueIds.includes(i.id.replace('#', ''))) {
           const proof = resolveProofMedia(i);
           return {
             ...i,
@@ -1317,25 +1697,26 @@ export const AuthorityDashboard = () => {
 
     // 2. Clear any active countdown timer if resolving
     if (newStatus === 'Resolved') {
-      if (activeJobsRef.current && activeJobsRef.current[cleanId]) {
+      const completedJobIds = Object.keys(activeJobsRef.current || {}).filter((id) => relatedIssueIds.includes(id));
+      if (completedJobIds.length > 0) {
         const nextRef = { ...activeJobsRef.current };
-        delete nextRef[cleanId];
+        completedJobIds.forEach((id) => delete nextRef[id]);
         activeJobsRef.current = nextRef;
         setActiveJobs((prev) => {
           const next = { ...prev };
-          delete next[cleanId];
+          completedJobIds.forEach((id) => delete next[id]);
           return next;
         });
       }
     }
 
     // 3. Persist to backend database so polling & citizen portal see new status
-    complaintApi.updateStatus(cleanId, newStatus, `Status transitioned to "${newStatus}" by Municipal Authority`).catch((err) => {
-      console.warn('API updateStatus failed, keeping local override:', err);
+    complaintApi.updateStatus(cleanId, newStatus, `Master grievance #${cleanId}: status transitioned to "${newStatus}" by Municipal Authority`).catch((err) => {
+      console.warn(`API updateStatus failed for master grievance ${cleanId}, keeping local override:`, err);
     });
 
     if (newStatus === 'Resolved') {
-      showToast(`Complaint #${cleanId} marked as Resolved and moved to Resolved Issues.`);
+      showToast(`Incident #${cleanId} resolved across ${relatedIssueIds.length} related report(s).`);
     } else {
       showToast(`Complaint #${cleanId} status updated to "${newStatus}".`);
     }
@@ -1345,9 +1726,10 @@ export const AuthorityDashboard = () => {
   const handleAssignSquad = (squadObj) => {
     if (!currentIssue) return;
     const cleanId = currentIssue.id.replace('#', '');
+    const relatedIssueIds = incidentReportIds(issuesRef.current || issues, cleanId);
     setIssues((prev) =>
       prev.map((i) =>
-        i.id === currentIssue.id || i.id.replace('#', '') === cleanId
+        relatedIssueIds.includes(i.id.replace('#', ''))
           ? { ...i, assignedTo: squadObj.name, squad: squadObj.squad, status: 'Assigned' }
           : i
       )
@@ -1355,7 +1737,7 @@ export const AuthorityDashboard = () => {
     setIsAssignModalOpen(false);
 
     // Persist to backend database
-    complaintApi.updateStatus(cleanId, 'Assigned', `Assigned to ${squadObj.name} (${squadObj.squad})`).catch((err) => {
+    complaintApi.updateStatus(cleanId, 'Assigned', `Master grievance #${cleanId}: assigned to ${squadObj.name} (${squadObj.squad})`, undefined, { name: squadObj.name }).catch((err) => {
       console.warn('API updateStatus for assign squad failed:', err);
     });
     addAiLog({
@@ -1364,17 +1746,18 @@ export const AuthorityDashboard = () => {
       issueId: cleanId,
       officer: squadObj.name,
       dept: squadObj.dept,
-      message: `Manual supervisor override: Assigned ${squadObj.name} (${squadObj.squad}) to ticket #${cleanId}. Status set to Assigned.`
+      message: `Official decision: assigned ${squadObj.name} (${squadObj.squad}) to incident #${cleanId} and its ${relatedIssueIds.length} report(s). Status set to Assigned.`
     });
-    showToast(`Assigned ${squadObj.name} (${squadObj.squad}) to #${currentIssue.id}.`);
+    showToast(`Assigned ${squadObj.name} (${squadObj.squad}) to incident #${cleanId} across ${relatedIssueIds.length} report(s).`);
   };
 
   // Bulk actions
   const handleBulkStatusChange = (status) => {
     if (selectedRows.length === 0) return;
+    const relatedIssueIds = [...new Set(selectedRows.flatMap((id) => incidentReportIds(issuesRef.current || issues, id)))];
     setIssues((prev) =>
       prev.map((i) => {
-        if (selectedRows.includes(i.id.replace('#', ''))) {
+        if (relatedIssueIds.includes(i.id.replace('#', ''))) {
           const proof = resolveProofMedia(i);
           return {
             ...i,
@@ -1398,7 +1781,7 @@ export const AuthorityDashboard = () => {
       })
     );
     selectedRows.forEach((cleanId) => {
-      complaintApi.updateStatus(cleanId, status, `Bulk status transitioned to "${status}" by Municipal Authority`).catch((err) => {
+      complaintApi.updateStatus(cleanId, status, `Incident action: status transitioned to "${status}" by Municipal Authority`).catch((err) => {
         console.warn('API updateStatus failed:', err);
       });
     });
@@ -1408,102 +1791,6 @@ export const AuthorityDashboard = () => {
       showToast(`Updated ${selectedRows.length} selected tickets to "${status}".`);
     }
     setSelectedRows([]);
-  };
-
-  // ============================================================
-  // APPROVE AI DISPATCH & 1-MINUTE REMEDIATION START
-  // ============================================================
-  const handleApproveAiDispatch = (issueId, isAutonomous = false) => {
-    const cleanId = issueId.replace('#', '');
-    const issue = issues.find((i) => i.id.replace('#', '') === cleanId);
-    if (!issue) return;
-
-    const designated = resolveDesignatedWorker(issue);
-    const officerName = issue.assignedTo || designated.name;
-    const squadName = issue.squad || designated.squad;
-
-    // Check if designated worker is already busy on another ticket
-    const busyJob = Object.entries(activeJobsRef.current || activeJobs).find(
-      ([issKey, j]) => j.officerName === officerName && issKey !== cleanId
-    );
-    if (busyJob) {
-      if (!isAutonomous) {
-        showToast(`Cannot dispatch: ${officerName} is currently busy on #${busyJob[0]} (${busyJob[1].remainingSeconds}s remaining). Queued for auto-assignment.`);
-      }
-      return;
-    }
-
-    // 1. Mark issue as In Progress
-    setIssues((prev) =>
-      prev.map((i) =>
-        i.id.replace('#', '') === cleanId
-          ? { ...i, status: 'In Progress', assignedTo: officerName, squad: squadName }
-          : i
-      )
-    );
-
-    // Persist dispatch status to backend database
-    complaintApi.updateStatus(cleanId, 'In Progress', `Field squad ${officerName} (${squadName}) dispatched on-site for remediation.`).catch((err) => {
-      console.warn('API updateStatus for dispatch failed:', err);
-    });
-
-    // 2. Mark officer as BUSY (ON SITE)
-    setSquads((prev) =>
-      prev.map((sq) =>
-        sq.name === officerName
-          ? { ...sq, status: 'BUSY (ON SITE)', activeTicket: cleanId }
-          : sq
-      )
-    );
-
-    // 3. Start 60-second active job timer (1 minute countdown)
-    const newJob = {
-      remainingSeconds: 60,
-      officerName,
-      squad: squadName
-    };
-    if (activeJobsRef.current) {
-      activeJobsRef.current = {
-        ...activeJobsRef.current,
-        [cleanId]: newJob
-      };
-    }
-    setActiveJobs((prev) => ({
-      ...prev,
-      [cleanId]: newJob
-    }));
-
-    // 4. Add dispatch note to timeline
-    const dispatchNote = {
-      text: isAutonomous
-        ? `[Zero-Touch Auto-Dispatch] Autonomous AI engine approved & dispatched ${officerName} (${squadName}). Field squad deployed on-site for 60s remediation.`
-        : `Approved AI assignment. Work order dispatched to ${officerName} (${squadName}). Field squad deployed on-site. Status marked BUSY for 1-minute remediation repair.`,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: 'Today',
-      author: isAutonomous ? 'Autonomous AI Dispatcher' : 'Official Municipal Director'
-    };
-    setTimelineNotes((prev) => ({
-      ...prev,
-      [cleanId]: [dispatchNote, ...(prev[cleanId] || [])]
-    }));
-
-    // 5. Add to AI Audit Log
-    addAiLog({
-      type: isAutonomous ? 'AUTONOMOUS_DISPATCH' : 'OFFICIAL_APPROVAL',
-      level: 'DISPATCH',
-      issueId: cleanId,
-      officer: officerName,
-      dept: issue.department,
-      message: isAutonomous
-        ? `[Zero-Touch Mode] AI autonomously selected & dispatched ${officerName} to #${cleanId}. 60s remediation countdown initiated.`
-        : `Supervisor confirmed & approved AI assignment for #${cleanId}. Dispatched ${officerName} (${squadName}). 60s remediation countdown initiated.`
-    });
-
-    showToast(
-      isAutonomous
-        ? `Autonomous AI Dispatch: #${cleanId} dispatched to ${officerName} (Zero-Touch).`
-        : `Approved AI assignment for issue #${cleanId}. Work order dispatched. ${officerName} is now BUSY on-site (60s countdown started).`
-    );
   };
 
   // Re-run AI Analysis
@@ -1623,7 +1910,7 @@ export const AuthorityDashboard = () => {
                 <span>Triage &amp; Dispatch</span>
               </div>
               <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                {issues.filter((i) => i.status !== 'Resolved').length}
+                {issues.filter((i) => i.status !== 'Resolved' && i.status !== 'Dismissed' && i.status !== 'Rejected').length}
               </span>
             </button>
 
@@ -1813,9 +2100,9 @@ export const AuthorityDashboard = () => {
         <div className="pt-4 border-t border-slate-100 px-2 space-y-0.5 hidden lg:block">
           <div className="flex items-center gap-2 text-slate-800 font-semibold text-xs">
             <CivicLogo className="w-4 h-4 text-blue-800" textClassName="text-xs font-semibold text-slate-800" />
-            <span className="text-[11px] text-slate-700">Indore Municipal Corp</span>
+            <span className="text-[11px] text-slate-700">Kolhapur Municipal Corporation</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-mono">CivicSeva v1.0.0</p>
+          <p className="text-[10px] text-slate-400 font-mono">Seva AI v1.0.0</p>
         </div>
       </aside>
 
@@ -1866,6 +2153,25 @@ export const AuthorityDashboard = () => {
 
                 <button
                   type="button"
+                  onClick={async () => {
+                    try {
+                      showToast('Running proactive AI watchdog sweep across all municipal dockets...');
+                      const sweep = await complaintApi.runWatchdogSweep();
+                      showToast(`Watchdog sweep complete: ${sweep.stalled_count} stalled, ${sweep.sla_risk_count} SLA risks detected.`);
+                      fetchAndSyncIssues(true);
+                    } catch (e) {
+                      showToast('Watchdog sweep error: ' + e.message);
+                    }
+                  }}
+                  className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                  title="Scan all active tickets for stalls and SLA risks"
+                >
+                  <Activity className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span className="whitespace-nowrap">AI Watchdog Sweep</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setIsNewOrderModalOpen(true)}
                   className="px-3.5 py-2 rounded-md bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
                 >
@@ -1879,8 +2185,8 @@ export const AuthorityDashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pt-1">
               <div className="flex items-center space-x-3 sm:space-x-5 text-xs overflow-x-auto pb-1">
                 {['All Issues', 'Unverified Detected', 'Needs Assignment', 'High Priority', 'In Progress', 'Escalated', 'Resolved Issues'].map((tab) => {
-                  const unverifiedCount = issues.filter(checkIsUnverified).length;
-                  const activeIssuesCount = issues.filter((i) => i.status !== 'Resolved').length;
+                  const unverifiedCount = issues.filter((i) => checkIsUnverified(i) && i.status !== 'Dismissed' && i.status !== 'Rejected' && i.status !== 'Resolved').length;
+                  const activeIssuesCount = issues.filter((i) => i.status !== 'Resolved' && i.status !== 'Dismissed' && i.status !== 'Rejected').length;
                   const resolvedCount = issues.filter((i) => i.status === 'Resolved').length;
 
                   return (
@@ -2067,7 +2373,7 @@ export const AuthorityDashboard = () => {
                         <input
                           type="checkbox"
                           onChange={handleSelectAll}
-                          checked={selectedRows.length === filteredIssues.length && filteredIssues.length > 0}
+                          checked={selectedRows.length === triageGroups.length && triageGroups.length > 0}
                           className="rounded border-slate-300 text-blue-800 focus:ring-blue-700"
                         />
                       </th>
@@ -2120,7 +2426,7 @@ export const AuthorityDashboard = () => {
                             <td className="px-3 py-3 font-mono font-semibold text-blue-800 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
                                 <span className={isUnverified ? 'text-rose-900 font-bold' : ''}>
-                                  {issue.id.startsWith('#') ? issue.id : `#${issue.id}`}
+                                  {issue.clusterId ? issue.masterGrievanceId : (issue.id.startsWith('#') ? issue.id : `#${issue.id}`)}
                                 </span>
                                 {issue.isLiveReport && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300 whitespace-nowrap">
@@ -2146,6 +2452,29 @@ export const AuthorityDashboard = () => {
                                   <span className="text-[11px] text-slate-400 block line-clamp-1">
                                     {issue.location}
                                   </span>
+                                  {issue.showReportCount && issue.reporterCount > 1 && (
+                                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">
+                                        <Users className="h-3 w-3" aria-hidden="true" />
+                                        {issue.reporterCount} people reported this issue
+                                      </span>
+                                      <details className="text-[10px] text-slate-500" onClick={(event) => event.stopPropagation()}>
+                                        <summary className="cursor-pointer select-none hover:text-blue-700">Related report IDs</summary>
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                          {issue.relatedReports.map((report) => (
+                                            <button
+                                              key={report.id}
+                                              type="button"
+                                              onClick={(event) => { event.stopPropagation(); handleRowClick(report); }}
+                                              className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-blue-700 hover:bg-blue-50"
+                                            >
+                                              #{report.id}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </details>
+                                    </div>
+                                  )}
                                   {isUnverified && (
                                     <div className="mt-1.5 flex items-center gap-1.5">
                                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 shadow-2xs whitespace-nowrap">
@@ -2295,7 +2624,7 @@ export const AuthorityDashboard = () => {
               {/* Table Pagination Footer */}
               <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
                 <div>
-                  Showing {Math.min(1, filteredIssues.length)} to {Math.min(filteredIssues.length, currentPage * pageSize)} of {filteredIssues.length} issues
+                  Showing {Math.min(1, triageGroups.length)} to {Math.min(triageGroups.length, currentPage * pageSize)} of {triageGroups.length} incidents ({filteredIssues.length} reports)
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -2911,244 +3240,282 @@ export const AuthorityDashboard = () => {
 
             {/* AI Review Queue Cards */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-slate-900">
-                  Incident Roster & Worker Availability Status ({issues.length} Tickets)
-                </h3>
-                <span className="text-xs text-slate-500">
-                  Automated department specialist matching & real-time remediation status
-                </span>
-              </div>
-
-              {issues.map((item) => {
-                const cleanId = item.id.replace('#', '');
-                const job = activeJobs[cleanId];
-                const workerStatus = getWorkerStatusForIssue(item);
+              {(() => {
+                const aiReviewPendingIssues = issues.filter(
+                  (item) =>
+                    item.status !== 'Resolved' &&
+                    item.status !== 'Dismissed' &&
+                    item.status !== 'Rejected' &&
+                    item.authenticityVerdict !== 'REJECTED_FAKE' &&
+                    !item.assignedTo &&
+                    item.status !== 'In Progress' &&
+                    !checkIsUnverified(item)
+                );
 
                 return (
-                  <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
-                            <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                            }`}>
-                              {item.priority} Priority
-                            </span>
-                            {item.requiresHumanReview || item.status === 'Review Required' ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
-                                <ShieldAlert className="w-3 h-3 text-amber-700" />
-                                <span>Evidence Verification Hold</span>
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                <span>Verified Authentic</span>
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-right flex items-center gap-2">
-                        <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
-                        <span className={`px-2.5 py-1 rounded text-xs font-semibold border ${
-                          workerStatus.state === 'BUSY_ON_THIS'
-                            ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse'
-                            : workerStatus.state === 'BUSY_ON_OTHER'
-                            ? 'bg-amber-50 text-amber-900 border-amber-300'
-                            : item.status === 'Resolved'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            : 'bg-blue-50 text-blue-800 border-blue-200'
-                        }`}>
-                          {workerStatus.state === 'BUSY_ON_THIS' && `Remediating (${workerStatus.remainingSeconds}s)`}
-                          {workerStatus.state === 'BUSY_ON_OTHER' && `Queued (Free in ${workerStatus.remainingSeconds}s)`}
-                          {workerStatus.state === 'RESOLVED' && 'Resolved & Verified'}
-                          {workerStatus.state === 'AVAILABLE' && 'Worker Ready'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* AI Matching Analysis Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <strong className="text-slate-900 text-sm block">
-                            {workerStatus.workerName}
-                          </strong>
-                          {workerStatus.state === 'BUSY_ON_THIS' && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
-                              BUSY ON-SITE
-                            </span>
-                          )}
-                          {workerStatus.state === 'BUSY_ON_OTHER' && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              BUSY ON #{workerStatus.activeTicket}
-                            </span>
-                          )}
-                          {workerStatus.state === 'AVAILABLE' && item.status !== 'Resolved' && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              AVAILABLE
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-slate-500 text-[11px] block">{workerStatus.squadName}</span>
-                      </div>
-
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
-                        <strong className="text-blue-900 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{item.aiDistanceKm || 0.8} km away (Haversine GPS)</span>
-                        </strong>
-                        <span className="text-slate-500 text-[11px] block">
-                          {workerStatus.state === 'BUSY_ON_THIS' && 'Active remediation in progress on this location.'}
-                          {workerStatus.state === 'BUSY_ON_OTHER' && `Engaged on #${workerStatus.activeTicket}. Free in ${workerStatus.remainingSeconds}s.`}
-                          {workerStatus.state === 'AVAILABLE' && '0 active jobs. Stationed nearby and available.'}
-                          {workerStatus.state === 'RESOLVED' && 'Ticket resolved and verified safe.'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
-                        <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
-                          {item.aiReasoning || `Matched to specialist ${workerStatus.workerName} (${workerStatus.squadName}) based on municipal division heuristics.`}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* PROMINENT ALERT: WORKER CURRENTLY BUSY WAITLIST BANNER */}
-                    {workerStatus.state === 'BUSY_ON_OTHER' && (
-                      <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
-                        <div>
-                          <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
-                            <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0" />
-                            <span>No Worker Currently Available</span>
-                            <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-mono text-xs">
-                              {workerStatus.workerName} free in {workerStatus.remainingSeconds}s
-                            </span>
-                          </div>
-                          <p className="text-slate-700 mt-1 leading-relaxed">
-                            Designated specialist <strong>{workerStatus.workerName}</strong> is actively engaged on ticket <strong>#{workerStatus.activeTicket}</strong>. 
-                            {autoDispatchMode 
-                              ? ` Zero-Touch Mode is ON: The AI will autonomously assign & dispatch ${workerStatus.workerName} to this issue the moment #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s.`
-                              : ` The AI will automatically assign ${workerStatus.workerName} as soon as #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s. An official supervisor can then click Approve or Edit.`}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedIssueId(cleanId);
-                            setIsAssignModalOpen(true);
-                          }}
-                          className="px-3.5 py-1.5 rounded bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-semibold text-xs transition flex-shrink-0"
-                        >
-                          Edit / Override Worker
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Supervisor Oversight Actions */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-sm text-slate-900">
+                        Incident Roster & Worker Availability Status ({aiReviewPendingIssues.length} Tickets Awaiting Review)
+                      </h3>
+                      <span className="text-xs text-slate-500">
+                        Automated department specialist matching & real-time remediation status
                       </span>
+                    </div>
 
-                      <div className="flex items-center gap-2">
-                        {/* Edit / Override Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedIssueId(cleanId);
-                            setIsAssignModalOpen(true);
-                          }}
-                          className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
-                        >
-                          Edit / Reassign Squad
-                        </button>
-
-                        {/* Action depending on availability, review requirement, and state */}
-                        {item.requiresHumanReview || item.status === 'Review Required' ? (
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-1.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-xs font-semibold flex items-center gap-1.5">
-                              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Evidence Review Hold</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleAuthenticityDecision(item.id, 'APPROVE')}
-                              className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Approve & Dispatch</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleAuthenticityDecision(item.id, 'REJECT')}
-                              className="px-3 py-1.5 rounded bg-rose-700 hover:bg-rose-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>Reject Media</span>
-                            </button>
-                          </div>
-                        ) : workerStatus.state === 'BUSY_ON_THIS' ? (
-                          <div className="flex items-center gap-2">
-                            <span className="px-3 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5 text-amber-700 animate-spin" />
-                              <span>Remediating ({workerStatus.remainingSeconds}s)</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleFastForwardJob(item.id)}
-                              className="px-3.5 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1"
-                            >
-                              <FastForward className="w-3.5 h-3.5" />
-                              <span>Mark Done Now</span>
-                            </button>
-                          </div>
-                        ) : workerStatus.state === 'BUSY_ON_OTHER' ? (
-                          autoDispatchMode ? (
-                            <span className="px-3.5 py-1.5 rounded bg-purple-50 text-purple-900 border border-purple-200 font-semibold text-xs flex items-center gap-1.5">
-                              <Bot className="w-4 h-4 text-purple-700" />
-                              <span>Auto-Dispatches in {workerStatus.remainingSeconds}s (Zero-Touch)</span>
-                            </span>
-                          ) : (
-                            <span className="px-3.5 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-medium text-xs flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Queued: Free in {workerStatus.remainingSeconds}s (Official Action Ready upon Free)</span>
-                            </span>
-                          )
-                        ) : item.status === 'Resolved' ? (
-                          <span className="px-3 py-1.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1">
-                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Work Completed & Verified</span>
-                          </span>
-                        ) : (
+                    {aiReviewPendingIssues.length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-lg p-8 text-center space-y-3 shadow-xs">
+                        <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto">
+                          <CheckCheck className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-base font-bold text-slate-900">All Incident Dispatches Processed</h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                          All active civic complaints have been triaged, assigned to field squads, or marked resolved. No pending tickets require AI assignment review.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 pt-2">
                           <button
                             type="button"
-                            onClick={() => handleApproveAiDispatch(item.id, autoDispatchMode)}
-                            className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-xs"
+                            onClick={() => { setActiveNav('triage'); setSearchParams({}); }}
+                            className="px-4 py-2 rounded bg-blue-800 text-white text-xs font-semibold hover:bg-blue-900 transition shadow-xs cursor-pointer"
                           >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Approve AI Assignment & Dispatch (60s Timer)</span>
+                            Return to Operations Triage &rarr;
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    ) : (
+                      aiReviewPendingIssues.map((item) => {
+                        const cleanId = item.id.replace('#', '');
+                        const job = activeJobs[cleanId];
+                        const workerStatus = getWorkerStatusForIssue(item);
+
+                        return (
+                          <div key={item.id} className="bg-white border border-slate-200 rounded-md p-5 shadow-xs space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  className="w-12 h-12 rounded object-cover border border-slate-200 flex-shrink-0"
+                                />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <strong className="text-sm font-bold text-slate-900">{item.title}</strong>
+                                    <span className="font-mono text-xs text-blue-800 font-semibold">{item.id}</span>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                    }`}>
+                                      {item.priority} Priority
+                                    </span>
+                                    {item.requiresHumanReview || item.status === 'Review Required' ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                        <ShieldAlert className="w-3 h-3 text-amber-700" />
+                                        <span>Evidence Verification Hold</span>
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                        <span>Verified Authentic</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-slate-500 block mt-0.5">{item.location} &bull; {item.department}</span>
+                                </div>
+                              </div>
+
+                              <div className="text-right flex items-center gap-2">
+                                <span className="text-xs text-slate-500 font-mono">CV Confidence: <strong>{item.aiConfidence || '94%'}</strong></span>
+                                <span className={`px-2.5 py-1 rounded text-xs font-semibold border ${
+                                  workerStatus.state === 'BUSY_ON_THIS'
+                                    ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse'
+                                    : workerStatus.state === 'BUSY_ON_OTHER'
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                    : item.status === 'Resolved'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-blue-50 text-blue-800 border-blue-200'
+                                }`}>
+                                  {workerStatus.state === 'BUSY_ON_THIS' && `Remediating (${workerStatus.remainingSeconds}s)`}
+                                  {workerStatus.state === 'BUSY_ON_OTHER' && `Queued (Free in ${workerStatus.remainingSeconds}s)`}
+                                  {workerStatus.state === 'RESOLVED' && 'Resolved & Verified'}
+                                  {workerStatus.state === 'AVAILABLE' && 'Worker Ready'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* AI Matching Analysis Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3.5 rounded border border-slate-200 text-xs">
+                              <div>
+                                <span className="text-slate-400 block text-[11px]">AI-Assigned Field Officer</span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <strong className="text-slate-900 text-sm block">
+                                    {workerStatus.workerName}
+                                  </strong>
+                                  {workerStatus.state === 'BUSY_ON_THIS' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                                      BUSY ON-SITE
+                                    </span>
+                                  )}
+                                  {workerStatus.state === 'BUSY_ON_OTHER' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                      BUSY ON #{workerStatus.activeTicket}
+                                    </span>
+                                  )}
+                                  {workerStatus.state === 'AVAILABLE' && item.status !== 'Resolved' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      AVAILABLE
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-slate-500 text-[11px] block">{workerStatus.squadName}</span>
+                              </div>
+
+                              <div>
+                                <span className="text-slate-400 block text-[11px]">Proximity & Workload Calculation</span>
+                                <strong className="text-blue-900 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>{item.aiDistanceKm || 0.8} km away (Haversine GPS)</span>
+                                </strong>
+                                <span className="text-slate-500 text-[11px] block">
+                                  {workerStatus.state === 'BUSY_ON_THIS' && 'Active remediation in progress on this location.'}
+                                  {workerStatus.state === 'BUSY_ON_OTHER' && `Engaged on #${workerStatus.activeTicket}. Free in ${workerStatus.remainingSeconds}s.`}
+                                  {workerStatus.state === 'AVAILABLE' && '0 active jobs. Stationed nearby and available.'}
+                                  {workerStatus.state === 'RESOLVED' && 'Ticket resolved and verified safe.'}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-slate-400 block text-[11px]">Dispatch Algorithm Rationale</span>
+                                <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">
+                                  {item.aiReasoning || `Matched to specialist ${workerStatus.workerName} (${workerStatus.squadName}) based on municipal division heuristics.`}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* PROMINENT ALERT: WORKER CURRENTLY BUSY WAITLIST BANNER */}
+                            {workerStatus.state === 'BUSY_ON_OTHER' && (
+                              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+                                <div>
+                                  <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0" />
+                                    <span>No Worker Currently Available</span>
+                                    <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-mono text-xs">
+                                      {workerStatus.workerName} free in {workerStatus.remainingSeconds}s
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-700 mt-1 leading-relaxed">
+                                    Designated specialist <strong>{workerStatus.workerName}</strong> is actively engaged on ticket <strong>#{workerStatus.activeTicket}</strong>. 
+                                    {autoDispatchMode 
+                                      ? ` Zero-Touch Mode is ON: The AI will autonomously assign & dispatch ${workerStatus.workerName} to this issue the moment #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s.`
+                                      : ` The AI will automatically assign ${workerStatus.workerName} as soon as #${workerStatus.activeTicket} completes in ${workerStatus.remainingSeconds}s. An official supervisor can then click Approve or Edit.`}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIssueId(cleanId);
+                                    setIsAssignModalOpen(true);
+                                  }}
+                                  className="px-3.5 py-1.5 rounded bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-semibold text-xs transition flex-shrink-0"
+                                >
+                                  Edit / Override Worker
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Supervisor Oversight Actions */}
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Reported {item.createdOnDate} at {item.createdOnTime} by {item.reportedBy}</span>
+                              </span>
+
+                              <div className="flex items-center gap-2">
+                                {/* Edit / Override Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIssueId(cleanId);
+                                    setIsAssignModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition"
+                                >
+                                  Edit / Reassign Squad
+                                </button>
+
+                                {/* Action depending on availability, review requirement, and state */}
+                                {item.requiresHumanReview || item.status === 'Review Required' ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-1.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-xs font-semibold flex items-center gap-1.5">
+                                      <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                                      <span>Evidence Review Hold</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAuthenticityDecision(item.id, 'APPROVE')}
+                                      className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Approve & Dispatch</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAuthenticityDecision(item.id, 'REJECT')}
+                                      className="px-3 py-1.5 rounded bg-rose-700 hover:bg-rose-800 text-white text-xs font-medium transition flex items-center gap-1 shadow-xs"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Reject Media</span>
+                                    </button>
+                                  </div>
+                                ) : workerStatus.state === 'BUSY_ON_THIS' ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5">
+                                      <Clock className="w-3.5 h-3.5 text-amber-700 animate-spin" />
+                                      <span>Remediating ({workerStatus.remainingSeconds}s)</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleFastForwardJob(item.id)}
+                                      className="px-3.5 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1"
+                                    >
+                                      <FastForward className="w-3.5 h-3.5" />
+                                      <span>Mark Done Now</span>
+                                    </button>
+                                  </div>
+                                ) : workerStatus.state === 'BUSY_ON_OTHER' ? (
+                                  autoDispatchMode ? (
+                                    <span className="px-3.5 py-1.5 rounded bg-purple-50 text-purple-900 border border-purple-200 font-semibold text-xs flex items-center gap-1.5">
+                                      <Bot className="w-4 h-4 text-purple-700" />
+                                      <span>Auto-Dispatches in {workerStatus.remainingSeconds}s (Zero-Touch)</span>
+                                    </span>
+                                  ) : (
+                                    <span className="px-3.5 py-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-medium text-xs flex items-center gap-1.5">
+                                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                                      <span>Queued: Free in {workerStatus.remainingSeconds}s (Official Action Ready upon Free)</span>
+                                    </span>
+                                  )
+                                ) : item.status === 'Resolved' ? (
+                                  <span className="px-3 py-1.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1">
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Work Completed & Verified</span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApproveAiDispatch(item.id, autoDispatchMode)}
+                                    className="px-4 py-1.5 rounded bg-blue-800 hover:bg-blue-900 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Approve AI Assignment & Dispatch (60s Timer)</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}
@@ -3218,7 +3585,10 @@ export const AuthorityDashboard = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Link to="/crew" className="inline-flex items-center gap-1.5 rounded bg-blue-800 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-900">
+                  Open Field Crew Workspace <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
                 <span className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
                   {squads.filter(s => s.status === 'AVAILABLE').length} Available
                 </span>
@@ -3396,7 +3766,7 @@ export const AuthorityDashboard = () => {
                 <input
                   type="text"
                   readOnly
-                  value="Indore Municipal Corporation (IMC), Madhya Pradesh"
+                  value="Kolhapur Municipal Corporation, Maharashtra"
                   className="w-full p-2 border border-slate-200 rounded bg-slate-50 text-slate-700"
                 />
               </div>
@@ -3541,20 +3911,20 @@ export const AuthorityDashboard = () => {
                 </div>
               )}
 
-              {/* Drawer Sub-Tabs: Overview, Timeline, Location */}
-              <div className="grid grid-cols-3 border-b border-slate-200 text-xs text-center select-none">
-                {['Overview', 'Timeline', 'Location'].map((tab) => (
+              {/* Drawer Sub-Tabs: Overview, AI Intelligence, Timeline, Location */}
+              <div className="grid grid-cols-4 border-b border-slate-200 text-[11px] text-center select-none">
+                {['Overview', 'AI Intelligence', 'Timeline', 'Location'].map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setDrawerTab(tab)}
-                    className={`pb-2.5 transition font-medium ${
+                    className={`pb-2 transition font-medium ${
                       drawerTab === tab
                         ? 'font-bold text-blue-800 border-b-2 border-blue-800'
                         : 'text-slate-400 hover:text-slate-700 border-b-2 border-transparent'
                     }`}
                   >
-                    {tab}
+                    {tab === 'AI Intelligence' ? 'AI Intel' : tab}
                   </button>
                 ))}
               </div>
@@ -3780,6 +4150,43 @@ export const AuthorityDashboard = () => {
                     </p>
                   </div>
 
+                  {currentIssue.masterReports?.length > 1 && (
+                    <section className="rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-3">
+                      <header className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-blue-800">Master grievance · {currentIssue.masterGrievanceId}</p>
+                          <h3 className="text-sm font-bold text-slate-900">{currentIssue.title}</h3>
+                          <p className="text-[11px] text-slate-600">{currentIssue.department} · {currentIssue.masterReports.length} citizen reports</p>
+                        </div>
+                        <Users className="h-4 w-4 text-blue-700" />
+                      </header>
+                      <div className="space-y-2">
+                        {currentIssue.masterReports.map((report) => (
+                          <article key={report.complaint_id} className="rounded-md border border-slate-200 bg-white p-2">
+                            <div className="flex flex-wrap items-baseline justify-between gap-1">
+                              <strong className="font-mono text-[11px] text-slate-900">REPORT {report.complaint_id}</strong>
+                              <span className="text-[10px] text-slate-500">Original department: {report.department_name || 'Unassigned'}</span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-700">{report.issue_type} · {report.category}</p>
+                            {report.description && <p className="mt-1 text-[10px] text-slate-500">{report.description}</p>}
+                            {report.evidence?.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {report.evidence.map((evidence, index) => (
+                                  <a key={`${evidence.file_url}-${index}`} href={evidence.file_url} target="_blank" rel="noreferrer" className="block">
+                                    <img src={evidence.file_url} alt={`Evidence for ${report.complaint_id}`} className="h-20 w-24 rounded border border-slate-200 object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                      <div className="border-t border-blue-200 pt-2 text-[10px] text-blue-900">
+                        <strong>Grouping record:</strong> {(currentIssue.groupingReasons || []).join(' · ')}
+                      </div>
+                    </section>
+                  )}
+
                   {/* Multi-Photo Evidence Gallery */}
                   <div className="border-t border-slate-100 pt-3 space-y-2 text-xs">
                     <span className="font-semibold text-slate-900 block">Initial Evidence Photos (Click to preview)</span>
@@ -3857,6 +4264,42 @@ export const AuthorityDashboard = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* 8 CIVIC AI FEATURES INTELLIGENCE DOSSIER EMBEDDED IN OVERVIEW */}
+                  <div className="border-t border-slate-100 pt-3">
+                    <CivicIntelligenceDossier
+                      complaintId={currentIssue.id}
+                      currentStatus={currentIssue.status}
+                      enabled={hasLoadedLiveIssues}
+                      onStatusUpdated={(newSt) => {
+                        handleStatusChange(currentIssue.id, newSt);
+                      }}
+                      onSelectComplaint={(cId) => {
+                        setSelectedIssueId(cId);
+                        setIsDetailsDrawerOpen(true);
+                      }}
+                      isAuthority={true}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: DEDICATED AI INTELLIGENCE & AUDIT */}
+              {drawerTab === 'AI Intelligence' && (
+                <div className="pt-2">
+                  <CivicIntelligenceDossier
+                    complaintId={currentIssue.id}
+                    currentStatus={currentIssue.status}
+                    enabled={hasLoadedLiveIssues}
+                    onStatusUpdated={(newSt) => {
+                      handleStatusChange(currentIssue.id, newSt);
+                    }}
+                    onSelectComplaint={(cId) => {
+                      setSelectedIssueId(cId);
+                      setIsDetailsDrawerOpen(true);
+                    }}
+                    isAuthority={true}
+                  />
                 </div>
               )}
 
@@ -3869,7 +4312,7 @@ export const AuthorityDashboard = () => {
                       <span className="absolute -left-5 top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
                       <strong className="text-slate-900 block font-semibold">Grievance Registered</strong>
                       <span className="text-[11px] text-slate-500 block">{currentIssue.createdOnDate}, {currentIssue.createdOnTime}</span>
-                      <p className="text-slate-600 text-[11px] mt-0.5">Citizen logged report via CivicSeva portal with GPS coordinates and evidence.</p>
+                      <p className="text-slate-600 text-[11px] mt-0.5">Citizen logged report via Seva AI portal with GPS coordinates and evidence.</p>
                     </div>
 
                     {/* Step 2 */}
@@ -4037,112 +4480,235 @@ export const AuthorityDashboard = () => {
             {/* Action Buttons at bottom of Drawer */}
             <div className="p-5 border-t border-slate-200 bg-white space-y-2">
               {/* PRIMARY ACTION: UNVERIFIED / ACTIVE TIMER / QUEUED / AVAILABLE / RESOLVED */}
-              {checkIsUnverified(currentIssue) ? (
-                <div className="space-y-2">
-                  <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-lg text-rose-950 text-xs shadow-xs space-y-1">
-                    <span className="font-bold flex items-center gap-1.5 text-rose-900">
-                      <ShieldAlert className="w-4 h-4 text-rose-700" />
-                      <span>Unverified Evidence Flagged &bull; Hold Active</span>
-                    </span>
-                    <p className="text-[11px] text-slate-700 leading-snug">
-                      Authenticity verification pending. Mark real to clear hold and approve dispatch, or dismiss as fraudulent.
-                    </p>
+              {(() => {
+                const taskQueueData = currentIssue ? getWorkerTaskQueue(currentIssue) : null;
+                const isCurrentUnverified = checkIsUnverified(currentIssue);
+                const isDismissed = currentIssue.status === 'Dismissed' || currentIssue.status === 'Rejected' || currentIssue.authenticityVerdict === 'REJECTED_FAKE';
+                const isResolved = currentIssue.status === 'Resolved';
+
+                return (
+                  <div className="space-y-3">
+                    {/* SPECIALIST STATUS & SEQUENTIAL TASK QUEUE PIPELINE DOSSIER (Rendered for operational tickets) */}
+                    {!isCurrentUnverified && !isDismissed && !isResolved && taskQueueData && (
+                      <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5 text-xs shadow-2xs">
+                        {/* Header with worker name, squad and live availability badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-blue-800 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                              {(taskQueueData.workerName || 'W').charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 leading-tight truncate">
+                                {taskQueueData.workerName}
+                              </div>
+                              <div className="text-[11px] text-slate-500 truncate">
+                                {taskQueueData.squadName}
+                              </div>
+                            </div>
+                          </div>
+
+                          {taskQueueData.isBusy ? (
+                            <span className="px-2.5 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[10px] flex items-center gap-1 shrink-0">
+                              <Clock className="w-3 h-3 text-amber-700 animate-spin" />
+                              <span>BUSY ON-SITE ({taskQueueData.remainingSeconds}s left)</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px] flex items-center gap-1 shrink-0">
+                              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                              <span>AVAILABLE (IDLE)</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Sequential Task Queue Route if Worker is BUSY */}
+                        {taskQueueData.isBusy ? (
+                          <div className="space-y-2 pt-2 border-t border-slate-200">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-800 flex items-center gap-1">
+                                <Route className="w-3.5 h-3.5 text-blue-800 shrink-0" />
+                                <span>Sequential Deployment Route &amp; Task Queue</span>
+                              </span>
+                              <span className="font-mono text-[10px] text-amber-900 bg-amber-200/70 border border-amber-300 px-1.5 py-0.5 rounded font-bold">
+                                {taskQueueData.route.length} Stop{taskQueueData.route.length > 1 ? 's' : ''} in Pipeline
+                              </span>
+                            </div>
+
+                            {/* Step list: first he will go there then there and then go this */}
+                            <div className="space-y-1.5">
+                              {taskQueueData.route.map((stop, idx) => (
+                                <div
+                                  key={`${stop.ticketId}-${idx}`}
+                                  className={`p-2 rounded border text-[11px] transition ${
+                                    stop.isCurrentIssue
+                                      ? 'bg-blue-50 border-blue-300 text-blue-950 font-medium ring-1 ring-blue-300'
+                                      : stop.status === 'BUSY_ON_SITE'
+                                      ? 'bg-amber-50 border-amber-300 text-amber-950'
+                                      : 'bg-white border-slate-200 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                        stop.isCurrentIssue
+                                          ? 'bg-blue-800 text-white'
+                                          : stop.status === 'BUSY_ON_SITE'
+                                          ? 'bg-amber-600 text-white'
+                                          : 'bg-slate-300 text-slate-800'
+                                      }`}>
+                                        {stop.step}
+                                      </span>
+                                      <span className="truncate font-semibold">
+                                        #{stop.ticketId}: {stop.title}
+                                      </span>
+                                    </div>
+
+                                    {stop.status === 'BUSY_ON_SITE' && (
+                                      <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-mono text-[10px] font-bold shrink-0">
+                                        {stop.remainingSeconds}s remaining
+                                      </span>
+                                    )}
+                                    {stop.isCurrentIssue && (
+                                      <span className="px-1.5 py-0.2 rounded bg-blue-200 text-blue-900 text-[10px] font-bold shrink-0">
+                                        This Work Order
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 pl-5 truncate">
+                                    <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                    <span className="truncate">{stop.location}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Natural language route description */}
+                            <div className="p-2 rounded bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200">
+                              <strong className="text-slate-900">Deployment Route: </strong>
+                              {taskQueueData.route.length === 1 ? (
+                                <span>
+                                  Currently performing active remediation at <strong>#{taskQueueData.route[0].ticketId}</strong> ({taskQueueData.route[0].remainingSeconds}s left).
+                                </span>
+                              ) : (
+                                <span>
+                                  First, {taskQueueData.workerName} will finish active on-site work at <strong>#{taskQueueData.route[0].ticketId}</strong> ({taskQueueData.route[0].remainingSeconds}s remaining)
+                                  {taskQueueData.route.slice(1, -1).map((mid) => (
+                                    <span key={mid.ticketId}> &rarr; then proceed to <strong>#{mid.ticketId}</strong></span>
+                                  ))}
+                                  {' '}&rarr; then proceed to <strong>#{currentCleanId}</strong> ({currentIssue.location}) to remediate this ticket.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] flex items-center gap-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <span>Specialist has 0 active tickets. Available for immediate on-site deployment upon approval.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* PRIMARY ACTION BUTTONS */}
+                    {isCurrentUnverified ? (
+                      <div className="space-y-2">
+                        <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-lg text-rose-950 text-xs shadow-xs space-y-1">
+                          <span className="font-bold flex items-center gap-1.5 text-rose-900">
+                            <ShieldAlert className="w-4 h-4 text-rose-700" />
+                            <span>Unverified Evidence Flagged &bull; Hold Active</span>
+                          </span>
+                          <p className="text-[11px] text-slate-700 leading-snug">
+                            Authenticity verification pending. Mark real to clear hold and approve dispatch, or dismiss as fraudulent.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleMarkReal(currentIssue.id)}
+                            className="py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>Mark Real & Verify</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDismiss(currentIssue.id)}
+                            className="py-2.5 rounded bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>Dismiss as Fake</span>
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedIssueId(currentIssue.id.replace('#', '')); setIsUpdateModalOpen(true); }}
+                          className="w-full py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-xs transition flex items-center justify-center gap-1.5 border border-slate-300 cursor-pointer"
+                        >
+                          <span>Assign Squad & Perform Actions &rarr;</span>
+                        </button>
+                      </div>
+                    ) : activeJobForCurrent ? (
+                      <button
+                        type="button"
+                        onClick={() => handleFastForwardJob(currentIssue.id)}
+                        className="w-full py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <FastForward className="w-4 h-4" />
+                        <span>Mark Work Done Now ({activeJobForCurrent.remainingSeconds}s remaining)</span>
+                      </button>
+                    ) : isDismissed ? (
+                      <div className="w-full p-2.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-300 rounded flex items-center justify-between gap-1.5 shadow-2xs">
+                        <div className="flex items-center gap-1.5 text-left">
+                          <X className="w-4 h-4 text-rose-600 shrink-0" />
+                          <div>
+                            <span className="font-bold block">Dismissed as Fraudulent</span>
+                            <span className="text-[10px] text-slate-500 font-normal">Rejected by municipal supervisor.</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkReal(currentIssue.id)}
+                          className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-semibold text-slate-700 transition cursor-pointer"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ) : isResolved ? (
+                      <div className="w-full py-2.5 text-center text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded flex items-center justify-center gap-1.5">
+                        <CheckCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Work Completed & Verified on Site</span>
+                      </div>
+                    ) : taskQueueData?.isBusy ? (
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => handleApproveAiDispatch(currentIssue.id, autoDispatchMode)}
+                          className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <ListOrdered className="w-4 h-4" />
+                          <span>Approve AI Assignment & Queue in Pipeline</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsAssignModalOpen(true)}
+                          className="w-full py-2 rounded bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-semibold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Users className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Reassign to Alternative Available Worker</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleApproveAiDispatch(currentIssue.id, autoDispatchMode)}
+                        className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Approve AI Assignment & Dispatch (60s Timer)</span>
+                      </button>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleMarkReal(currentIssue.id)}
-                      className="py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Mark Real & Verify</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDismiss(currentIssue.id)}
-                      className="py-2.5 rounded bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>Dismiss as Fake</span>
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedIssueId(currentIssue.id.replace('#', '')); setIsUpdateModalOpen(true); }}
-                    className="w-full py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-xs transition flex items-center justify-center gap-1.5 border border-slate-300 cursor-pointer"
-                  >
-                    <span>Assign Squad & Perform Actions &rarr;</span>
-                  </button>
-                </div>
-              ) : activeJobForCurrent ? (
-                <button
-                  type="button"
-                  onClick={() => handleFastForwardJob(currentIssue.id)}
-                  className="w-full py-2.5 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2"
-                >
-                  <FastForward className="w-4 h-4" />
-                  <span>Mark Work Done Now ({activeJobForCurrent.remainingSeconds}s remaining)</span>
-                </button>
-              ) : drawerWorkerStatus?.state === 'BUSY_ON_OTHER' ? (
-                <div className="space-y-2">
-                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-md text-amber-950 text-xs space-y-1 shadow-xs">
-                    <div className="flex items-center justify-between font-bold text-amber-900">
-                      <span className="flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse" />
-                        No Worker Currently Available
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-mono text-[10px]">
-                        Free in {drawerWorkerStatus.remainingSeconds}s
-                      </span>
-                    </div>
-                    <p className="text-slate-700 text-[11px] leading-relaxed">
-                      Specialist <strong>{drawerWorkerStatus.workerName}</strong> is busy on #{drawerWorkerStatus.activeTicket}.
-                      {autoDispatchMode 
-                        ? ' Will auto-dispatch immediately when free.' 
-                        : ' Will be assigned when free; supervisor can click Approve or Edit.'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsAssignModalOpen(true)}
-                    className="w-full py-2.5 rounded bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5"
-                  >
-                    <Users className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Override & Reassign Alternative Worker Now</span>
-                  </button>
-                </div>
-              ) : currentIssue.status === 'Dismissed' ? (
-                <div className="w-full p-2.5 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-300 rounded flex items-center justify-between gap-1.5 shadow-2xs">
-                  <div className="flex items-center gap-1.5 text-left">
-                    <X className="w-4 h-4 text-rose-600 shrink-0" />
-                    <div>
-                      <span className="font-bold block">Dismissed as Fraudulent</span>
-                      <span className="text-[10px] text-slate-500 font-normal">Rejected by municipal supervisor.</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleMarkReal(currentIssue.id)}
-                    className="px-2 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-semibold text-slate-700 transition cursor-pointer"
-                  >
-                    Restore
-                  </button>
-                </div>
-              ) : currentIssue.status !== 'Resolved' ? (
-                <button
-                  type="button"
-                  onClick={() => handleApproveAiDispatch(currentIssue.id, autoDispatchMode)}
-                  className="w-full py-2.5 rounded bg-blue-800 hover:bg-blue-900 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Approve AI Assignment & Dispatch (60s Timer)</span>
-                </button>
-              ) : (
-                <div className="w-full py-2 text-center text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded flex items-center justify-center gap-1.5">
-                  <CheckCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Work Completed & Verified on Site</span>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="flex gap-2">
                 <button
@@ -4220,29 +4786,57 @@ export const AuthorityDashboard = () => {
               Select an available municipal field squad for dispatch to {currentIssue.location}:
             </p>
             <div className="space-y-2 text-xs max-h-72 overflow-y-auto">
-              {squads.map((sq, idx) => (
-                <div
-                  key={sq.id || idx}
-                  onClick={() => handleAssignSquad(sq)}
-                  className="p-3 border border-slate-200 hover:border-blue-700 hover:bg-blue-50/50 rounded cursor-pointer transition flex items-center justify-between"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-slate-900 block font-semibold">{sq.name}</strong>
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                        sq.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                        'bg-amber-100 text-amber-800 border border-amber-300'
-                      }`}>
-                        {sq.status}
+              {squads.map((sq, idx) => {
+                const activeJobEntry = Object.entries(activeJobs).find(
+                  ([, j]) => j.officerName === sq.name
+                );
+                const isBusy = Boolean(activeJobEntry) || (sq.status && sq.status.includes('BUSY'));
+                const busyTicket = activeJobEntry ? activeJobEntry[0] : (sq.activeTicket || null);
+                const busySeconds = activeJobEntry ? activeJobEntry[1].remainingSeconds : 60;
+
+                return (
+                  <div
+                    key={sq.id || idx}
+                    onClick={() => handleAssignSquad(sq)}
+                    className="p-3 border border-slate-200 hover:border-blue-700 hover:bg-blue-50/50 rounded cursor-pointer transition flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <strong className="text-slate-900 font-semibold">{sq.name}</strong>
+                        {isBusy ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5 text-amber-700 animate-spin" />
+                            <span>BUSY ({busySeconds}s left on #{busyTicket})</span>
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                            <span>AVAILABLE</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-slate-500 text-[11px] block mt-0.5 truncate">
+                        {sq.squad} &bull; {sq.dept}
                       </span>
+                      {isBusy && (
+                        <span className="text-amber-800 text-[10px] block mt-0.5">
+                          Currently on-site at #{busyTicket} &bull; Will be queued next in pipeline
+                        </span>
+                      )}
                     </div>
-                    <span className="text-slate-500 text-[11px] block">{sq.squad} &bull; {sq.dept}</span>
+                    <button
+                      type="button"
+                      className={`px-3 py-1.5 rounded text-[11px] font-semibold shrink-0 cursor-pointer ${
+                        isBusy 
+                          ? 'bg-amber-700 hover:bg-amber-800 text-white' 
+                          : 'bg-blue-800 hover:bg-blue-900 text-white'
+                      }`}
+                    >
+                      {isBusy ? 'Queue Next' : 'Assign Now'}
+                    </button>
                   </div>
-                  <button type="button" className="px-3 py-1 bg-blue-800 text-white rounded text-[11px] font-medium">
-                    Assign
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

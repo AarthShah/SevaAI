@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   Upload, MapPin, Check, ArrowRight, RefreshCw, Edit2, FileText, CheckCircle2, ChevronRight, X, AlertCircle, ShieldCheck, ShieldAlert,
-  Copy, Share2, Mail, ExternalLink, Printer, CheckCheck, Clock, User, Phone, Tag, Building, ArrowUpRight
+  Copy, Share2, Mail, ExternalLink, Printer, CheckCheck, Clock, User, Phone, Tag, Building, ArrowUpRight, AlertTriangle
 } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useAssistantContext } from '../context/AssistantContext';
+import { issueImageFor } from '../utils/issueImages';
 
 export const DEPARTMENT_OPTIONS = [
   { id: 'ROAD_DEPT', name: 'Road Department' },
@@ -31,7 +32,7 @@ const PRESET_ISSUES = [
   {
     key: 'pothole',
     label: 'Road Pothole',
-    image: '/sample_evidence/pothole.jpg',
+    image: issueImageFor('road_infrastructure', 'before'),
     issue: 'Pothole / Road Damage',
     category: 'Road Infrastructure',
     department: 'Road Department',
@@ -45,7 +46,7 @@ const PRESET_ISSUES = [
   {
     key: 'garbage',
     label: 'Garbage Accumulation',
-    image: '/sample_evidence/garbage.jpg',
+    image: issueImageFor('waste_management', 'before'),
     issue: 'Garbage Accumulation',
     category: 'Waste Management',
     department: 'Sanitation Department',
@@ -59,7 +60,7 @@ const PRESET_ISSUES = [
   {
     key: 'streetlight',
     label: 'Streetlight Not Working',
-    image: '/sample_evidence/streetlight.jpg',
+    image: issueImageFor('electrical_street_lighting', 'before'),
     issue: 'Street Light Not Working',
     category: 'Street Lighting',
     department: 'Electricity Department',
@@ -73,7 +74,7 @@ const PRESET_ISSUES = [
   {
     key: 'water',
     label: 'Water Pipe Leakage',
-    image: '/sample_evidence/water_leak.jpg',
+    image: issueImageFor('water_supply', 'before'),
     issue: 'Water Pipeline Leakage',
     category: 'Water Supply',
     department: 'Water Supply Department',
@@ -117,6 +118,33 @@ export const ReportIssuePage = () => {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
 
+  // Pre-submission duplicate check state
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [isCheckingDupes, setIsCheckingDupes] = useState(false);
+
+  useEffect(() => {
+    if (step >= 2 && (issueTitle || category)) {
+      setIsCheckingDupes(true);
+      complaintApi.checkDuplicates({
+        title: issueTitle || category || 'Civic Issue',
+        description: description || '',
+        category: category,
+        latitude: latitude,
+        longitude: longitude
+      }).then((res) => {
+        if (res && res.duplicate_detected) {
+          setDuplicateWarning(res);
+        } else {
+          setDuplicateWarning(null);
+        }
+      }).catch(() => {
+        setDuplicateWarning(null);
+      }).finally(() => {
+        setIsCheckingDupes(false);
+      });
+    }
+  }, [step, issueTitle, description, category, latitude, longitude]);
+
   // Complainant identity details
   const [complainantName, setComplainantName] = useState(user?.name || 'Aarth Shah');
   const [complainantPhone, setComplainantPhone] = useState(user?.phone || '+91 98765 43210');
@@ -144,7 +172,7 @@ export const ReportIssuePage = () => {
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [gpsNotice, setGpsNotice] = useState(null);
 
-  // CivicSeva Contextual Assistant live form registration
+  // Seva AI Contextual Assistant live form registration
   useAssistantContext({
     pageName: 'ReportIssuePage',
     formContext: {
@@ -314,12 +342,12 @@ export const ReportIssuePage = () => {
 
       const pred = res.ai_predictions || res || {};
       const identifiedIssue = pred.display_issue_type || pred.issue_type?.replace(/_/g, ' ') || res.display_issue_type || res.issue_type?.replace(/_/g, ' ') || 'Civic Defect';
-      const identifiedCategory = pred.category?.replace(/_/g, ' ') || res.category?.replace(/_/g, ' ') || 'Road Infrastructure';
-      const identifiedDept = pred.department || res.suggested_department || 'Road Department';
+      const identifiedCategory = pred.category?.replace(/_/g, ' ') || res.category?.replace(/_/g, ' ') || 'public_safety_other';
+      const identifiedDept = pred.department || res.suggested_department || 'General Civic Administration';
       const identifiedSeverity = pred.severity || res.severity || 'MEDIUM';
       const rawConf = pred.confidence ?? res.confidence_score ?? 0.92;
       const identifiedConfidence = `${Math.round(rawConf <= 1 ? rawConf * 100 : rawConf)}%`;
-      const identifiedDeptId = pred.department_code || res.department_id || 'ROAD_DEPT';
+      const identifiedDeptId = pred.department_code || res.department_id || null;
       const identifiedDesc = pred.evidence_summary || res.description || pred.description || `Visible civic issue (${identifiedIssue}) detected on site.`;
       const identifiedExplanation = pred.grounded_explanation || res.explanation || `The uploaded image shows visible ${identifiedIssue.toLowerCase()}. Based on the issue category and available civic-service information, the ${identifiedDept} is suggested.`;
 
@@ -346,7 +374,11 @@ export const ReportIssuePage = () => {
       console.warn('AI analysis error, using resilient fallback:', err);
       // Fallback to solid analysis model with MEDIUM priority
       const fallback = {
-        ...PRESET_ISSUES[0],
+        issue: 'Unclassified civic issue',
+        category: 'public_safety_other',
+        department: 'General Civic Administration',
+        departmentId: 'DEPT_GEN_ADMIN',
+        description: 'AI classification is unavailable. Please review the report and select the responsible department.',
         severity: 'MEDIUM'
       };
       setAnalysis(fallback);
@@ -449,13 +481,20 @@ export const ReportIssuePage = () => {
       if (typeof departmentId === 'string') {
         const deptMap = {
           'ROAD_DEPT': 1,
+          'DEPT_ROAD': 1,
           'WASTE_MGT': 2,
           'SOLID_WASTE': 2,
+          'DEPT_WASTE': 2,
           'STREET_LIGHT': 3,
+          'DEPT_ELECTRICAL': 3,
           'WATER_SUPPLY': 4,
+          'DEPT_WATER': 4,
           'DRAINAGE': 5,
+          'DEPT_DRAINAGE': 5,
+          'DEPT_DRAIN': 5,
           'HEALTH_DEPT': 6,
-          'PUBLIC_SAFETY': 6
+          'PUBLIC_SAFETY': 6,
+          'DEPT_GEN_ADMIN': 6
         };
         if (deptMap[departmentId]) {
           resolvedDeptId = deptMap[departmentId];
@@ -467,10 +506,10 @@ export const ReportIssuePage = () => {
       const payload = {
         title: issueTitle || 'Civic Issue Report',
         description: description || 'Resident report regarding civic defect.',
-        category: (category || 'road_infrastructure').toLowerCase().replace(/\s+/g, '_'),
+        category: (category || 'public_safety_other').toLowerCase().replace(/\s+/g, '_'),
         issue_type: (issueTitle || category || 'pothole').toLowerCase().replace(/\s+/g, '_'),
         severity: (severity || 'MEDIUM').toUpperCase(),
-        department_id: resolvedDeptId || 1,
+        department_id: resolvedDeptId || undefined,
         address: address || 'Indore Municipal Ward',
         latitude: typeof latitude === 'number' ? latitude : 22.7196,
         longitude: typeof longitude === 'number' ? longitude : 75.8577,
@@ -837,6 +876,24 @@ Your civic grievance has been officially registered in the central municipal reg
               </div>
             ) : (
               <div className="space-y-4 text-xs">
+                {/* PRE-SUBMISSION DUPLICATE CITIZEN WARNING BANNER */}
+                {duplicateWarning && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-950 text-xs space-y-1.5 animate-in fade-in shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                        <span>Similar Issue Already Reported Nearby ({Math.round((duplicateWarning.top_probability || 0.7) * 100)}% match)</span>
+                      </div>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-bold">
+                        #{duplicateWarning.candidates[0]?.candidate_id}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-900 leading-relaxed">
+                      A similar civic complaint was recently submitted within your vicinity. You may still proceed with your submission to provide corroborating photographic evidence.
+                    </p>
+                  </div>
+                )}
+
                 {/* Editable Override Form on Step 2 */}
                 {isEditingDetails ? (
                   <div className="border border-blue-200 p-4 rounded-md bg-blue-50/50 space-y-4 shadow-xs">

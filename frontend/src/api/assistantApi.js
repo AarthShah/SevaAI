@@ -1,7 +1,7 @@
 import api from './client';
 
 /**
- * CivicSeva Contextual Assistant API Client
+ * Seva AI Contextual Assistant API Client
  *
  * Sends user message and serialized frontend context to the backend.
  * Uses the standard authenticated Axios client (JWT injected via interceptor).

@@ -49,7 +49,7 @@ export const TermsPage = () => {
                 1. Introduction
               </h2>
               <p>
-                Welcome to CivicSeva. These Terms & Conditions govern your access to and use of the CivicSeva civic grievance reporting platform, including associated web applications, digital intake workflows, and notification services. By accessing or submitting information via CivicSeva, you agree to comply with these terms.
+                Welcome to Seva AI. These Terms & Conditions govern your access to and use of the Seva AI civic grievance reporting platform, including associated web applications, digital intake workflows, and notification services. By accessing or submitting information via Seva AI, you agree to comply with these terms.
               </p>
             </section>
 
@@ -58,7 +58,7 @@ export const TermsPage = () => {
                 2. Use of the Service
               </h2>
               <p>
-                CivicSeva provides an online channel for residents to report non-emergency civic defects (including potholes, uncollected waste, non-functional streetlights, water pipeline leaks, and stormwater drainage issues) to relevant municipal administrations.
+                Seva AI provides an online channel for residents to report non-emergency civic defects (including potholes, uncollected waste, non-functional streetlights, water pipeline leaks, and stormwater drainage issues) to relevant municipal administrations.
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li>You agree to submit accurate, truthful, and non-fraudulent reports.</li>
@@ -73,7 +73,7 @@ export const TermsPage = () => {
                 3. AI-Assisted Information and Disclaimers
               </h2>
               <p>
-                CivicSeva utilizes automated machine learning models to analyze photographs, infer defect categories, estimate severity, and suggest the responsible municipal department.
+                Seva AI utilizes automated machine learning models to analyze photographs, infer defect categories, estimate severity, and suggest the responsible municipal department.
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li>Automated suggestions are advisory aids designed to expedite routing.</li>
@@ -105,7 +105,7 @@ export const TermsPage = () => {
                 6. Limitation of Liability
               </h2>
               <p>
-                CivicSeva operates as a technology coordination interface. To the maximum extent permitted by applicable law, CivicSeva and participating municipal authorities shall not be liable for any indirect, incidental, or consequential damages resulting from technical downtime or delayed municipal remediation.
+                Seva AI operates as a technology coordination interface. To the maximum extent permitted by applicable law, Seva AI and participating municipal authorities shall not be liable for any indirect, incidental, or consequential damages resulting from technical downtime or delayed municipal remediation.
               </p>
             </section>
 
@@ -114,7 +114,7 @@ export const TermsPage = () => {
                 7. Contact Information
               </h2>
               <p>
-                If you have questions regarding these Terms & Conditions, please contact the CivicSeva administrative team at <span className="font-mono text-slate-900">support@civicseva.org</span>.
+                If you have questions regarding these Terms & Conditions, please contact the Seva AI administrative team at <span className="font-mono text-slate-900">support@civicseva.org</span>.
               </p>
             </section>
           </div>

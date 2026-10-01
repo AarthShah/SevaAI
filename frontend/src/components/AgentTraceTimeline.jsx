@@ -54,7 +54,7 @@ export const AgentTraceTimeline = ({ trace = [] }) => {
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-slate-800 flex items-center gap-1.5">
                     <span className="text-purple-700 font-mono text-[10px] uppercase bg-purple-100/70 px-1.5 py-0.5 rounded">
-                      {step.agent_name || 'CivicSeva Agent'}
+                      {step.agent_name || 'Seva AI Agent'}
                     </span>
                     <span>{step.action}</span>
                   </span>

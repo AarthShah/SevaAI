@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, ArrowLeftRight, Search, Bell } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight, Search, Bell, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CivicLogo } from './CivicLogo';
 import { AssistantLauncher } from './AssistantLauncher';
@@ -11,7 +11,6 @@ export const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navSearch, setNavSearch] = useState('');
-
   const isActive = (path) => location.pathname === path;
   const isOfficial = user?.role === 'authority' || user?.role === 'admin' || location.pathname.startsWith('/authority');
 
@@ -79,7 +78,11 @@ export const Navbar = () => {
                 <span className="hidden sm:inline">Citizen View</span>
               </button>
 
-              {/* Contextual CivicSeva Assistant Launcher */}
+              <Link to="/crew" className={`hidden sm:inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition ${location.pathname === '/crew' ? 'border-blue-500 bg-blue-600 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'}`}>
+                <Wrench className="h-3 w-3" /> Field Crew
+              </Link>
+
+              {/* Contextual Seva AI Assistant Launcher */}
               <AssistantLauncher variant="authority" />
 
               {/* Notification Bell */}
@@ -139,6 +142,9 @@ export const Navbar = () => {
             >
               Triage & Dispatch
             </Link>
+            <Link to="/crew" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded text-sm text-slate-200 hover:bg-slate-800">
+              Field Crew Workspace
+            </Link>
             <Link
               to="/authority?tab=AI_REVIEW"
               onClick={() => setMobileMenuOpen(false)}
@@ -197,7 +203,7 @@ export const Navbar = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* CivicSeva Logo */}
+          {/* Seva AI Logo */}
           <Link to="/" className="flex items-center">
             <CivicLogo
               className="h-6 w-6 text-blue-800"
@@ -264,7 +270,7 @@ export const Navbar = () => {
               <span>Municipal Portal</span>
             </button>
 
-            {/* Contextual CivicSeva Assistant Launcher */}
+            {/* Contextual Seva AI Assistant Launcher */}
             <AssistantLauncher variant="citizen" />
 
             {user ? (

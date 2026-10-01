@@ -5,7 +5,7 @@ import { useAssistant } from '../context/AssistantContext';
 /**
  * AssistantLauncher
  *
- * Compact launcher button embedded in the CivicSeva Navbar.
+ * Compact launcher button embedded in the Seva AI Navbar.
  * Matches the existing rectangular utility button style (Citizen View / Municipal Portal).
  *
  * @param {Object} props
@@ -31,11 +31,11 @@ export const AssistantLauncher = ({ variant = 'citizen', className = '' }) => {
     <button
       type="button"
       onClick={toggleAssistant}
-      aria-label={isOpen ? 'Close CivicSeva Assistant' : 'Open CivicSeva Assistant'}
+      aria-label={isOpen ? 'Close Seva AI Assistant' : 'Open Seva AI Assistant'}
       aria-expanded={isOpen}
       aria-controls="civicseva-assistant-panel"
       className={`px-2.5 py-1 text-xs font-medium border rounded transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${baseClasses} ${activeClasses} ${className}`}
-      title="Open Contextual CivicSeva Assistant"
+      title="Open Contextual Seva AI Assistant"
     >
       <Bot className={`w-3.5 h-3.5 ${isOpen ? 'text-purple-400' : isAuthority ? 'text-purple-300' : 'text-purple-600'}`} />
       <span className="font-medium">Assistant</span>

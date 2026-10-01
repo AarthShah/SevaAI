@@ -45,10 +45,15 @@ export const MapViewPage = ({ isEmbedded = false }) => {
         isOfficial ? officerApi.getOfficers() : Promise.resolve([])
       ]);
       if (cData && cData.length > 0) {
-        setComplaints(cData);
+        const activeComplaints = cData.filter(
+          (c) => c.status !== 'Resolved' && c.status !== 'Dismissed' && c.status !== 'Rejected'
+        );
+        setComplaints(activeComplaints);
       } else {
         // Filter fallback complaints
-        let filtered = DEFAULT_MAP_COMPLAINTS;
+        let filtered = DEFAULT_MAP_COMPLAINTS.filter(
+          (c) => c.status !== 'Resolved' && c.status !== 'Dismissed' && c.status !== 'Rejected'
+        );
         if (selectedCategory !== 'All') {
           filtered = filtered.filter(c => c.category === selectedCategory);
         }
@@ -63,7 +68,9 @@ export const MapViewPage = ({ isEmbedded = false }) => {
         setOfficers(DEFAULT_MAP_OFFICERS);
       }
     } catch {
-      let filtered = DEFAULT_MAP_COMPLAINTS;
+      let filtered = DEFAULT_MAP_COMPLAINTS.filter(
+        (c) => c.status !== 'Resolved' && c.status !== 'Dismissed' && c.status !== 'Rejected'
+      );
       if (selectedCategory !== 'All') {
         filtered = filtered.filter(c => c.category === selectedCategory);
       }

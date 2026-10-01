@@ -336,7 +336,7 @@ export const CCTVVisionPage = ({ isEmbedded = false }) => {
         severity: cam.severity || 'HIGH',
         auto_dispatch_recommended: true,
         suggested_department: cam.department || 'Road Department',
-        description: `Continuous edge computer vision detection identified active defect at ${cam.location}. Automated classification verified by CivicSeva YOLOv8 municipal neural network.`,
+        description: `Continuous edge computer vision detection identified active defect at ${cam.location}. Automated classification verified by Seva AI YOLOv8 municipal neural network.`,
         detections: [
           { label: cam.default_defect || 'Pothole Defect', confidence: cam.confidence || 0.94, box: [180, 220, 480, 420] }
         ],

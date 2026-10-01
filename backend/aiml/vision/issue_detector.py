@@ -12,8 +12,28 @@ import base64
 import re
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
-from PIL import Image, ImageStat
-import numpy as np
+from PIL import Image
+
+# The standalone AIML service does not import the backend configuration module,
+# so load the same repository/backend environment files before reading model keys.
+try:
+    from dotenv import load_dotenv
+
+    _repo_root = Path(__file__).resolve().parents[3]
+    for _env_file in (_repo_root / ".env", _repo_root / "backend" / ".env"):
+        if _env_file.is_file():
+            load_dotenv(_env_file, override=False)
+except ImportError:
+    _repo_root = Path(__file__).resolve().parents[3]
+    for _env_file in (_repo_root / ".env", _repo_root / "backend" / ".env"):
+        if not _env_file.is_file():
+            continue
+        for _line in _env_file.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _key, _value = _line.split("=", 1)
+            os.environ.setdefault(_key.strip(), _value.strip().strip("\"'"))
 
 try:
     from groq import Groq
@@ -122,7 +142,7 @@ class VisionIssueDetector:
             b64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
             data_url = f"data:image/jpeg;base64,{b64_img}"
 
-            client = Groq(api_key=self.api_key)
+            client = Groq(api_key=self.api_key, timeout=25.0, max_retries=0)
 
             prompt = (
                 "You are an expert AI Municipal Inspector and Digital Forensics Analyst for the CivicSeva municipal platform.\n"
@@ -179,8 +199,8 @@ class VisionIssueDetector:
 
             data = json.loads(cleaned_json)
 
-            issue_type = data.get("detected_issue", "road_damage").lower().replace(" ", "_")
-            category = data.get("category", "road_infrastructure").lower().replace(" ", "_").replace("&", "")
+            issue_type = data.get("detected_issue", "unclassified_civic_issue").lower().replace(" ", "_")
+            category = data.get("category", "public_safety_other").lower().replace(" ", "_").replace("&", "")
             raw_sev = str(data.get("severity", "MEDIUM")).upper()
             severity = raw_sev if raw_sev in ["LOW", "MEDIUM", "HIGH", "CRITICAL"] else "MEDIUM"
 
@@ -193,15 +213,32 @@ class VisionIssueDetector:
 
             dept_map = {
                 "ROAD_DEPT": "Road Department",
+                "DEPT_ROAD": "Road Department",
                 "SOLID_WASTE": "Sanitation Department",
+                "DEPT_WASTE": "Sanitation Department",
                 "WATER_SUPPLY": "Water Supply Department",
+                "DEPT_WATER": "Water Supply Department",
                 "DRAINAGE": "Drainage Board",
-                "STREET_LIGHT": "Electricity Department"
+                "DEPT_DRAINAGE": "Drainage Board",
+                "STREET_LIGHT": "Electricity Department",
+                "DEPT_ELECTRICAL": "Electricity Department",
+                "DEPT_GEN_ADMIN": "General Civic Administration"
             }
-            dept_id = data.get("department_id", "ROAD_DEPT")
+            category_dept = {
+                "road_infrastructure": "DEPT_ROAD",
+                "sanitation_waste": "DEPT_WASTE",
+                "waste_management": "DEPT_WASTE",
+                "water_supply": "DEPT_WATER",
+                "drainage_sewerage": "DEPT_DRAINAGE",
+                "drainage_sanitation": "DEPT_DRAINAGE",
+                "electricity_lighting": "DEPT_ELECTRICAL",
+                "electrical_street_lighting": "DEPT_ELECTRICAL",
+                "public_safety_other": "DEPT_GEN_ADMIN",
+            }
+            dept_id = data.get("department_id") or category_dept.get(category, "DEPT_GEN_ADMIN")
             if dept_id not in dept_map:
-                dept_id = "ROAD_DEPT"
-            dept_name = data.get("suggested_department") or dept_map.get(dept_id, "Road Department")
+                dept_id = "DEPT_GEN_ADMIN"
+            dept_name = data.get("suggested_department") or dept_map.get(dept_id, "General Civic Administration")
 
             return {
                 "detected_issue": issue_type,
@@ -233,8 +270,9 @@ class VisionIssueDetector:
 
     def _local_vision_analysis(self, img: Optional[Image.Image], filename: str) -> Dict[str, Any]:
         """
-        Robust heuristic computer vision analysis using color variance, brightness,
-        entropy, and structural edge cues as fallback.
+        Safe fallback when the vision LLM cannot run. Pixel color/brightness alone
+        is not reliable enough to assign a civic department, so uncertain photos
+        remain unclassified for resident/official review.
         """
         lower_name = (filename or "").lower()
 
@@ -299,64 +337,21 @@ class VisionIssueDetector:
                 "visual_features": {"aperture_visible": True, "channel_clogging": "high"}
             }
 
-        # Analyze actual image pixel properties if PIL image exists
-        if img:
-            try:
-                rgb_img = img.convert("RGB").resize((128, 128))
-                stat = ImageStat.Stat(rgb_img)
-                mean_r, mean_g, mean_b = stat.mean[:3]
-                var_r, var_g, var_b = stat.var[:3]
-                total_variance = var_r + var_g + var_b
-                avg_brightness = (mean_r + mean_g + mean_b) / 3.0
-
-                if avg_brightness < 45.0:
-                    return {
-                        "detected_issue": "streetlight",
-                        "display_title": "Dark Streetlight Corridor",
-                        "category": "electricity_lighting",
-                        "suggested_department": "Electricity Department",
-                        "department_id": "STREET_LIGHT",
-                        "severity": "LOW",
-                        "severity_reason": "Nocturnal low-lux environment with absence of functional public lighting.",
-                        "confidence": 0.86,
-                        "evidence": "Nocturnal low-lux environment with absence of functional public roadway lighting.",
-                        "description": "Dark corridor requiring illumination restoration.",
-                        "mode": "LOCAL_COMPUTER_VISION",
-                        "visual_features": {"avg_brightness": round(avg_brightness, 2)}
-                    }
-
-                if total_variance > 5000.0:
-                    return {
-                        "detected_issue": "garbage",
-                        "display_title": "Dispersed Solid Waste Heap",
-                        "category": "sanitation_waste",
-                        "suggested_department": "Sanitation Department",
-                        "department_id": "SOLID_WASTE",
-                        "severity": "MEDIUM",
-                        "severity_reason": "Color-entropy dispersion consistent with uncontained public waste.",
-                        "confidence": 0.85,
-                        "evidence": "Disordered visual texture with high color variance consistent with discarded waste heap.",
-                        "description": "Domestic refuse scattered across civic area.",
-                        "mode": "LOCAL_COMPUTER_VISION",
-                        "visual_features": {"variance": round(total_variance, 2)}
-                    }
-            except Exception:
-                pass
-
-        # Standard road damage default with REAL priority (MEDIUM, not HIGH)
+        # Unknown images are sent for general triage; only a positive road signal should
+        # create a road repair task.
         return {
-            "detected_issue": "pothole",
-            "display_title": "Asphalt Road Surface Damage",
-            "category": "road_infrastructure",
-            "suggested_department": "Road Department",
-            "department_id": "ROAD_DEPT",
+            "detected_issue": "unclassified_civic_issue",
+            "display_title": "Unclassified Civic Issue",
+            "category": "public_safety_other",
+            "suggested_department": "General Civic Administration",
+            "department_id": "DEPT_GEN_ADMIN",
             "severity": "MEDIUM",
-            "severity_reason": "Standard road surface depression and asphalt fracture. Pothole poses tire wear risk but no immediate vehicular collision hazard.",
-            "confidence": 0.88,
-            "evidence": "Visible road surface disruption with localized asphalt depression and surface fracture.",
-            "description": "Asphalt road pothole requiring routine municipal cold-mix patching.",
+            "severity_reason": "Automated image classification could not identify a responsible department; manual triage is required.",
+            "confidence": 0.35,
+            "evidence": "The image could not be confidently matched to a supported municipal issue category.",
+            "description": "Unclassified civic report requiring municipal review.",
             "mode": "LOCAL_COMPUTER_VISION",
-            "visual_features": {"inspection": "standard_road_damage"}
+            "visual_features": {"inspection": "unclassified"}
         }
 
 detector = VisionIssueDetector()

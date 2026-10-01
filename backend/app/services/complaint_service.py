@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from ..models.complaint import Complaint
+from .department_mapping import resolve_department_id
 from ..models.complaint_history import ComplaintHistory
 from ..models.agent_action import AgentAction
 from ..models.evidence import Evidence
@@ -69,44 +70,10 @@ class ComplaintService:
     ) -> Complaint:
         cid = request.id if request.id and request.id.startswith("CS") else ComplaintService.generate_next_id(db)
 
-        # Department mapping
-        dept_id = request.department_id
-        if dept_id is not None:
-            if isinstance(dept_id, int):
-                pass
-            elif isinstance(dept_id, str):
-                if dept_id.isdigit():
-                    dept_id = int(dept_id)
-                else:
-                    dept_code = dept_id.upper()
-                    code_map = {
-                        "ROAD_DEPT": "road_infrastructure",
-                        "ROADS": "road_infrastructure",
-                        "ROAD": "road_infrastructure",
-                        "WASTE_MGT": "waste_management",
-                        "WASTE": "waste_management",
-                        "STREET_LIGHT": "electrical_street_lighting",
-                        "ELECTRICITY": "electrical_street_lighting",
-                        "WATER_SUPPLY": "water_supply",
-                        "WATER": "water_supply",
-                        "DRAINAGE": "drainage_sanitation",
-                        "SANITATION": "drainage_sanitation",
-                        "PUBLIC_SAFETY": "public_safety_other"
-                    }
-                    target_cat = code_map.get(dept_code, dept_id.lower())
-                    matched_dept = db.query(Department).filter(
-                        (Department.category == target_cat) |
-                        (Department.name.ilike(f"%{dept_id}%"))
-                    ).first()
-                    dept_id = matched_dept.id if matched_dept else None
-
-        if not dept_id:
-            dept = db.query(Department).filter(
-                (Department.category == request.category) |
-                (Department.name.ilike(f"%{request.category}%"))
-            ).first()
-            if dept:
-                dept_id = dept.id
+        # The classified issue category takes precedence over a stale or mismatched UI department.
+        dept_id = resolve_department_id(db, request.category, request.department_id)
+        if dept_id is None:
+            dept_id = resolve_department_id(db, "public_safety_other")
 
         lat_val = None
         if request.latitude is not None and str(request.latitude).strip():
@@ -140,6 +107,7 @@ class ComplaintService:
             latitude=lat_val,
             longitude=lng_val,
             address=request.address or "Location verified via coordinates",
+            landmark=request.landmark,
             severity=request.severity.upper() if request.severity else "MEDIUM",
             status=initial_status,
             department_id=dept_id,
@@ -199,6 +167,11 @@ class ComplaintService:
                 )
                 db.add(ev)
 
+        # Establish the backend master grievance relationship before commit. The
+        # original complaint and its evidence remain intact as an auditable child.
+        from .clustering_service import ClusteringService
+        ClusteringService.attach_to_master(db, complaint)
+
         # Log Authenticity Audit Action
         if request.authenticity_score is not None:
             db.add(AgentAction(
@@ -257,48 +230,83 @@ class ComplaintService:
         if not complaint:
             raise ValueError(f"Complaint with ID {complaint_id} not found.")
 
-        old_status = complaint.status
         new_status = update_data.status
 
         if new_status not in VALID_STATUSES:
             raise ValueError(f"Invalid status '{new_status}'. Must be one of: {', '.join(VALID_STATUSES)}")
 
-        complaint.status = new_status
-        complaint.updated_at = datetime.now(timezone.utc)
-
-        if update_data.department_id:
-            complaint.department_id = update_data.department_id
-
-        # Record history
-        history = ComplaintHistory(
-            complaint_id=complaint_id,
-            old_status=old_status,
-            new_status=new_status,
-            changed_by=changed_by,
-            remarks=update_data.remarks or f"Status transitioned from {old_status} to {new_status}.",
-            timestamp=datetime.now(timezone.utc)
+        from ..models.complaint_cluster import ComplaintCluster, ComplaintClusterMember
+        members = [complaint]
+        if complaint.cluster_id:
+            members = [m.complaint for m in db.query(ComplaintClusterMember).filter_by(cluster_id=complaint.cluster_id).all() if m.complaint]
+            if not members:
+                members = [complaint]
+        # Idempotent retries from older clients must not create additional official
+        # decisions or duplicate dispatch history.
+        from ..models.complaint_cluster import ComplaintCluster
+        master = db.query(ComplaintCluster).filter_by(id=complaint.cluster_id).first() if complaint.cluster_id else None
+        effective_department_id = master.department_id if master else complaint.department_id
+        department_change = update_data.department_id is not None and update_data.department_id != effective_department_id
+        assignment_change = any(
+            value is not None and value != getattr(complaint, field)
+            for field, value in (
+                ("assigned_officer_id", update_data.assigned_officer_id),
+                ("assigned_officer_name", update_data.assigned_officer_name),
+                ("assigned_officer_phone", update_data.assigned_officer_phone),
+            )
         )
-        db.add(history)
+        if all(member.status == new_status for member in members) and not department_change and not assignment_change:
+            return complaint
+
+        now = datetime.now(timezone.utc)
+        master_old_status = complaint.status
+        for member in members:
+            old_status = member.status
+            member.status = new_status
+            member.updated_at = now
+            if update_data.department_id and not complaint.cluster_id:
+                member.department_id = update_data.department_id
+            if update_data.assigned_officer_id is not None:
+                member.assigned_officer_id = update_data.assigned_officer_id
+            if update_data.assigned_officer_name is not None:
+                member.assigned_officer_name = update_data.assigned_officer_name
+            if update_data.assigned_officer_phone is not None:
+                member.assigned_officer_phone = update_data.assigned_officer_phone
+            db.add(ComplaintHistory(
+                complaint_id=member.id, old_status=old_status, new_status=new_status,
+                changed_by=changed_by,
+                remarks=(update_data.remarks or f"Status transitioned from {old_status} to {new_status}.") +
+                        (f" Official master grievance: {complaint.cluster_id}." if complaint.cluster_id else ""),
+                timestamp=now
+            ))
+
+        if complaint.cluster_id:
+            master = db.query(ComplaintCluster).filter_by(id=complaint.cluster_id).first()
+            if master:
+                master.status = "RESOLVED" if new_status in {"Resolved", "Rejected"} else "ACTIVE"
+                if update_data.department_id:
+                    master.department_id = update_data.department_id
 
         # Agent trace
         action = AgentAction(
             complaint_id=complaint_id,
             agent_name="Tracking Agent",
-            action=f"Status Transition: {old_status} -> {new_status}",
+            action=f"Master Grievance Status Transition: {master_old_status} -> {new_status}",
             input_summary=f"Authority action by {changed_by}",
             output_summary=update_data.remarks or f"Workflow progressed to {new_status}.",
             timestamp=datetime.now(timezone.utc)
         )
         db.add(action)
 
-        # Notify Citizen if exists
-        if complaint.citizen_id:
-            notif = Notification(
-                user_id=complaint.citizen_id,
-                complaint_id=complaint_id,
-                message=f"Your complaint #{complaint_id} status changed to '{new_status}'."
-            )
-            db.add(notif)
+        # One official action, with a citizen tracking notification per preserved report.
+        for member in members:
+            if member.citizen_id:
+                notif = Notification(
+                    user_id=member.citizen_id,
+                    complaint_id=member.id,
+                    message=f"Your complaint #{member.id} status changed to '{new_status}' under grievance #{complaint.cluster_id or complaint.id}."
+                )
+                db.add(notif)
 
         db.commit()
         db.refresh(complaint)

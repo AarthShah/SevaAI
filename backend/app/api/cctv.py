@@ -18,6 +18,7 @@ from ..models.complaint_history import ComplaintHistory
 from ..models.agent_action import AgentAction
 from ..models.department import Department
 from ..services.autonomous_agent import autonomous_engine
+from ..services.department_mapping import resolve_department_id
 from ..services.complaint_service import ComplaintService
 from ..middleware.auth_middleware import get_optional_user
 from aiml.vision.cctv_detector import cctv_detector
@@ -105,12 +106,12 @@ async def auto_dispatch_cctv_defect(
         "OPEN_DRAINAGE_HAZARD": "drainage_sanitation",
         "MANHOLE_COVER_MISSING": "drainage_sanitation"
     }
-    cat = category_map.get(defect_type.upper(), "road_infrastructure")
+    cat = category_map.get(defect_type.upper(), "public_safety_other")
 
     # 2. Resolve Department
     dept = db.query(Department).filter(Department.category == cat).first()
-    dept_id = dept.id if dept else 1
-    dept_name = dept.name if dept else "Municipal Road Department"
+    dept_id = dept.id if dept else resolve_department_id(db, "public_safety_other")
+    dept_name = dept.name if dept else "General Civic Administration"
 
     # 3. Autonomous Geo-Proximity Officer Matching & Dispatch
     officer_match = autonomous_engine.find_nearest_available_officer(

@@ -54,6 +54,10 @@ app.add_middleware(
 
 # Static file serving for uploads
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_ISSUE_IMAGE_DIR = _PROJECT_ROOT / "frontend" / "image"
+if _ISSUE_IMAGE_DIR.is_dir():
+    app.mount("/image", StaticFiles(directory=str(_ISSUE_IMAGE_DIR)), name="issue-images")
 
 KNOWN_API_PREFIXES = (
     "/auth", "/complaints", "/departments", "/officers",

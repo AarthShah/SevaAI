@@ -13,8 +13,11 @@ from sqlalchemy import desc
 from ..database.session import get_db
 from ..models.officer import Officer
 from ..models.complaint import Complaint
+from ..models.location_intelligence import LocationIntelligence
+from ..models.resolution_verification import ResolutionEvidence
 from ..schemas.officer import OfficerResponse
 from ..services.autonomous_agent import calculate_haversine_distance
+from ..services.field_workload import MAX_DAILY_ASSIGNMENTS, daily_assignment_limit_for_distance
 
 router = APIRouter(prefix="/api/officers", tags=["Officers"])
 
@@ -163,6 +166,24 @@ def get_officer_tasks(officer_id: int, db: Session = Depends(get_db)):
         .order_by(desc(Complaint.created_at))
         .all()
     )
+    task_ids = [task.id for task in tasks]
+    landmarks = {
+        item.complaint_id: item
+        for item in db.query(LocationIntelligence).filter(LocationIntelligence.complaint_id.in_(task_ids)).all()
+    } if task_ids else {}
+    completion_photos = {}
+    if task_ids:
+        for item in db.query(ResolutionEvidence).filter(
+            ResolutionEvidence.complaint_id.in_(task_ids)
+        ).order_by(desc(ResolutionEvidence.created_at)).all():
+            completion_photos.setdefault(item.complaint_id, item.after_image_url)
+
+    active_locations = [t for t in tasks if t.latitude is not None and t.longitude is not None and t.status not in {"Resolved", "Rejected", "Dismissed"}]
+    average_route_distance = (
+        sum(calculate_haversine_distance(officer.current_lat, officer.current_lon, t.latitude, t.longitude) for t in active_locations)
+        / len(active_locations)
+        if active_locations and officer.current_lat is not None and officer.current_lon is not None else 0
+    )
 
     return {
         "officer": {
@@ -172,19 +193,36 @@ def get_officer_tasks(officer_id: int, db: Session = Depends(get_db)):
             "phone": officer.phone,
             "status": officer.status,
             "current_address": officer.current_address,
+            "current_lat": officer.current_lat,
+            "current_lon": officer.current_lon,
             "active_tickets": officer.active_tickets,
+            "daily_assignment_count": officer.daily_assignment_count or 0,
+            "daily_assignment_date": officer.daily_assignment_date,
+            "daily_assignment_limit": min(MAX_DAILY_ASSIGNMENTS, daily_assignment_limit_for_distance(average_route_distance)),
             "rating": officer.rating
         },
         "tasks": [
             {
                 "id": t.id,
+                "title": t.issue_type or t.category,
                 "issue_type": t.issue_type,
                 "category": t.category,
                 "severity": t.severity,
+                "severity_reason": t.severity_reason,
                 "status": t.status,
+                "description": t.description,
                 "address": t.address,
+                "landmark": landmarks.get(t.id).landmark if landmarks.get(t.id) else None,
+                "area": landmarks.get(t.id).area if landmarks.get(t.id) else None,
+                "ward": landmarks.get(t.id).ward if landmarks.get(t.id) else None,
                 "latitude": t.latitude,
                 "longitude": t.longitude,
+                "evidence": [
+                    {"type": evidence.type, "file_url": evidence.file_url, "description": evidence.description}
+                    for evidence in t.evidence_list
+                ],
+                "image_url": next((e.file_url for e in t.evidence_list if (e.type or "image").lower() == "image"), None),
+                "completion_photo_url": completion_photos.get(t.id),
                 "distance_km": t.officer_distance_km,
                 "eta_minutes": t.officer_eta_minutes,
                 "created_at": t.created_at.isoformat()

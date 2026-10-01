@@ -43,7 +43,7 @@ export const EvaluationPage = () => {
             <span>Quantitative Model Benchmarking</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900">
-            CivicSeva AI Agent Evaluation
+            Seva AI AI Agent Evaluation
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
             Empirical validation against a 25-case labeled civic dataset assessing accuracy, precision, recall, and grounding.

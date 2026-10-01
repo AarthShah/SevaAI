@@ -1,0 +1,78 @@
+[
+  {
+    "id": "VISION_ROAD_01",
+    "image": "frontend/image/pathole/before/0428f686-a431-4415-b4f9-9c4d888f2a92.jpg",
+    "expected_issue": "pothole",
+    "accepted_issues": ["road_damage"],
+    "accepted_categories": ["road_infrastructure"],
+    "accepted_departments": ["road"]
+  },
+  {
+    "id": "VISION_ROAD_02",
+    "image": "frontend/image/pathole/before/710c9870-fda0-4378-b9da-cac41844bb84.jpg",
+    "expected_issue": "pothole",
+    "accepted_issues": ["road_damage"],
+    "accepted_categories": ["road_infrastructure"],
+    "accepted_departments": ["road"]
+  },
+  {
+    "id": "VISION_WASTE_01",
+    "image": "frontend/image/garbage/before/0e61bca7-361e-466a-868a-36cae942872e.jpg",
+    "expected_issue": "garbage",
+    "accepted_categories": ["sanitation_waste", "waste_management"],
+    "accepted_departments": ["sanitation"]
+  },
+  {
+    "id": "VISION_WASTE_02",
+    "image": "frontend/image/garbage/before/15c24116-be33-4c0f-8aad-7ebb5f96f34c.jpg",
+    "expected_issue": "garbage",
+    "accepted_categories": ["sanitation_waste", "waste_management"],
+    "accepted_departments": ["sanitation"]
+  },
+  {
+    "id": "VISION_LIGHT_01",
+    "image": "frontend/image/Strretlight/before/7980af27-cf7d-4093-9f04-ce507bd7ff4c.jpg",
+    "expected_issue": "streetlight",
+    "accepted_issues": ["street_light", "street_light_outage"],
+    "accepted_categories": ["electricity_lighting", "electrical_street_lighting"],
+    "accepted_departments": ["electricity", "street light"]
+  },
+  {
+    "id": "VISION_LIGHT_02",
+    "image": "frontend/image/Strretlight/before/a05f46f6-17e6-48e4-bc82-542fc1eccee0.jpg",
+    "expected_issue": "streetlight",
+    "accepted_issues": ["street_light", "street_light_outage"],
+    "accepted_categories": ["electricity_lighting", "electrical_street_lighting"],
+    "accepted_departments": ["electricity", "street light"]
+  },
+  {
+    "id": "VISION_WATER_01",
+    "image": "frontend/image/water_leak/before/23c9fbe3-8d33-4dac-8e87-71b0504d787b.jpg",
+    "expected_issue": "water_leakage",
+    "accepted_issues": ["water_leak", "pipe_leakage"],
+    "accepted_categories": ["water_supply"],
+    "accepted_departments": ["water"]
+  },
+  {
+    "id": "VISION_WATER_02",
+    "image": "frontend/image/water_leak/before/4044b138-a258-4d0d-812d-a60ebda8ef19.jpg",
+    "expected_issue": "water_leakage",
+    "accepted_issues": ["water_leak", "pipe_leakage"],
+    "accepted_categories": ["water_supply"],
+    "accepted_departments": ["water"]
+  },
+  {
+    "id": "VISION_DRAIN_01",
+    "image": "frontend/image/Storm drainage/before/233e9aff-0079-4caa-a0be-b5bb62ff4ef2.jpg",
+    "expected_issue": "drainage",
+    "accepted_categories": ["drainage_sewerage", "drainage_sanitation"],
+    "accepted_departments": ["drain"]
+  },
+  {
+    "id": "VISION_DRAIN_02",
+    "image": "frontend/image/Storm drainage/before/d954fcbc-4eb9-45cc-88f8-03f29ce3f589.jpg",
+    "expected_issue": "drainage",
+    "accepted_categories": ["drainage_sewerage", "drainage_sanitation"],
+    "accepted_departments": ["drain"]
+  }
+]

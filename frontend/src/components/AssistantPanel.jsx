@@ -121,7 +121,7 @@ export const AssistantPanel = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h2 id="assistant-panel-title" className="text-xs font-bold text-white tracking-tight truncate">
-                CivicSeva Assistant
+                Seva AI Assistant
               </h2>
               {selectedComplaintId && (
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-purple-950 text-purple-300 border border-purple-800/60 flex-shrink-0">
@@ -138,7 +138,7 @@ export const AssistantPanel = () => {
         <button
           type="button"
           onClick={closeAssistant}
-          aria-label="Close CivicSeva Assistant"
+          aria-label="Close Seva AI Assistant"
           className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-slate-500"
         >
           <X className="w-4 h-4" />
@@ -156,10 +156,10 @@ export const AssistantPanel = () => {
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900">
-                Hi! I'm the CivicSeva Assistant.
+                Hi! I'm the Seva AI Assistant.
               </h3>
               <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                I can guide you through reporting civic issues, tracking complaints, understanding municipal statuses, and navigating CivicSeva.
+                I can guide you through reporting civic issues, tracking complaints, understanding municipal statuses, and navigating Seva AI.
               </p>
             </div>
             <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-left w-full">
@@ -248,7 +248,7 @@ export const AssistantPanel = () => {
             disabled={loading}
             maxLength={600}
             placeholder="Ask about this complaint or page..."
-            aria-label="Type message for CivicSeva Assistant"
+            aria-label="Type message for Seva AI Assistant"
             className="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:bg-white transition"
           />
           <button

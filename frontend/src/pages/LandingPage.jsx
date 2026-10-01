@@ -247,7 +247,7 @@ export const LandingPage = () => {
               </h1>
 
               <p className="text-base text-slate-600 max-w-lg leading-relaxed">
-                CivicSeva uses AI to understand your complaint, suggest the right department, and help you track it until resolution.
+                Seva AI uses AI to understand your complaint, suggest the right department, and help you track it until resolution.
               </p>
 
               {/* Action Buttons */}
@@ -292,7 +292,7 @@ export const LandingPage = () => {
           <div className="border-b border-slate-200 pb-3 mb-8">
             <div className="flex items-center gap-2">
               <h2 id="how-it-works-heading" className="text-xl sm:text-2xl font-bold text-slate-900">
-                How CivicSeva Works
+                How Seva AI Works
               </h2>
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                 7-Stage Pipeline
@@ -444,7 +444,7 @@ export const LandingPage = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h3 className="font-bold text-sm sm:text-base text-slate-900">
-                    CivicSeva Assistant
+                    Seva AI Assistant
                   </h3>
                   <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                     Contextual Guide
@@ -462,7 +462,7 @@ export const LandingPage = () => {
             <button
               type="button"
               onClick={openAssistant}
-              aria-label="Open CivicSeva Assistant Guide"
+              aria-label="Open Seva AI Assistant Guide"
               className="px-4 py-2.5 rounded-md bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-medium text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 self-start sm:self-auto flex-shrink-0"
             >
               <Bot className="w-3.5 h-3.5" />

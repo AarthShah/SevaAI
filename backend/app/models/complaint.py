@@ -19,6 +19,7 @@ class Complaint(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     address = Column(String(255), nullable=True)
+    landmark = Column(String(150), nullable=True)
     severity = Column(String(20), default="MEDIUM", nullable=False)  # LOW, MEDIUM, HIGH, CRITICAL
     status = Column(String(30), default="Submitted", nullable=False)
     # Draft, Submitted, Acknowledged, Assigned, In Progress, Awaiting Verification, Resolved, Rejected, Escalated
@@ -55,4 +56,3 @@ class Complaint(Base):
     history = relationship("ComplaintHistory", back_populates="complaint", cascade="all, delete-orphan")
     agent_actions = relationship("AgentAction", back_populates="complaint", cascade="all, delete-orphan")
     escalations = relationship("Escalation", back_populates="complaint", cascade="all, delete-orphan")
-
