@@ -87,21 +87,39 @@ def run_watchdog_sweep(db: Session) -> Dict[str, Any]:
 
         # Check 3: SLA Breach Risk
         sla_info = compute_sla_prediction(db, c)
-        if sla_info.get("risk_status") in ["HIGH_RISK", "BREACHED"]:
+        remaining_sla_hours = max(0.0, (sla_info.get("target_sla_hours") or 0) - (sla_info.get("elapsed_hours") or 0))
+        near_deadline = 0 < remaining_sla_hours <= 12
+        risk_status = sla_info.get("risk_status")
+        if risk_status in ["HIGH_RISK", "BREACHED"] or near_deadline:
             summary["sla_risk_count"] += 1
+            event_type = "SLA_BREACH_RISK" if risk_status in ["HIGH_RISK", "BREACHED"] else "SLA_DEADLINE_NEAR"
             existing = (
                 db.query(WatchdogEvent)
                 .filter(WatchdogEvent.complaint_id == c.id)
-                .filter(WatchdogEvent.event == "SLA_BREACH_RISK")
+                .filter(WatchdogEvent.event == event_type)
                 .first()
             )
-            if not existing:
+            if risk_status == "BREACHED":
+                reason = f"SLA breach probability is 100% (BREACHED). Target SLA: {sla_info.get('target_sla_hours')}h; exceeded by {round(sla_info.get('elapsed_hours', 0) - sla_info.get('target_sla_hours', 0), 1)}h."
+                recommended_action = "RECOMMEND_ESCALATION"
+                risk = "CRITICAL"
+            else:
+                reason = f"SLA deadline approaching: {round(remaining_sla_hours, 1)}h remain of the {sla_info.get('target_sla_hours')}h target. Breach probability is {round(sla_info.get('sla_breach_probability', 0) * 100)}% ({risk_status})."
+                recommended_action = "INCREASE_PRIORITY"
+                risk = "HIGH"
+
+            if existing and not existing.action_taken:
+                existing.reason = reason
+                existing.risk = risk
+                existing.recommended_action = recommended_action
+                existing.created_at = now
+            elif not existing:
                 ev = WatchdogEvent(
                     complaint_id=c.id,
-                    event="SLA_BREACH_RISK",
-                    risk="CRITICAL" if sla_info.get("risk_status") == "BREACHED" else "HIGH",
-                    reason=f"SLA breach probability is {round(sla_info.get('sla_breach_probability', 0) * 100)}% ({sla_info.get('risk_status')}). Target SLA: {sla_info.get('target_sla_hours')}h.",
-                    recommended_action="RECOMMEND_ESCALATION" if sla_info.get("risk_status") == "BREACHED" else "INCREASE_PRIORITY",
+                    event=event_type,
+                    risk=risk,
+                    reason=reason,
+                    recommended_action=recommended_action,
                     action_taken=False,
                     action_notes="Escalation ticket flagged for senior supervisor",
                     created_at=now
@@ -109,8 +127,7 @@ def run_watchdog_sweep(db: Session) -> Dict[str, Any]:
                 db.add(ev)
                 new_events.append(ev)
 
-    if new_events:
-        db.commit()
+    db.commit()
 
     summary["new_alerts_created"] = len(new_events)
     return summary

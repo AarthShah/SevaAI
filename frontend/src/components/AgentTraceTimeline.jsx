@@ -73,7 +73,7 @@ export const AgentTraceTimeline = ({ trace = [] }) => {
 
                 {step.output_summary && (
                   <p className="text-slate-800 font-medium mt-1 text-[11px] bg-white p-1.5 rounded border border-slate-100">
-                    <span className="text-emerald-600 font-bold mr-1">✓</span>
+                    <CheckCircle2 className="mr-1 inline h-3 w-3 text-emerald-600" aria-hidden="true" />
                     {step.output_summary}
                   </p>
                 )}

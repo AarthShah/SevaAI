@@ -80,7 +80,7 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      setErrorMsg('Microphone access denied or unavailable. You can also use one of the quick test voice prompts.');
+      setErrorMsg('Microphone access is unavailable. You can also select a sample voice statement.');
       setIsRecording(false);
     }
   };
@@ -161,27 +161,27 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
 
       {/* Demo sample voice triggers */}
       <div className="mt-3 pt-2.5 border-t border-slate-200 flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] text-slate-500 font-semibold">Demo Voice Presets:</span>
+      <span className="text-[10px] text-slate-500 font-semibold">Sample voice statements:</span>
         <button
           type="button"
           onClick={() => setSampleVoice("There is a large pothole near the main road college gate causing bike skids.")}
           className="text-[10px] bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded transition"
         >
-          🎙️ "Pothole on main road"
+          <Mic className="mr-1 inline h-3 w-3" aria-hidden="true" /> Pothole on main road
         </button>
         <button
           type="button"
           onClick={() => setSampleVoice("Drinking water pipe burst near market circle, potable water leaking continuously.")}
           className="text-[10px] bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded transition"
         >
-          🎙️ "Water pipe burst"
+          <Mic className="mr-1 inline h-3 w-3" aria-hidden="true" /> Water pipe burst
         </button>
         <button
           type="button"
           onClick={() => setSampleVoice("Streetlight pole has exposed wire sparking near children park, fatal electrocution danger!")}
           className="text-[10px] bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded transition"
         >
-          🎙️ "Exposed wire sparking"
+          <Mic className="mr-1 inline h-3 w-3" aria-hidden="true" /> Exposed wire sparking
         </button>
       </div>
     </div>

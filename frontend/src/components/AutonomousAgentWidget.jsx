@@ -83,7 +83,7 @@ export const AutonomousAgentWidget = ({ onSweepComplete }) => {
           ) : (
             <>
               <Sparkles className="w-4 h-4 text-slate-950" />
-              <span>⚡ Trigger Autonomous Sweep Now</span>
+              <span>Run Autonomous Review</span>
             </>
           )}
         </button>

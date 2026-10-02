@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "npm run build && node --test ../tests/test_field_crew_routing.mjs && cd .. && node tests/test_assistant_frontend_context.js && node tests/test_assistant_phase3_ui.js",
     "preview": "vite preview"
   },
   "dependencies": {

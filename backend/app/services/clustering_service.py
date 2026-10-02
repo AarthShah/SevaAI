@@ -30,6 +30,16 @@ _ISSUE_FAMILIES = (
 )
 _GENERIC = {"issue", "problem", "civic", "defect", "road", "roads", "municipal", "complaint", "report", "works", "work", "unclassified", "other", "general"}
 
+
+def _created_at_sort_key(report: Complaint) -> datetime:
+    """Return a comparable UTC timestamp for both legacy and current rows."""
+    created_at = report.created_at
+    if created_at is None:
+        return datetime.max.replace(tzinfo=timezone.utc)
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return created_at.astimezone(timezone.utc)
+
 _MASTER_LABELS = {
     "garbage": ("Garbage Accumulation", "waste_management"),
     "pothole": ("Road Pothole", "road_infrastructure"),
@@ -185,7 +195,7 @@ class ClusteringService:
             db.add(ComplaintClusterMember(cluster_id=cluster.id, complaint_id=complaint.id, similarity_score=1.0))
             complaint.cluster_id = cluster.id
             if master_reports:
-                master_report = min(master_reports, key=lambda report: report.created_at or datetime.min.replace(tzinfo=timezone.utc))
+                master_report = min(master_reports, key=_created_at_sort_key)
                 ClusteringService._inherit_master_decision(master_report, complaint)
             cluster.complaint_count = len(master_reports) + 1
             cluster.last_reported = datetime.now(timezone.utc)
@@ -241,7 +251,7 @@ class ClusteringService:
         ranked = sorted(reports, key=lambda report: (
             0 if _canonical_issue(report) in _MASTER_LABELS else 1,
             -(report.ai_confidence or 0),
-            report.created_at or datetime.min.replace(tzinfo=timezone.utc),
+            _created_at_sort_key(report),
         ))
         if not ranked:
             return
@@ -386,7 +396,7 @@ def cluster_unassigned_complaints(db: Session) -> Dict[str, Any]:
             open_members = [member for member in members if member.status not in {"Resolved", "Rejected"}]
             if len(open_members) < 2:
                 continue
-            master_report = min(open_members, key=lambda report: report.created_at or datetime.min.replace(tzinfo=timezone.utc))
+            master_report = min(open_members, key=_created_at_sort_key)
             now = datetime.now(timezone.utc)
             for child in open_members:
                 if child.id == master_report.id or child.requires_human_review:

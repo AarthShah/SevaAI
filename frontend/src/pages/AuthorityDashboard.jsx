@@ -19,6 +19,7 @@ import { AnalyticsPage } from './AnalyticsPage';
 import { AuditLogsPage } from './AuditLogsPage';
 import { complaintApi } from '../api/complaintApi';
 import { CivicIntelligenceDossier } from '../components/CivicIntelligenceDossier';
+import { AuthorityAlertCenter } from '../components/AuthorityAlertCenter';
 import { useAssistantContext } from '../context/AssistantContext';
 
 // 5 Municipal Departments
@@ -2110,6 +2111,20 @@ export const AuthorityDashboard = () => {
       {/* 2. CENTER CONTENT */}
       {/* ============================================================ */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-5 overflow-y-auto">
+        <AuthorityAlertCenter
+          issues={issues}
+          onOpenIssue={(complaintId) => {
+            const target = issues.find((issue) => issue.id.replace('#', '') === String(complaintId).replace('#', ''));
+            setActiveNav('triage');
+            setActiveTab('All Issues');
+            setSearchParams({});
+            if (target) handleRowClick(target);
+            else {
+              setSelectedIssueId(String(complaintId).replace('#', ''));
+              setIsDetailsDrawerOpen(true);
+            }
+          }}
+        />
         {/* VIEW A: TRIAGE & DISPATCH */}
         {activeNav === 'triage' && (
           <div className="space-y-5">

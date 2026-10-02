@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusBadge, SeverityBadge } from './StatusBadge';
 
@@ -132,7 +133,7 @@ export const LeafletMap = ({
                       to={`/track/${c.id}`}
                       className="block text-center py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
                     >
-                      View Complaint Details →
+                      View Complaint Details <ArrowRight className="ml-1 inline h-3 w-3" aria-hidden="true" />
                     </Link>
                   </div>
                 </div>

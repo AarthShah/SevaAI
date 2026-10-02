@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -9,18 +9,21 @@ import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
 import { LanguagePicker } from './components/LanguagePicker';
 
-// Pages
-import { LandingPage } from './pages/LandingPage';
-import { ReportIssuePage } from './pages/ReportIssuePage';
-import { TrackComplaintPage } from './pages/TrackComplaintPage';
-import { CitizenDashboard } from './pages/CitizenDashboard';
-import { AuthorityDashboard } from './pages/AuthorityDashboard';
-import { EvaluationPage } from './pages/EvaluationPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { TermsPage } from './pages/TermsPage';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { FieldCrewPage } from './pages/FieldCrewPage';
+// Load each page only when its route is opened so the public landing page stays light.
+const loadPage = (importer, exportName) =>
+  lazy(() => importer().then((module) => ({ default: module[exportName] })));
+
+const LandingPage = loadPage(() => import('./pages/LandingPage'), 'LandingPage');
+const ReportIssuePage = loadPage(() => import('./pages/ReportIssuePage'), 'ReportIssuePage');
+const TrackComplaintPage = loadPage(() => import('./pages/TrackComplaintPage'), 'TrackComplaintPage');
+const CitizenDashboard = loadPage(() => import('./pages/CitizenDashboard'), 'CitizenDashboard');
+const AuthorityDashboard = loadPage(() => import('./pages/AuthorityDashboard'), 'AuthorityDashboard');
+const EvaluationPage = loadPage(() => import('./pages/EvaluationPage'), 'EvaluationPage');
+const LoginPage = loadPage(() => import('./pages/LoginPage'), 'LoginPage');
+const RegisterPage = loadPage(() => import('./pages/RegisterPage'), 'RegisterPage');
+const TermsPage = loadPage(() => import('./pages/TermsPage'), 'TermsPage');
+const PrivacyPage = loadPage(() => import('./pages/PrivacyPage'), 'PrivacyPage');
+const FieldCrewPage = loadPage(() => import('./pages/FieldCrewPage'), 'FieldCrewPage');
 
 
 const AppContent = () => {
@@ -32,26 +35,28 @@ const AppContent = () => {
       <Navbar />
       <LanguagePicker />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/report" element={<ReportIssuePage />} />
-          <Route path="/track" element={<TrackComplaintPage />} />
-          <Route path="/track/:id" element={<TrackComplaintPage />} />
-          <Route path="/dashboard" element={<CitizenDashboard />} />
-          <Route path="/authority" element={<AuthorityDashboard />} />
-          <Route path="/crew" element={<FieldCrewPage />} />
-          <Route path="/map" element={<Navigate to="/authority?tab=MAP" replace />} />
-          <Route path="/analytics" element={<Navigate to="/authority?tab=ANALYTICS" replace />} />
-          <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
-          <Route path="/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
-          <Route path="/authority/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
-          <Route path="/evaluation" element={<EvaluationPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<div className="grid min-h-48 place-items-center text-sm text-slate-500" role="status">Loading page…</div>}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/report" element={<ReportIssuePage />} />
+            <Route path="/track" element={<TrackComplaintPage />} />
+            <Route path="/track/:id" element={<TrackComplaintPage />} />
+            <Route path="/dashboard" element={<CitizenDashboard />} />
+            <Route path="/authority" element={<AuthorityDashboard />} />
+            <Route path="/crew" element={<FieldCrewPage />} />
+            <Route path="/map" element={<Navigate to="/authority?tab=MAP" replace />} />
+            <Route path="/analytics" element={<Navigate to="/authority?tab=ANALYTICS" replace />} />
+            <Route path="/cctv" element={<Navigate to="/authority?tab=CCTV" replace />} />
+            <Route path="/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
+            <Route path="/authority/audit-logs" element={<Navigate to="/authority?tab=AUDIT_LOGS" replace />} />
+            <Route path="/evaluation" element={<EvaluationPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </main>
       {!isAuthority && <Footer />}
     </div>
@@ -64,7 +69,7 @@ export const App = () => {
       <AuthProvider>
         <NotificationProvider>
           <AssistantProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AppContent />
               <AssistantPanel />
             </Router>

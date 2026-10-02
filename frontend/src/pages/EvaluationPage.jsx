@@ -231,7 +231,11 @@ export const EvaluationPage = () => {
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-amber-50 text-amber-800 border border-amber-200'
                     }`}>
-                      {c.matches.issue && c.matches.department ? '✓ Full Match' : 'Partial Match'}
+                      <span className="inline-flex items-center gap-1">
+                        {c.matches.issue && c.matches.department
+                          ? <><CheckCircle2 className="h-3 w-3" aria-hidden="true" />Full Match</>
+                          : 'Partial Match'}
+                      </span>
                     </span>
                   </div>
 

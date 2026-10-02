@@ -234,7 +234,7 @@ export const LandingPage = () => {
               src="/kolhapur-municipal-corporation-enhanced.png"
               alt="Photorealistic view of Kolhapur Municipal Corporation's historic red-brick building"
               className="h-full min-h-[min(72svh,520px)] w-full object-cover object-center md:min-h-[calc(100svh-92px)]"
-              fetchPriority="high"
+              fetchpriority="high"
             />
         </figure>
         <div aria-hidden="true" className="absolute inset-y-0 left-0 -z-0 w-[72%] bg-gradient-to-r from-white via-white/75 to-transparent" />

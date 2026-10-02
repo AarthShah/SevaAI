@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, ArrowLeftRight, Search, Bell, Wrench } from 'lucide-react';
+import { LogOut, Menu, X, ArrowLeftRight, Search, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CivicLogo } from './CivicLogo';
 import { AssistantLauncher } from './AssistantLauncher';
+import { NotificationBell } from './NotificationBell';
 
 export const Navbar = () => {
   const { user, logout, switchDemoRole } = useAuth();
@@ -11,7 +12,7 @@ export const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navSearch, setNavSearch] = useState('');
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
   const isOfficial = user?.role === 'authority' || user?.role === 'admin' || location.pathname.startsWith('/authority');
 
   const handleToggleRole = async () => {
@@ -85,18 +86,7 @@ export const Navbar = () => {
               {/* Contextual Seva AI Assistant Launcher */}
               <AssistantLauncher variant="authority" />
 
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  className="p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition"
-                  title="Notifications"
-                >
-                  <Bell className="w-4 h-4" />
-                </button>
-                <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  1
-                </span>
-              </div>
+              <NotificationBell variant="dark" />
 
               {/* User Avatar */}
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-700">
@@ -212,9 +202,10 @@ export const Navbar = () => {
           </Link>
 
           {/* Navigation Links with Active Bottom-Indicator */}
-          <nav className="hidden md:flex items-center space-x-6 text-sm">
+          <nav aria-label="Main navigation" className="hidden md:flex h-full items-center gap-5 text-sm">
             <Link
               to="/"
+              aria-current={isActive('/') ? 'page' : undefined}
               className={`py-5 transition-colors border-b-2 font-medium ${
                 isActive('/')
                   ? 'border-blue-800 text-slate-900 font-semibold'
@@ -226,6 +217,7 @@ export const Navbar = () => {
 
             <Link
               to="/report"
+              aria-current={isActive('/report') ? 'page' : undefined}
               className={`py-5 transition-colors border-b-2 font-medium ${
                 isActive('/report')
                   ? 'border-blue-800 text-slate-900 font-semibold'
@@ -237,6 +229,7 @@ export const Navbar = () => {
 
             <Link
               to="/track"
+              aria-current={isActive('/track') ? 'page' : undefined}
               className={`py-5 transition-colors border-b-2 font-medium ${
                 isActive('/track')
                   ? 'border-blue-800 text-slate-900 font-semibold'
@@ -248,6 +241,7 @@ export const Navbar = () => {
 
             <Link
               to="/dashboard"
+              aria-current={isActive('/dashboard') ? 'page' : undefined}
               className={`py-5 transition-colors border-b-2 font-medium ${
                 isActive('/dashboard')
                   ? 'border-blue-800 text-slate-900 font-semibold'
@@ -264,7 +258,7 @@ export const Navbar = () => {
             <button
               onClick={handleToggleRole}
               title="Switch to Municipal Officer Portal"
-              className="px-2.5 py-1 text-xs font-medium border border-slate-300 rounded text-slate-700 bg-white hover:bg-slate-50 transition flex items-center gap-1.5"
+              className="hidden md:flex px-2.5 py-2 text-xs font-medium border border-slate-300 rounded text-slate-700 bg-white hover:bg-slate-50 transition items-center gap-1.5"
             >
               <ArrowLeftRight className="w-3 h-3 text-slate-500" />
               <span>Municipal Portal</span>
@@ -290,7 +284,7 @@ export const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="hidden sm:flex items-center space-x-2">
                 <Link
                   to="/login"
                   className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
@@ -348,6 +342,17 @@ export const Navbar = () => {
             >
               My Complaints
             </Link>
+
+            {!user && (
+              <div className="flex gap-2 border-t border-slate-200 px-3 pt-3">
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 rounded border border-slate-300 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Sign in
+                </Link>
+                <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 rounded bg-blue-800 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-900">
+                  Register
+                </Link>
+              </div>
+            )}
 
             <div className="pt-2 border-t border-slate-200">
               <button

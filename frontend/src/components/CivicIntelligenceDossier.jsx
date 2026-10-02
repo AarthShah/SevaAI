@@ -5,7 +5,7 @@ import {
   Building, Clock, Sparkles, CheckCircle2,
   ChevronDown, ChevronUp, RefreshCw,
   Check, X, HelpCircle, Info, AlertTriangle,
-  Users, ChevronRight, ExternalLink,
+  Users, ChevronRight, ExternalLink, ArrowRight,
   Folder, FolderOpen, FileText, Terminal
 } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
@@ -313,7 +313,7 @@ export const CivicIntelligenceDossier = ({
     setActionInProgress(true);
     try {
       await complaintApi.confirmResolution(cleanId, 'Supervisor confirmed work is done.');
-      flash('✅ Work confirmed. Complaint closed.');
+      flash('Work confirmed. Complaint closed.');
       if (onStatusUpdated) onStatusUpdated('Resolved');
       loadAllIntelligence();
     } catch (err) { alert('Error: ' + err.message); }
@@ -326,7 +326,7 @@ export const CivicIntelligenceDossier = ({
     try {
       await complaintApi.reopenResolution(cleanId, reopenReason);
       setIsReopenModalOpen(false); setReopenReason('');
-      flash('🔄 Sent back for re-work.');
+      flash('Report returned for additional work.');
       if (onStatusUpdated) onStatusUpdated('In Progress');
       loadAllIntelligence();
     } catch (err) { alert('Error: ' + err.message); }
@@ -496,7 +496,7 @@ export const CivicIntelligenceDossier = ({
                 )}
               </div>
               <span className="text-emerald-700 font-mono text-[10.5px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
-                ⌖ 150m Radius
+                <MapPin className="mr-1 inline h-3 w-3" aria-hidden="true" />150m radius
               </span>
             </div>
 
@@ -585,7 +585,7 @@ export const CivicIntelligenceDossier = ({
                                     <span className="text-slate-300 font-mono text-[12px] whitespace-pre select-none">
                                       {childIndent}{filePrefix}
                                     </span>
-                                    <span className="text-slate-400 text-[12px] select-none mt-0.5">📄</span>
+                                    <FileText className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
                                     <div className="flex-1 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 font-sans">
                                       {/* Click to open in issue page */}
                                       <span className="font-mono font-bold text-blue-600 group-hover/item:text-blue-800 group-hover/item:underline inline-flex items-center gap-1 shrink-0 text-[12px]">
@@ -731,7 +731,11 @@ export const CivicIntelligenceDossier = ({
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     : 'bg-red-50 text-red-700 border-red-200'
                 }`}>
-                  {locationData.consistency_flag === 'CONSISTENT' ? '✓ Yes' : '✗ Mismatch'}
+                  <span className="inline-flex items-center gap-1">
+                    {locationData.consistency_flag === 'CONSISTENT'
+                      ? <><Check className="h-3 w-3" aria-hidden="true" />Yes</>
+                      : <><X className="h-3 w-3" aria-hidden="true" />Mismatch</>}
+                  </span>
                 </span>
               </div>
             )}
@@ -795,7 +799,7 @@ export const CivicIntelligenceDossier = ({
                 onClick={() => setIsOverrideModalOpen(true)}
                 className="w-full py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-medium text-[12px] transition cursor-pointer"
               >
-                Change Department Manually →
+                Change Department Manually <ArrowRight className="ml-1 inline h-3 w-3" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -820,20 +824,20 @@ export const CivicIntelligenceDossier = ({
           <div className="pt-3 space-y-2">
             {evidenceData.grounded_decisions?.map((dec, i) => {
               const labels = {
-                'AUTHENTICITY_VERIFICATION': { icon: '✓', label: 'Photo is real' },
-                'SEVERITY_CLASSIFICATION': { icon: '✓', label: 'Severity assessed' },
-                'DEPARTMENT_ROUTING': { icon: '✓', label: 'Team identified' },
-                'SLA_PREDICTION': { icon: '✓', label: 'Deadline estimated' },
+                'AUTHENTICITY_VERIFICATION': { label: 'Photo verified' },
+                'SEVERITY_CLASSIFICATION': { label: 'Severity assessed' },
+                'DEPARTMENT_ROUTING': { label: 'Department identified' },
+                'SLA_PREDICTION': { label: 'Deadline estimated' },
               };
-              const meta = labels[dec.facet] || { icon: '✓', label: dec.facet.replace(/_/g, ' ') };
+              const meta = labels[dec.facet] || { label: dec.facet.replace(/_/g, ' ') };
               const isPass = dec.confidence >= 0.5;
 
               return (
                 <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[12px] space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isPass ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {meta.icon}
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center ${isPass ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {isPass ? <Check className="h-3 w-3" aria-hidden="true" /> : <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
                       </span>
                       <span className="font-semibold text-slate-700">{meta.label}</span>
                     </div>
@@ -860,9 +864,9 @@ export const CivicIntelligenceDossier = ({
           infoText="The AI compares before and after photos to check if the problem was really fixed."
           badge={
             resolutionData?.status === 'LIKELY_RESOLVED' || currentStatus === 'Resolved'
-              ? '✓ Looks Fixed'
+              ? <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" aria-hidden="true" />Looks Fixed</span>
               : resolutionData?.status === 'LIKELY_NOT_RESOLVED'
-              ? '✗ Not Fixed'
+              ? <span className="inline-flex items-center gap-1"><X className="h-3 w-3" aria-hidden="true" />Not Fixed</span>
               : 'Needs Review'
           }
           badgeColor={
@@ -905,7 +909,7 @@ export const CivicIntelligenceDossier = ({
                   type="button" onClick={handleConfirmResolution} disabled={actionInProgress}
                   className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[12px] transition cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Check className="w-3.5 h-3.5" /> Yes, Done ✓
+                  <Check className="w-3.5 h-3.5" /> Yes, Done
                 </button>
                 <button
                   type="button" onClick={() => setIsReopenModalOpen(true)} disabled={actionInProgress}
@@ -957,8 +961,8 @@ export const CivicIntelligenceDossier = ({
                   <span className="text-amber-700 text-[11px] font-medium">{Math.round((cand.duplicate_probability || 0.75) * 100)}% alike</span>
                 </div>
                 <div className="text-[11px] text-slate-400 flex gap-3 mt-0.5">
-                  {cand.distance_meters != null && <span>📍 {Math.round(cand.distance_meters)}m away</span>}
-                  {cand.text_similarity != null && <span>📝 {Math.round(cand.text_similarity * 100)}% same text</span>}
+                  {cand.distance_meters != null && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" aria-hidden="true" />{Math.round(cand.distance_meters)}m away</span>}
+                  {cand.text_similarity != null && <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" aria-hidden="true" />{Math.round(cand.text_similarity * 100)}% text match</span>}
                 </div>
               </div>
             ))}

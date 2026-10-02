@@ -20,6 +20,7 @@ is used automatically when:
 import os
 import json
 import logging
+import httpx
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent

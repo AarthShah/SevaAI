@@ -19,6 +19,7 @@ Verifies:
 """
 
 import sys
+import os
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -27,6 +28,9 @@ from unittest.mock import patch, MagicMock
 _ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(_ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(_ROOT_DIR))
+
+# Keep the backend suite deterministic and prevent test prompts from leaving the local process.
+os.environ["ASSISTANT_LLM_PROVIDER"] = "deterministic"
 
 from fastapi.testclient import TestClient
 
@@ -235,14 +239,19 @@ class TestAssistantBackend(unittest.TestCase):
 
     # 11. LLM failure uses deterministic fallback
     def test_11_llm_failure_uses_deterministic_fallback(self):
+        from backend.app.services import llm_provider
         from backend.app.services.llm_provider import OpenAICompatibleProvider
         provider = OpenAICompatibleProvider(api_key="sk-fake", base_url="https://invalid-url-civicseva-test.local")
-        reply, err = provider.respond(
-            message="Status inquiry",
-            system_prompt="",
-            history=[],
-            ctx=None,
-        )
+        with patch(
+            "backend.app.services.llm_provider.httpx.Client",
+            side_effect=llm_provider.httpx.ConnectError("simulated test connection failure"),
+        ):
+            reply, err = provider.respond(
+                message="Status inquiry",
+                system_prompt="",
+                history=[],
+                ctx=None,
+            )
         self.assertEqual(err, "llm_unavailable")
         self.assertIsNotNone(reply)
         self.assertTrue(len(reply) > 0)

@@ -90,8 +90,11 @@ console.log('  [PASS] AuthorityDashboard activeNav and activeTab properly mapped
 
 // 8. Verify AuthorityDashboard does NOT send default CS1039
 console.log('\n[TEST 8] AuthorityDashboard does not send default CS1039 when drawer is closed');
-assert(authCode.includes('(activeNav === \'triage\' && isDrawerOpenMobile)'), 'Selected complaint must be gated by explicit drawer state');
-assert(authCode.includes('effectiveSelectedComplaintId'), 'Selected complaint must use explicit signal');
+const selectedComplaintGate = authCode.match(/const effectiveSelectedComplaintId\s*=\s*([\s\S]*?);/);
+assert(selectedComplaintGate, 'Selected complaint must be derived through an explicit gate');
+assert(selectedComplaintGate[1].includes('isDetailsDrawerOpen'), 'Selected complaint must be gated by the details drawer');
+assert(selectedComplaintGate[1].includes("activeNav === 'triage'"), 'Selected complaint must be limited to the triage page');
+assert(authCode.includes('selectedComplaintId: effectiveSelectedComplaintId'), 'Assistant context must use the gated complaint ID');
 console.log('  [PASS] AuthorityDashboard gates selectedComplaintId behind explicit open drawer signal');
 
 // 9. Verify conversation history is capped at 10 exchanges

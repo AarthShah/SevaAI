@@ -30,6 +30,63 @@ const extraDictionaries = {
   }
 };
 
+Object.assign(extraDictionaries.hi, {
+  'AI Alerts': 'एआई अलर्ट', 'Needs Attention': 'ध्यान देना आवश्यक',
+  'Important deadlines and work that needs attention': 'महत्वपूर्ण समय-सीमाएं और ध्यान देने योग्य कार्य',
+  'Alerts are generated from municipal workflow and SLA data. Review an alert before taking action.': 'अलर्ट नगरपालिका कार्यप्रवाह और SLA डेटा से बनते हैं। कार्रवाई से पहले अलर्ट की समीक्षा करें।',
+  'Scanning deadlines and active workflows…': 'समय-सीमाओं और सक्रिय कार्यों की जांच हो रही है…',
+  'No unacknowledged urgent alerts. Municipal workflows are being monitored.': 'कोई नया जरूरी अलर्ट नहीं है। नगरपालिका कार्यप्रवाह की निगरानी जारी है।',
+  'Collapse alerts': 'अलर्ट समेटें', 'Expand alerts': 'अलर्ट खोलें', 'Suggested action': 'सुझाई गई कार्रवाई',
+  'SLA DEADLINE APPROACHING': 'SLA समय-सीमा नजदीक', 'SLA BREACH RISK': 'SLA उल्लंघन का जोखिम',
+  'STALLED WORKFLOW': 'रुका हुआ कार्यप्रवाह', 'UNASSIGNED PRIORITY ISSUE': 'बिना आवंटित प्राथमिकता समस्या',
+  CRITICAL: 'अति गंभीर', HIGH: 'उच्च', MEDIUM: 'मध्यम', LOW: 'कम',
+  SEND_REMINDER: 'अनुस्मारक भेजें', RECOMMEND_ESCALATION: 'मामला आगे बढ़ाएं',
+  INCREASE_PRIORITY: 'प्राथमिकता बढ़ाएं', RECOMMEND_REASSIGNMENT: 'पुनः आवंटित करें', 'Review report': 'रिपोर्ट की समीक्षा करें',
+  'Saving…': 'सहेजा जा रहा है…', "I've Seen": 'मैंने देख लिया', 'citizen reports': 'नागरिक रिपोर्ट'
+});
+Object.assign(extraDictionaries.mr, {
+  'AI Alerts': 'एआय सूचना', 'Needs Attention': 'लक्ष देणे आवश्यक',
+  'Important deadlines and work that needs attention': 'महत्त्वाच्या मुदती आणि लक्ष देण्याची कामे',
+  'Alerts are generated from municipal workflow and SLA data. Review an alert before taking action.': 'सूचना महानगरपालिका कामकाज आणि SLA डेटावरून तयार होतात. कृतीपूर्वी सूचनेचा आढावा घ्या.',
+  'Scanning deadlines and active workflows…': 'मुदती आणि सुरू असलेल्या कामांची तपासणी सुरू आहे…',
+  'No unacknowledged urgent alerts. Municipal workflows are being monitored.': 'न पाहिलेली तातडीची सूचना नाही. महानगरपालिका कामकाजावर देखरेख सुरू आहे.',
+  'Collapse alerts': 'सूचना बंद करा', 'Expand alerts': 'सूचना उघडा', 'Suggested action': 'सुचवलेली कृती',
+  'SLA DEADLINE APPROACHING': 'SLA मुदत जवळ आली आहे', 'SLA BREACH RISK': 'SLA उल्लंघनाचा धोका',
+  'STALLED WORKFLOW': 'कामकाज रखडले आहे', 'UNASSIGNED PRIORITY ISSUE': 'प्राधान्याचे काम वाटप झालेले नाही',
+  CRITICAL: 'अत्यंत गंभीर', HIGH: 'उच्च', MEDIUM: 'मध्यम', LOW: 'कमी',
+  SEND_REMINDER: 'स्मरणपत्र पाठवा', RECOMMEND_ESCALATION: 'वरिष्ठांकडे पाठवा',
+  INCREASE_PRIORITY: 'प्राधान्य वाढवा', RECOMMEND_REASSIGNMENT: 'पुन्हा वाटप करा', 'Review report': 'अहवाल तपासा',
+  'Saving…': 'जतन करत आहे…', "I've Seen": 'मी पाहिले', 'citizen reports': 'नागरिकांच्या तक्रारी'
+});
+Object.assign(extraDictionaries.kn, {
+  'AI Alerts': 'AI ಎಚ್ಚರಿಕೆಗಳು', 'Needs Attention': 'ಗಮನ ಅಗತ್ಯ',
+  'Important deadlines and work that needs attention': 'ಪ್ರಮುಖ ಗಡುವುಗಳು ಮತ್ತು ಗಮನಿಸಬೇಕಾದ ಕೆಲಸಗಳು',
+  'Alerts are generated from municipal workflow and SLA data. Review an alert before taking action.': 'ನಗರಸಭೆಯ ಕಾರ್ಯಪ್ರವಾಹ ಮತ್ತು SLA ಮಾಹಿತಿಯಿಂದ ಎಚ್ಚರಿಕೆಗಳು ಸೃಷ್ಟಿಯಾಗುತ್ತವೆ. ಕ್ರಮಕ್ಕೂ ಮೊದಲು ಪರಿಶೀಲಿಸಿ.',
+  'Scanning deadlines and active workflows…': 'ಗಡುವುಗಳು ಮತ್ತು ಸಕ್ರಿಯ ಕಾರ್ಯಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ…',
+  'No unacknowledged urgent alerts. Municipal workflows are being monitored.': 'ಪರಿಶೀಲಿಸದ ತುರ್ತು ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ. ನಗರಸಭೆಯ ಕಾರ್ಯಪ್ರವಾಹವನ್ನು ಗಮನಿಸಲಾಗುತ್ತಿದೆ.',
+  'Collapse alerts': 'ಎಚ್ಚರಿಕೆಗಳನ್ನು ಮುಚ್ಚಿ', 'Expand alerts': 'ಎಚ್ಚರಿಕೆಗಳನ್ನು ತೆರೆಯಿರಿ', 'Suggested action': 'ಸೂಚಿಸಿದ ಕ್ರಮ',
+  'SLA DEADLINE APPROACHING': 'SLA ಗಡುವು ಸಮೀಪಿಸಿದೆ', 'SLA BREACH RISK': 'SLA ಉಲ್ಲಂಘನೆಯ ಅಪಾಯ',
+  'STALLED WORKFLOW': 'ಸ್ಥಗಿತಗೊಂಡ ಕಾರ್ಯಪ್ರವಾಹ', 'UNASSIGNED PRIORITY ISSUE': 'ಹಂಚಿಕೆಯಾಗದ ಆದ್ಯತೆಯ ಸಮಸ್ಯೆ',
+  CRITICAL: 'ಅತ್ಯಂತ ಗಂಭೀರ', HIGH: 'ಹೆಚ್ಚು', MEDIUM: 'ಮಧ್ಯಮ', LOW: 'ಕಡಿಮೆ',
+  SEND_REMINDER: 'ಜ್ಞಾಪನೆ ಕಳುಹಿಸಿ', RECOMMEND_ESCALATION: 'ಮೇಲಧಿಕಾರಿಗೆ ಕಳುಹಿಸಿ',
+  INCREASE_PRIORITY: 'ಆದ್ಯತೆ ಹೆಚ್ಚಿಸಿ', RECOMMEND_REASSIGNMENT: 'ಮರುಹಂಚಿಕೆ ಮಾಡಿ', 'Review report': 'ವರದಿ ಪರಿಶೀಲಿಸಿ',
+  'Saving…': 'ಉಳಿಸಲಾಗುತ್ತಿದೆ…', "I've Seen": 'ನೋಡಿದ್ದೇನೆ', 'citizen reports': 'ನಾಗರಿಕ ವರದಿಗಳು'
+});
+Object.assign(extraDictionaries.ta, {
+  'AI Alerts': 'AI எச்சரிக்கைகள்', 'Needs Attention': 'கவனம் தேவை',
+  'Important deadlines and work that needs attention': 'முக்கிய காலக்கெடுகள் மற்றும் கவனம் தேவைப்படும் பணிகள்',
+  'Alerts are generated from municipal workflow and SLA data. Review an alert before taking action.': 'நகராட்சி பணிச்செயல் மற்றும் SLA தரவிலிருந்து எச்சரிக்கைகள் உருவாகின்றன. நடவடிக்கைக்கு முன் மதிப்பாய்வு செய்யவும்.',
+  'Scanning deadlines and active workflows…': 'காலக்கெடுகள் மற்றும் செயல்பாட்டிலுள்ள பணிகள் சரிபார்க்கப்படுகின்றன…',
+  'No unacknowledged urgent alerts. Municipal workflows are being monitored.': 'கவனிக்கப்படாத அவசர எச்சரிக்கைகள் இல்லை. நகராட்சி பணிகள் கண்காணிக்கப்படுகின்றன.',
+  'Collapse alerts': 'எச்சரிக்கைகளைச் சுருக்கவும்', 'Expand alerts': 'எச்சரிக்கைகளை விரிக்கவும்', 'Suggested action': 'பரிந்துரைக்கப்பட்ட நடவடிக்கை',
+  'SLA DEADLINE APPROACHING': 'SLA காலக்கெடு நெருங்குகிறது', 'SLA BREACH RISK': 'SLA மீறல் அபாயம்',
+  'STALLED WORKFLOW': 'நிறுத்தப்பட்ட பணிச்செயல்', 'UNASSIGNED PRIORITY ISSUE': 'ஒதுக்கப்படாத முன்னுரிமைப் பிரச்சினை',
+  CRITICAL: 'மிகவும் அவசரம்', HIGH: 'உயர்', MEDIUM: 'நடுத்தரம்', LOW: 'குறைவு',
+  SEND_REMINDER: 'நினைவூட்டல் அனுப்பவும்', RECOMMEND_ESCALATION: 'மேலதிகாரிக்கு அனுப்பவும்',
+  INCREASE_PRIORITY: 'முன்னுரிமையை உயர்த்தவும்', RECOMMEND_REASSIGNMENT: 'மறுஒதுக்கீடு செய்யவும்', 'Review report': 'புகாரை மதிப்பாய்வு செய்யவும்',
+  'Saving…': 'சேமிக்கப்படுகிறது…', "I've Seen": 'பார்த்துவிட்டேன்', 'citizen reports': 'குடிமக்கள் புகார்கள்'
+});
+
 const translationFor = (lang, source) => dictionaries[lang]?.[source] || extraDictionaries[lang]?.[source];
 const allTranslations = (lang) => ({ ...dictionaries[lang], ...extraDictionaries[lang] });
 

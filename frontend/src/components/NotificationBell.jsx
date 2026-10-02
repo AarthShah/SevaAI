@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Bell, Check } from 'lucide-react';
+import { ArrowRight, Bell, Check } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { Link } from 'react-router-dom';
 
-export const NotificationBell = () => {
+export const NotificationBell = ({ variant = 'light' }) => {
   const { notifications, unreadCount, markAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
 
@@ -11,7 +11,7 @@ export const NotificationBell = () => {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
+        className={`relative p-2 rounded-md transition-colors focus-visible:outline ${variant === 'dark' ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5" />
@@ -50,7 +50,7 @@ export const NotificationBell = () => {
                         onClick={() => setOpen(false)}
                         className="inline-block mt-1 text-emerald-600 font-semibold hover:underline"
                       >
-                        View Complaint #{n.complaint_id} →
+                        View Complaint #{n.complaint_id} <ArrowRight className="ml-1 inline h-3 w-3" aria-hidden="true" />
                       </Link>
                     )}
                   </div>
