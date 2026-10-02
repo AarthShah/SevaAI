@@ -5,9 +5,33 @@ applications:
       phases:
         build:
           commands:
-            - cd "$CODEBUILD_SRC_DIR"
-            - npm ci --cache .npm --prefer-offline
-            - npx ampx pipeline-deploy --branch "$AWS_BRANCH" --app-id "$AWS_APP_ID"
+            - |
+              set -eu
+              echo "Backend build working directory: $PWD"
+              echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR:-<unset>}"
+
+              if [ -f package.json ] && [ -f package-lock.json ] && [ -f amplify/backend.ts ]; then
+                REPO_ROOT="$PWD"
+              elif [ -f ../package.json ] && [ -f ../package-lock.json ] && [ -f ../amplify/backend.ts ]; then
+                REPO_ROOT="$(cd .. && pwd)"
+              elif [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -f "$CODEBUILD_SRC_DIR/package.json" ] && [ -f "$CODEBUILD_SRC_DIR/package-lock.json" ] && [ -f "$CODEBUILD_SRC_DIR/amplify/backend.ts" ]; then
+                REPO_ROOT="$CODEBUILD_SRC_DIR"
+              elif [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -f "$CODEBUILD_SRC_DIR/../package.json" ] && [ -f "$CODEBUILD_SRC_DIR/../package-lock.json" ] && [ -f "$CODEBUILD_SRC_DIR/../amplify/backend.ts" ]; then
+                REPO_ROOT="$(cd "$CODEBUILD_SRC_DIR/.." && pwd)"
+              else
+                echo "Could not locate the SevaAI repository root (package.json, package-lock.json, amplify/backend.ts)."
+                echo "Current directory contents:"
+                ls -la
+                exit 1
+              fi
+
+              cd "$REPO_ROOT"
+              echo "Using Amplify Gen 2 repository root: $PWD"
+              node --version
+              npm --version
+              node -e "const lock = require('./package-lock.json'); if (lock.lockfileVersion < 1) process.exit(1); console.log('Root npm lockfile version:', lock.lockfileVersion)"
+              npm ci --cache .npm --prefer-offline
+              npx ampx pipeline-deploy --branch "$AWS_BRANCH" --app-id "$AWS_APP_ID"
     frontend:
       phases:
         preBuild:
