@@ -131,6 +131,20 @@ const POTHOLE_EXAMPLE = [
   { step: '8', title: 'Resolution verified', desc: 'Asphalt repaired, photographic proof logged, ticket closed.', icon: CheckCheck, color: 'text-emerald-700 bg-emerald-50 border border-emerald-200/70' }
 ];
 
+const AI_OUTPUT_EXAMPLE = [
+  ['Issue', 'Pothole / road surface defect'],
+  ['Department', 'Road Infrastructure'],
+  ['Severity', 'High: arterial traffic risk'],
+  ['Confidence', '94%'],
+];
+
+const DIFFERENTIATORS = [
+  ['Duplicate-aware intake', 'Matches a new report to nearby open complaints before creating another docket.'],
+  ['Human verification', 'AI recommends; a citizen or officer confirms the evidence, location, and route.'],
+  ['Grounded routing', 'Department suggestions come from municipal jurisdiction rules and location context.'],
+  ['Proof of resolution', 'Before and after evidence is compared and attached to the audit trail.'],
+];
+
 const COMMON_ISSUES = [
   {
     title: 'Potholes',
@@ -224,7 +238,7 @@ export const LandingPage = () => {
   // State for progressive technical disclosure and example visibility
   const [showTechnicalView, setShowTechnicalView] = useState(false);
   const [activeTechTab, setActiveTechTab] = useState('assistant'); // 'assistant' | 'aiml'
-  const [showPotholeExample, setShowPotholeExample] = useState(false);
+  const [showPotholeExample, setShowPotholeExample] = useState(true);
 
   return (
     <div className="bg-white">
@@ -413,6 +427,56 @@ export const LandingPage = () => {
                   );
                 })}
               </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-8 bg-white border border-slate-200 rounded-lg p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-4">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">One complaint, followed end to end</h3>
+                  <p className="text-xs text-slate-500 mt-1">Report → AI analysis → department → verification → resolution</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Resolved</span>
+              </div>
+              <div className="space-y-3 text-xs">
+                <div className="flex gap-3"><span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-mono font-bold flex items-center justify-center">1</span><p><strong className="text-slate-900">Resident report:</strong> “Deep pothole near MG Road bus stop; two-wheelers are swerving into traffic.” Photo and GPS pin attached.</p></div>
+                <div className="flex gap-3"><span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 font-mono font-bold flex items-center justify-center">2</span><p><strong className="text-slate-900">AI analysis:</strong> vision identifies a pothole, NLP structures the complaint, and severity scoring marks it High.</p></div>
+                <div className="ml-8 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {AI_OUTPUT_EXAMPLE.map(([label, value]) => <div key={label} className="rounded border border-slate-200 bg-slate-50 p-2"><span className="block text-[10px] uppercase font-bold text-slate-400">{label}</span><strong className="text-[11px] text-slate-800">{value}</strong></div>)}
+                </div>
+                <div className="flex gap-3"><span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-mono font-bold flex items-center justify-center">3</span><p><strong className="text-slate-900">Duplicate check:</strong> SevaAI finds an open complaint 42 m away with the same issue and offers to link the evidence instead of creating a duplicate docket.</p></div>
+                <div className="ml-8 rounded border border-amber-300 bg-amber-50 p-3 text-amber-950"><strong>Possible duplicate · 91% match</strong><span className="block mt-0.5">Existing docket #CVS-2025-00123 · MG Road area · In Progress</span><button type="button" className="mt-2 font-semibold text-amber-900 underline">Review linked complaint</button></div>
+                <div className="flex gap-3"><span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold flex items-center justify-center">4</span><p><strong className="text-slate-900">Human verification:</strong> the resident confirms the suggested issue, department, location, and duplicate link. Only then is the report submitted.</p></div>
+                <div className="flex gap-3"><span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold flex items-center justify-center">5</span><p><strong className="text-slate-900">Resolution:</strong> Road Infrastructure repairs the surface; field crew uploads an after photo; SevaAI compares it with the before photo and records the verified closure.</p></div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 bg-slate-900 rounded-lg p-5 sm:p-6 text-white">
+              <div className="flex items-center gap-2 mb-1"><Camera className="w-4 h-4 text-sky-300" /><h3 className="text-base font-bold">Before vs After SevaAI</h3></div>
+              <p className="text-xs text-slate-300 leading-relaxed mb-4">A complaint is not “resolved” because a status changed. The evidence trail shows what was reported and what the crew fixed.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div><img src="/sample_evidence/pothole.jpg" alt="Pothole before repair" className="w-full aspect-square object-cover rounded border border-slate-600" /><span className="block mt-1 text-[10px] uppercase text-slate-400 font-bold">Before · reported</span></div>
+                <div><img src="/sample_evidence/pothole_after.jpg" alt="Road after pothole repair" className="w-full aspect-square object-cover rounded border border-emerald-400" /><span className="block mt-1 text-[10px] uppercase text-emerald-300 font-bold">After · verified</span></div>
+              </div>
+              <div className="mt-4 border-t border-slate-700 pt-3 text-xs text-slate-300"><strong className="text-white">Human signs off:</strong> AI highlights the visual change; an authorized reviewer confirms the repair and closes the docket.</div>
+            </div>
+          </div>
+
+          <div className="mt-8 bg-white border border-slate-200 rounded-lg p-5 sm:p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4"><Sparkles className="w-4 h-4 text-purple-700" /><h3 className="text-base sm:text-lg font-bold text-slate-900">Exactly where AI is used</h3></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="border-l-2 border-purple-500 pl-3"><strong className="text-slate-900">Vision</strong><p className="text-slate-600 mt-1">Reads uploaded photos and CCTV frames to identify civic defects.</p></div>
+              <div className="border-l-2 border-blue-500 pl-3"><strong className="text-slate-900">Language</strong><p className="text-slate-600 mt-1">Extracts issue, location clues, and a formal complaint from text or voice.</p></div>
+              <div className="border-l-2 border-amber-500 pl-3"><strong className="text-slate-900">Decision support</strong><p className="text-slate-600 mt-1">Scores severity, confidence, and duplicate similarity for review.</p></div>
+              <div className="border-l-2 border-emerald-500 pl-3"><strong className="text-slate-900">Verification</strong><p className="text-slate-600 mt-1">Compares before/after evidence and explains what changed; humans approve closure.</p></div>
+            </div>
+          </div>
+
+          <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-5 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-4">What makes SevaAI different?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              {DIFFERENTIATORS.map(([title, desc]) => <div key={title} className="bg-white border border-slate-200 rounded p-3"><strong className="text-slate-900">{title}</strong><p className="text-slate-600 mt-1 leading-relaxed">{desc}</p></div>)}
             </div>
           </div>
 
