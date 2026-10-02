@@ -1,0 +1,15 @@
+{
+  "name": "sevaai-amplify-infrastructure",
+  "private": true,
+  "type": "module",
+  "description": "AWS Amplify Gen 2 deployment tooling for the SevaAI monorepo",
+  "scripts": {
+    "amplify:sandbox": "ampx sandbox",
+    "amplify:deploy": "ampx pipeline-deploy"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.25.1",
+    "@aws-amplify/backend-cli": "^1.10.0",
+    "typescript": "^5.9.3"
+  }
+}

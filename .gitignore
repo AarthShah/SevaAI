@@ -37,6 +37,8 @@ node_modules/
 frontend/dist/
 dist/
 .vite/
+amplify_outputs.json
+amplify/.temp/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

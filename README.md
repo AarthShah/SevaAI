@@ -309,6 +309,50 @@ docker compose up --build
 
 ---
 
+## AWS Amplify Gen 2 (Mumbai) deployment
+
+Amplify Gen 2 is configured as an additional deployment layer for this monorepo. The current Amplify backend is intentionally empty: FastAPI continues to own the API, JWT authentication, PostgreSQL/SQLAlchemy data, and all AI processing. Amplify does not create a second auth system or database. Docker and Docker Compose remain available for local development.
+
+### Required Amplify configuration
+
+1. Connect this GitHub repository and the `main` branch in the AWS Amplify Console in Asia Pacific (Mumbai), `ap-south-1`.
+2. Select the monorepo option and set the application root to `frontend`. Amplify sets `AMPLIFY_MONOREPO_APP_ROOT` from that selection.
+3. Enable the Amplify Gen 2 backend option. The root `amplify/backend.ts` is the Gen 2 entry point; the root `amplify.yml` deploys this backend configuration and builds the Vite app from `frontend/`.
+4. Add the frontend build variable `VITE_API_BASE_URL` in Amplify Hosting settings. Set it to the public HTTPS origin of the FastAPI service, for example `https://api.example.org` (no `/api` suffix). This value is public browser configuration, not a secret.
+5. Keep `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, `GROQ_API_KEY`, speech credentials, and webhook credentials on the FastAPI host only. Do not add them as `VITE_*` variables.
+
+The FastAPI service must be reachable over HTTPS from the Amplify website. The current FastAPI CORS middleware accepts arbitrary HTTP/HTTPS origins; restrict it to the deployed Amplify domain and any approved preview domains before production use. Persistent uploads and PostgreSQL remain the responsibility of the existing FastAPI deployment, such as the EC2 service and database.
+
+Because the frontend uses React Router history routes, add Amplify's SPA rewrite rule in **Hosting → Rewrites and redirects** so direct links and page refreshes serve `index.html`:
+
+```json
+[
+  {
+    "source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>",
+    "status": "200",
+    "target": "/index.html",
+    "condition": null
+  }
+]
+```
+
+### Local validation and deployment
+
+From the repository root:
+
+```bash
+npm ci
+npm ci --prefix frontend
+npm run build --prefix frontend
+npx ampx --version
+npx tsc --noEmit -p amplify/tsconfig.json
+docker compose config
+```
+
+After connecting Amplify to the repository and setting `VITE_API_BASE_URL`, push a commit to the connected branch to trigger the Amplify build and deployment. The Amplify build uses `npx ampx pipeline-deploy` with the app ID and branch supplied by Amplify. To create an isolated Gen 2 sandbox from a developer machine instead, configure AWS credentials for `ap-south-1` and run `npx ampx sandbox`.
+
+---
+
 ## 11. Key API Reference
 
 - `POST /api/complaints/analyze` — Multimodal AI analysis (returns predictions, grounded explanation, generated draft, and decision trace without committing).
