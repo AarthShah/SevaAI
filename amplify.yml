@@ -6,7 +6,9 @@ applications:
         build:
           commands:
             - |
-              set -eu
+              # Amplify's build image loads RVM hooks that are incompatible
+              # with nounset (set -u); keep errexit without enabling nounset.
+              set -e
               echo "Backend build working directory: $PWD"
               echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR:-<unset>}"
 
