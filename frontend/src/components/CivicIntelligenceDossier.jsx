@@ -21,6 +21,18 @@ const getShortDeptName = (name) => {
   return name.length > 12 ? name.substring(0, 11) + '…' : name;
 };
 
+const formatDeadlineTime = (hours) => {
+  const totalMinutes = Math.ceil(Math.abs(hours) * 60);
+  const days = Math.floor(totalMinutes / 1440);
+  const remainingHours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (remainingHours || days) parts.push(`${remainingHours}h`);
+  if (!days && minutes) parts.push(`${minutes}m`);
+  return parts.join(' ') || '<1m';
+};
+
 /* ------------------------------------------------------------------ */
 /* InfoTip — small (i) icon with simple explanation tooltip            */
 /* Instant hover, hides on mouse leave, clamped to stay on-screen     */
@@ -207,6 +219,7 @@ export const CivicIntelligenceDossier = ({
   const [deptRoutingData, setDeptRoutingData] = useState(null);
   const [evidenceData, setEvidenceData] = useState(null);
   const [slaData, setSlaData] = useState(null);
+  const [slaClock, setSlaClock] = useState(Date.now());
   const [watchdogData, setWatchdogData] = useState([]);
   const [hotspotData, setHotspotData] = useState(null);
 
@@ -276,7 +289,7 @@ export const CivicIntelligenceDossier = ({
       if (loc.status === 'fulfilled') setLocationData(loc.value);
       if (dept.status === 'fulfilled') setDeptRoutingData(dept.value);
       if (evidence.status === 'fulfilled') setEvidenceData(evidence.value);
-      if (sla.status === 'fulfilled') setSlaData(sla.value);
+      if (sla.status === 'fulfilled') setSlaData({ ...sla.value, fetched_at: Date.now() });
       if (watchdog.status === 'fulfilled') setWatchdogData(Array.isArray(watchdog.value) ? watchdog.value : []);
       if (hotspot.status === 'fulfilled') setHotspotData(hotspot.value);
     } catch (err) {
@@ -287,6 +300,11 @@ export const CivicIntelligenceDossier = ({
   };
 
   useEffect(() => { loadAllIntelligence(); }, [cleanId, currentStatus, enabled]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setSlaClock(Date.now()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const flash = (msg) => { setNotificationMsg(msg); setTimeout(() => setNotificationMsg(null), 4000); };
 
@@ -338,19 +356,25 @@ export const CivicIntelligenceDossier = ({
   if (!cleanId) return null;
 
   /* ---------- derived values ---------- */
-  const slaLabel = !slaData ? '' :
-    slaData.risk_status === 'BREACHED' ? 'Deadline Missed' :
-    slaData.risk_status === 'HIGH_RISK' ? 'Almost Late' :
-    slaData.risk_status === 'MEDIUM_RISK' ? 'On Watch' : 'On Time';
-
-  const slaBadgeColor = !slaData ? '' :
-    slaData.risk_status === 'BREACHED' ? 'bg-red-50 text-red-700 border-red-200' :
-    slaData.risk_status === 'HIGH_RISK' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-    'bg-emerald-50 text-emerald-700 border-emerald-200';
-
-  const slaBarColor =
-    slaData?.sla_breach_probability >= 0.70 ? 'bg-red-500' :
-    slaData?.sla_breach_probability >= 0.35 ? 'bg-amber-400' : 'bg-emerald-500';
+  const slaElapsedHours = slaData
+    ? Number(slaData.elapsed_hours || 0) + Math.max(0, slaClock - (slaData.fetched_at || slaClock)) / 3600000
+    : 0;
+  const slaRemainingHours = slaData ? Number(slaData.target_sla_hours || 0) - slaElapsedHours : 0;
+  const slaLabel = !slaData ? '' : slaRemainingHours <= 0 ? 'Deadline Missed' :
+    slaRemainingHours <= 12 ? 'Due Soon' : slaRemainingHours < 30 ? 'On Watch' : 'On Time';
+  const slaBadgeColor = !slaData ? '' : slaRemainingHours > 30
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : slaRemainingHours > 12 && slaRemainingHours < 30
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
+      : 'bg-red-50 text-red-700 border-red-200';
+  const slaBarColor = !slaData ? 'bg-slate-300' : slaRemainingHours > 30
+    ? 'bg-emerald-500'
+    : slaRemainingHours > 12 && slaRemainingHours < 30
+      ? 'bg-amber-500'
+      : 'bg-red-500';
+  const slaTimeText = !slaData ? '' : slaRemainingHours <= 0
+    ? `Overdue by ${formatDeadlineTime(slaRemainingHours)}`
+    : `${formatDeadlineTime(slaRemainingHours)} remaining`;
 
   const hotspotCluster = hotspotData?.this_cluster || clusterData;
   const hotspotClusterId = hotspotCluster?.cluster_id || hotspotCluster?.cluster_id || null;
@@ -395,30 +419,37 @@ export const CivicIntelligenceDossier = ({
           iconBg="bg-slate-100"
           title="Deadline Status"
           infoText="The government sets a deadline to fix each problem. This shows whether the team is on time or has missed the deadline."
-          badge={`${slaLabel} (${Math.round(slaData.sla_breach_probability * 100)}% risk)`}
+          badge={`${slaLabel} · ${Math.round(slaData.sla_breach_probability * 100)}% risk`}
           badgeColor={slaBadgeColor}
           expanded={expandedSections.sla}
           onToggle={() => toggle('sla')}
         >
           <div className="pt-3 space-y-3">
             {/* Target vs Predicted */}
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="text-[11px] text-slate-400 font-medium">Must fix within:</div>
-                <div className="text-xl font-bold text-slate-800">{slaData.target_sla_hours}h</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+                <div className="text-[11px] text-slate-500 font-medium">Must fix within</div>
+                <div className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">{slaData.target_sla_hours}h</div>
               </div>
-              <div className="text-right">
-                <div className="text-[11px] text-slate-400 font-medium">AI estimates:</div>
-                <div className="text-xl font-bold text-slate-800">{slaData.predicted_resolution_hours}h</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+                <div className="text-[11px] text-slate-500 font-medium">AI estimate</div>
+                <div className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">{slaData.predicted_resolution_hours}h</div>
               </div>
             </div>
 
-            {/* Progress bar */}
-            <div className="w-full bg-red-100 rounded-full h-2.5 overflow-hidden">
+            {/* Time elapsed against the statutory target */}
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${slaBarColor}`}
-                style={{ width: `${Math.min(100, Math.max(6, slaData.sla_breach_probability * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(3, (slaElapsedHours / Math.max(1, slaData.target_sla_hours)) * 100))}%` }}
               />
+            </div>
+
+            <div className="-mt-1 flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
+              <span className="text-[11px] font-medium text-slate-500">Time remaining</span>
+              <span className={`text-[12px] font-bold tabular-nums ${slaRemainingHours > 30 ? 'text-emerald-700' : slaRemainingHours > 12 && slaRemainingHours < 30 ? 'text-amber-700' : 'text-red-700'}`}>
+                {slaTimeText}
+              </span>
             </div>
 
             {/* Factors */}

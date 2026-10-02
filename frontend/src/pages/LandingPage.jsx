@@ -224,60 +224,43 @@ export const LandingPage = () => {
   // State for progressive technical disclosure and example visibility
   const [showTechnicalView, setShowTechnicalView] = useState(false);
   const [activeTechTab, setActiveTechTab] = useState('assistant'); // 'assistant' | 'aiml'
-  const [showPotholeExample, setShowPotholeExample] = useState(true);
+  const [showPotholeExample, setShowPotholeExample] = useState(false);
 
   return (
     <div className="bg-white">
-      {/* ================================================================ */}
-      {/* 1. HERO SECTION                                                  */}
-      {/* ================================================================ */}
-      <section className="pt-8 pb-12 lg:pt-14 lg:pb-16 bg-white border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-            {/* Left Column: Heading & CTAs */}
-            <div className="lg:col-span-6 space-y-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-800 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-                <span>Autonomous Civic Grievance Network</span>
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-bold tracking-tight text-slate-900 leading-[1.12]">
-                Report civic issues.<br />
-                <span className="text-blue-800">Get them resolved.</span>
-              </h1>
-
-              <p className="text-base text-slate-600 max-w-lg leading-relaxed">
-                Seva AI uses AI to understand your complaint, suggest the right department, and help you track it until resolution.
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3">
-                <Link
-                  to="/report"
-                  className="px-6 py-3 rounded-md bg-blue-800 hover:bg-blue-900 active:bg-blue-950 text-white font-medium text-sm text-center shadow-sm hover:shadow transition flex items-center justify-center gap-2"
-                >
-                  <span>Report an Issue</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                <Link
-                  to="/track"
-                  className="px-6 py-3 rounded-md bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm text-center border border-slate-300 shadow-sm transition"
-                >
-                  Track Complaint
-                </Link>
-              </div>
-            </div>
-
-            {/* Right Column: Hero Image */}
-            <div className="lg:col-span-6">
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
-                <img
-                  src="/civic_hall.jpg"
-                  alt="City Hall Municipal Boulevard"
-                  className="w-full h-80 sm:h-[380px] lg:h-[400px] object-cover"
-                />
-              </div>
+      <section className="relative isolate min-h-[min(72svh,520px)] overflow-hidden border-b border-slate-200 bg-slate-100 md:min-h-[calc(100svh-92px)]" aria-labelledby="landing-heading">
+        <figure className="absolute inset-0">
+            <img
+              src="/kolhapur-municipal-corporation-enhanced.png"
+              alt="Photorealistic view of Kolhapur Municipal Corporation's historic red-brick building"
+              className="h-full min-h-[min(72svh,520px)] w-full object-cover object-center md:min-h-[calc(100svh-92px)]"
+              fetchPriority="high"
+            />
+        </figure>
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 -z-0 w-[72%] bg-gradient-to-r from-white via-white/75 to-transparent" />
+        <div className="relative z-10 mx-auto flex min-h-[min(72svh,520px)] max-w-7xl items-center px-4 sm:px-6 md:min-h-[calc(100svh-92px)] lg:px-8">
+          <div className="w-[68%] max-w-[600px] sm:w-[58%]">
+            <h1 id="landing-heading" className="text-[22px] font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+              Report civic issues.<br />
+              Get them resolved.
+            </h1>
+            <p className="mt-2 max-w-lg text-[11px] leading-[1.4] text-slate-700 sm:mt-3 sm:text-sm sm:leading-6 lg:text-base">
+              Seva AI helps you describe an issue, find the right department, and track your complaint through resolution.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-3">
+              <Link
+                to="/report"
+                className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded bg-blue-700 px-3 py-2 text-[10px] font-medium text-white transition hover:bg-blue-800 sm:min-h-10 sm:px-4 sm:text-sm"
+              >
+                Report an Issue
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              </Link>
+              <Link
+                to="/track"
+                className="inline-flex min-h-9 items-center justify-center rounded border border-slate-300 bg-white/90 px-3 py-2 text-[10px] font-medium text-slate-800 transition hover:bg-white sm:min-h-10 sm:px-4 sm:text-sm"
+              >
+                Track Complaint
+              </Link>
             </div>
           </div>
         </div>

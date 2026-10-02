@@ -147,6 +147,7 @@ def compute_sla_prediction(db: Session, complaint: Complaint) -> Dict[str, Any]:
         "complaint_id": complaint.id,
         "target_sla_hours": base_sla,
         "elapsed_hours": round(elapsed_hours, 1),
+        "remaining_sla_hours": round(base_sla - elapsed_hours, 1),
         "predicted_resolution_hours": predicted_hours,
         "expected_completion_iso": expected_completion.isoformat(),
         "sla_breach_probability": breach_prob,
@@ -170,9 +171,17 @@ def get_complaint_sla_prediction(db: Session, complaint_id: str) -> Optional[Dic
         except Exception:
             factors = []
 
+        now = datetime.now(timezone.utc)
+        created_at = complaint.created_at or now
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        elapsed_hours = max(0.0, (now - created_at).total_seconds() / 3600.0)
+
         return {
             "complaint_id": record.complaint_id,
             "target_sla_hours": record.target_sla_hours,
+            "elapsed_hours": round(elapsed_hours, 1),
+            "remaining_sla_hours": round(record.target_sla_hours - elapsed_hours, 1),
             "predicted_resolution_hours": record.predicted_resolution_hours,
             "sla_breach_probability": record.sla_breach_probability,
             "risk_status": record.risk_status,
