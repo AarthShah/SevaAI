@@ -20,6 +20,7 @@ from ..models.location_intelligence import LocationIntelligence
 from ..models.ai_decision_evidence import AIDecisionEvidence
 from ..models.sla_prediction import SLAPrediction
 from ..models.watchdog_event import WatchdogEvent
+from ..models.complaint_feedback import ComplaintFeedback
 
 __all__ = [
     "Base",
@@ -40,5 +41,6 @@ __all__ = [
     "LocationIntelligence",
     "AIDecisionEvidence",
     "SLAPrediction",
-    "WatchdogEvent"
+    "WatchdogEvent",
+    "ComplaintFeedback",
 ]

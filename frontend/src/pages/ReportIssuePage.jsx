@@ -5,6 +5,7 @@ import {
   Copy, Share2, Mail, ExternalLink, Printer, CheckCheck, Clock, User, Phone, Tag, Building, ArrowUpRight, AlertTriangle
 } from 'lucide-react';
 import { complaintApi } from '../api/complaintApi';
+import { AudioRecorder } from '../components/AudioRecorder';
 import { StatusBadge, SeverityBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useAssistantContext } from '../context/AssistantContext';
@@ -111,10 +112,11 @@ export const ReportIssuePage = () => {
   const [severity, setSeverity] = useState('MEDIUM');
   const [department, setDepartment] = useState('');
   const [departmentId, setDepartmentId] = useState('ROAD_DEPT');
-  const [address, setAddress] = useState('MG Road, Indore');
-  const [latitude, setLatitude] = useState(22.7196);
-  const [longitude, setLongitude] = useState(75.8577);
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [description, setDescription] = useState('');
+  const [voiceTranscription, setVoiceTranscription] = useState('');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
 
@@ -327,6 +329,7 @@ export const ReportIssuePage = () => {
       // 3. Call backend analyze API
       const res = await complaintApi.analyzeComplaint({
         text: 'Civic issue captured via resident photo upload',
+        voice_transcription: voiceTranscription || undefined,
         image_url: uploadedUrl,
         address: address,
         latitude: latitude,
@@ -701,6 +704,10 @@ Your civic grievance has been officially registered in the central municipal reg
       {/* ============================================================ */}
       {step === 1 && (
         <div className="space-y-6">
+          <AudioRecorder
+            onTranscriptionReceived={setVoiceTranscription}
+            onAudioUploaded={() => {}}
+          />
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleFileDrop}

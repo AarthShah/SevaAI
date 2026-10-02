@@ -182,6 +182,12 @@ Run the evaluation directly via CLI:
 python aiml/evaluation/metrics.py
 ```
 
+The offline benchmark currently contains text-only English cases. It reports its modality/language coverage, verifies that workflow stages and the citizen-review handoff exist, and checks that the explanation cites the exact selected knowledge-base source. It does not claim to measure practical usability. Resolved complainants can rate their experience in the tracking page; observed coverage, resolution rate, and feedback ratings are available at `GET /api/complaints/quality-metrics`.
+
+For server-side voice transcription, configure `SPEECH_TO_TEXT_API_KEY` (or `GROQ_API_KEY`) and optionally `SPEECH_TO_TEXT_BASE_URL` and `SPEECH_TO_TEXT_MODEL`. Marathi, Hindi, and English are selectable in the report form. Without a transcription key, the browser speech-recognition fallback is used where supported.
+
+The backend runs the watchdog and SLA sweep every 15 minutes by default. Set `AUTONOMOUS_SWEEP_INTERVAL_SECONDS` to adjust it, or `ENABLE_AUTONOMOUS_SCHEDULER=false` to disable it. Run one backend process/replica with the scheduler enabled to avoid duplicate workers. Set `ESCALATION_WEBHOOK_URL` and optionally `ESCALATION_WEBHOOK_TOKEN` to deliver escalations to a municipal system; without a URL, escalations remain recorded in CivicSeva and responses explicitly report that external delivery did not occur.
+
 ---
 
 ## 7. Database Schema

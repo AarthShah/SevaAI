@@ -1888,7 +1888,7 @@ export const AuthorityDashboard = () => {
       {/* ============================================================ */}
       {/* 1. LEFT SIDEBAR */}
       {/* ============================================================ */}
-      <aside className="w-full lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex-shrink-0 flex flex-col justify-between py-4 px-3 select-none">
+      <aside className="hidden lg:flex lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex-shrink-0 flex-col justify-between py-4 px-3 select-none">
         <div className="space-y-4 lg:space-y-6">
           {/* Operations Nav Group */}
           <div className="space-y-1">

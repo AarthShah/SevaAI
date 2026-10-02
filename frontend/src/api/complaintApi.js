@@ -12,8 +12,8 @@ export const complaintApi = {
   photoInstantDispatch: async (file, locationData = {}) => {
     const formData = new FormData();
     formData.append('file', file);
-    if (locationData.latitude) formData.append('latitude', locationData.latitude);
-    if (locationData.longitude) formData.append('longitude', locationData.longitude);
+    if (locationData.latitude !== null && locationData.latitude !== undefined) formData.append('latitude', locationData.latitude);
+    if (locationData.longitude !== null && locationData.longitude !== undefined) formData.append('longitude', locationData.longitude);
     if (locationData.address) formData.append('address', locationData.address);
     const res = await api.post('/complaints/photo-instant-dispatch', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -38,6 +38,10 @@ export const complaintApi = {
   },
   getComplaintById: async (id) => {
     const res = await api.get(`/complaints/${id}`);
+    return res.data;
+  },
+  submitComplaintFeedback: async (id, rating, comment = '') => {
+    const res = await api.post(`/complaints/${id}/feedback`, { rating, comment });
     return res.data;
   },
   updateStatus: async (id, status, remarks, departmentId, assignment = {}) => {
@@ -71,9 +75,10 @@ export const complaintApi = {
     });
     return res.data;
   },
-  uploadAudio: async (blob) => {
+  uploadAudio: async (blob, language = '') => {
     const formData = new FormData();
     formData.append('file', blob, 'recording.webm');
+    formData.append('language', language);
     const res = await api.post('/upload/audio', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

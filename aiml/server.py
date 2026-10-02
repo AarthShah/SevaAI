@@ -12,6 +12,14 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+env_file = ROOT_DIR / ".env"
+if env_file.is_file():
+    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            name, value = stripped.split("=", 1)
+            os.environ.setdefault(name.strip(), value.strip().strip("\"'"))
+
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

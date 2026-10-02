@@ -6,6 +6,8 @@ autonomous agentic workflows, SLA tracking, and analytics.
 
 import os
 import sys
+import asyncio
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -19,11 +21,35 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import ALLOWED_ORIGINS, UPLOAD_DIR
+from .config import (ALLOWED_ORIGINS, UPLOAD_DIR,
+                     AUTONOMOUS_SWEEP_INTERVAL_SECONDS)
 from .database.session import engine, SessionLocal
 from .database.base import Base
 from .database.seed_data import seed_database
 from .api import auth, complaints, departments, analytics, agent, upload, notifications, officers, cctv, assistant
+
+logger = logging.getLogger(__name__)
+
+
+async def _autonomous_monitor():
+    """Run watchdog and SLA actions periodically in the API process."""
+    from .database import session as database_session
+    from .services.autonomous_agent import autonomous_engine
+    from .services.watchdog_service import run_watchdog_sweep
+
+    while True:
+        await asyncio.sleep(AUTONOMOUS_SWEEP_INTERVAL_SECONDS)
+        db = database_session.SessionLocal()
+        try:
+            watchdog_result = run_watchdog_sweep(db)
+            agent_result = autonomous_engine.run_autonomous_sweep(db)
+            logger.info("Autonomous cycle completed: watchdog=%s agent=%s",
+                        watchdog_result, agent_result.get("actions_taken", []))
+        except Exception:
+            logger.exception("Autonomous monitoring cycle failed.")
+            db.rollback()
+        finally:
+            db.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,7 +59,23 @@ async def lifespan(app: FastAPI):
         ensure_db_initialized()
     except Exception as e:
         print(f"[WARNING] Lifespan database initialization: {e}")
-    yield
+    enabled = os.getenv("ENABLE_AUTONOMOUS_SCHEDULER", "true").lower() == "true"
+    serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+    monitor_task = None
+    if enabled and not serverless:
+        monitor_task = asyncio.create_task(_autonomous_monitor())
+        app.state.autonomous_scheduler_enabled = True
+    else:
+        app.state.autonomous_scheduler_enabled = False
+    try:
+        yield
+    finally:
+        if monitor_task:
+            monitor_task.cancel()
+            try:
+                await monitor_task
+            except asyncio.CancelledError:
+                pass
 
 app = FastAPI(
     title="CivicSeva Platform API",

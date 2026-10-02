@@ -24,6 +24,11 @@ export const TrackComplaintPage = () => {
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
 
   // Sync if URL parameter routeId changes
   useEffect(() => {
@@ -126,6 +131,21 @@ export const TrackComplaintPage = () => {
     setSearchId(clean);
     setActiveTrackingId(clean);
     navigate(`/track/${clean}`);
+  };
+
+  const handleFeedbackSubmit = async (event) => {
+    event.preventDefault();
+    if (!complaint?.id || !feedbackRating) return;
+    setFeedbackBusy(true);
+    setFeedbackError('');
+    try {
+      await complaintApi.submitComplaintFeedback(complaint.id, feedbackRating, feedbackComment);
+      setFeedbackSubmitted(true);
+    } catch (feedbackRequestError) {
+      setFeedbackError(feedbackRequestError?.response?.data?.detail || 'Feedback could not be saved. Please sign in as the reporting citizen and try again.');
+    } finally {
+      setFeedbackBusy(false);
+    }
   };
 
   // Determine timeline step status
@@ -379,6 +399,27 @@ export const TrackComplaintPage = () => {
               })}
             </div>
           </div>
+
+          {complaint.status === 'Resolved' && (
+            <section className="bg-white border border-slate-200 rounded-md p-5 space-y-3" aria-labelledby="service-feedback-title">
+              <div>
+                <h3 id="service-feedback-title" className="text-sm font-bold text-slate-900">How was your resolution experience?</h3>
+                <p className="text-xs text-slate-500 mt-1">Your rating helps measure and improve this civic service.</p>
+              </div>
+              {feedbackSubmitted ? <p role="status" className="text-sm text-emerald-700">Thank you. Your feedback has been recorded.</p> : (
+                <form onSubmit={handleFeedbackSubmit} className="space-y-3">
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="Rate your experience from 1 to 5">
+                    {[1, 2, 3, 4, 5].map((rating) => <button key={rating} type="button" aria-pressed={feedbackRating === rating} onClick={() => setFeedbackRating(rating)} className={`rounded border px-3 py-2 text-sm font-semibold ${feedbackRating === rating ? 'border-blue-700 bg-blue-50 text-blue-800' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>{rating}</button>)}
+                  </div>
+                  <label className="block text-xs font-medium text-slate-700">Optional comment
+                    <textarea value={feedbackComment} onChange={(event) => setFeedbackComment(event.target.value)} maxLength={1000} rows={2} className="mt-1 block w-full rounded border border-slate-300 p-2 text-sm" />
+                  </label>
+                  {feedbackError && <p role="alert" className="text-xs text-red-700">{feedbackError}</p>}
+                  <button type="submit" disabled={!feedbackRating || feedbackBusy} className="rounded bg-blue-800 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{feedbackBusy ? 'Saving…' : 'Submit feedback'}</button>
+                </form>
+              )}
+            </section>
+          )}
 
           {/* Resolution Proof & Civic Intelligence Dossier */}
           <div className="bg-white border border-slate-200 rounded-md p-6 space-y-4">

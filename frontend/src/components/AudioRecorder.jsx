@@ -7,15 +7,18 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
   const [transcript, setTranscript] = useState('');
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [language, setLanguage] = useState('mr-IN');
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recognitionRef = useRef(null);
+  const transcriptRef = useRef('');
   const timerRef = useRef(null);
 
   const startRecording = async () => {
     setErrorMsg(null);
     setTranscript('');
+    transcriptRef.current = '';
     setRecordingSeconds(0);
     audioChunksRef.current = [];
 
@@ -25,7 +28,7 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = language;
 
       recognition.onresult = (event) => {
         let currentTranscript = '';
@@ -33,6 +36,7 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
           currentTranscript += event.results[i][0].transcript;
         }
         setTranscript(currentTranscript);
+        transcriptRef.current = currentTranscript;
         onTranscriptionReceived(currentTranscript);
       };
 
@@ -63,7 +67,24 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         try {
-          const uploadRes = await complaintApi.uploadAudio(audioBlob);
+          const uploadRes = await complaintApi.uploadAudio(audioBlob, language);
+          if (uploadRes.transcript) {
+            setTranscript(uploadRes.transcript);
+            transcriptRef.current = uploadRes.normalized_text || uploadRes.transcript;
+            if (uploadRes.normalized_text || language.startsWith('en')) {
+              onTranscriptionReceived(uploadRes.normalized_text || uploadRes.transcript);
+            } else {
+              transcriptRef.current = '';
+              onTranscriptionReceived('');
+            }
+          }
+          if (uploadRes.transcription_error && (!transcriptRef.current || !uploadRes.normalized_text)) {
+            if (!language.startsWith('en') && !uploadRes.normalized_text) {
+              transcriptRef.current = '';
+              onTranscriptionReceived('');
+            }
+            setErrorMsg(uploadRes.transcription_error);
+          }
           if (onAudioUploaded) {
             onAudioUploaded(uploadRes.file_url);
           }
@@ -106,6 +127,7 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
   // Sample citizen voice statements for fast hackathon demo evaluation
   const setSampleVoice = (sampleText) => {
     setTranscript(sampleText);
+    transcriptRef.current = sampleText;
     onTranscriptionReceived(sampleText);
   };
 
@@ -118,11 +140,14 @@ export const AudioRecorder = ({ onTranscriptionReceived, onAudioUploaded }) => {
           </div>
           <div>
             <h4 className="text-xs font-bold text-slate-800">Voice Input (Speech-to-Text)</h4>
-            <p className="text-[11px] text-slate-500">Speak naturally in English or your native language</p>
+            <p className="text-[11px] text-slate-500">Choose a language; transcription is confirmed before submission.</p>
           </div>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          {!isRecording && <select aria-label="Voice language" value={language} onChange={(event) => setLanguage(event.target.value)} className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
+            <option value="mr-IN">Marathi</option><option value="hi-IN">Hindi</option><option value="en-IN">English</option>
+          </select>}
           {isRecording ? (
             <button
               type="button"

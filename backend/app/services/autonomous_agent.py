@@ -28,6 +28,7 @@ from ..services.complaint_service import ComplaintService
 from ..services.department_mapping import resolve_department_id
 from ..services.field_workload import daily_assignment_limit_for_distance
 from ..services.aiml_client import aiml_client
+from ..services.municipal_integrations import deliver_escalation
 from aiml.agents.followup_agent import followup_agent, DEFAULT_SLA_THRESHOLDS
 
 def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -178,10 +179,11 @@ class AutonomousAgentEngine:
         1-Click Fully Autonomous Ingestion, Reasoning, Department Mapping, Proximity Officer Dispatch.
         Requires ZERO manual triage or human drafting steps.
         """
+        has_coordinates = latitude is not None and longitude is not None
         location_data = {
-            "address": address or "GPS Coordinates Verified (Auto-Detected)",
-            "latitude": latitude or 18.5204,
-            "longitude": longitude or 73.8567
+            "address": address or ("GPS coordinates provided" if has_coordinates else "Location not provided"),
+            "latitude": latitude,
+            "longitude": longitude
         }
 
         # 1. Autonomous Cognitive Multi-Agent Analysis (LLM + Multimodal)
@@ -232,7 +234,7 @@ class AutonomousAgentEngine:
             db=db, category=category, issue_type=issue_type,
             target_lat=location_data["latitude"], target_lon=location_data["longitude"],
             forensic_details=(auth_data.get("forensic_details") if isinstance(auth_data, dict) else None)
-        )
+        ) if has_coordinates else None
 
         # 3. Autonomous Proximity Officer Matching & Dispatch (Conditional on Gateway PASS)
         officer_match = {}
@@ -251,7 +253,7 @@ class AutonomousAgentEngine:
             officer_match = {"officer_id": assigned_officer_id, "officer_name": assigned_officer_name,
                              "officer_phone": assigned_officer_phone, "distance_km": dist_km,
                              "eta_minutes": eta_mins}
-        elif req_human_review == 0:
+        elif req_human_review == 0 and has_coordinates:
             officer_match = AutonomousAgentEngine.find_nearest_available_officer(
                 db=db,
                 department_id=dept_id,
@@ -264,7 +266,11 @@ class AutonomousAgentEngine:
             dist_km = officer_match.get("distance_km", 0.8)
             eta_mins = officer_match.get("eta_minutes", 15)
         else:
-            assigned_officer_name = "Pending Supervisor Review"
+            if not has_coordinates and req_human_review == 0:
+                officer_match = {"officer_id": None, "officer_name": None, "officer_phone": None,
+                                 "distance_km": None, "eta_minutes": None,
+                                 "dispatch_message": "Location is missing; ticket remains queued for dispatcher location review."}
+            assigned_officer_name = "Pending Supervisor Review" if req_human_review else None
 
         # The persistent master ID is assigned by ClusteringService after this
         # report row has been inserted; never overload a citizen report ID here.
@@ -297,8 +303,9 @@ class AutonomousAgentEngine:
                 f"OFFICIAL CIVIC GRIEVANCE DOCKET\n"
                 f"TO: {dept_name}\n"
                 f"SUBJECT: Priority Remediation Order - {issue_type} at {location_data['address']}\n"
-                f"CLASSIFICATION: {category} (Severity: {severity})\n"
-                "AI CAPACITY CHECK: No active crew has daily capacity. Work order queued for municipal dispatch."
+                f"CLASSIFICATION: {category} (Severity: {severity})\n" +
+                ("LOCATION CHECK: Verified location is required before proximity-based field assignment. Work order queued for dispatcher review."
+                 if not has_coordinates else "AI CAPACITY CHECK: No active crew has daily capacity. Work order queued for municipal dispatch.")
             )
 
         complaint_status = (existing_cluster.status if existing_cluster else
@@ -424,7 +431,8 @@ class AutonomousAgentEngine:
                 complaint_id=cid,
                 agent_name="Autonomous Geo-Proximity Dispatcher",
                 action="Match & Assign Nearest Field Engineer",
-                input_summary=f"Location: ({location_data['latitude']:.4f}, {location_data['longitude']:.4f}), Dept: {dept_name}",
+                input_summary=(f"Location: ({location_data['latitude']:.4f}, {location_data['longitude']:.4f}), Dept: {dept_name}"
+                               if has_coordinates else f"Location unavailable; Dept: {dept_name}"),
                 output_summary=f"Matched {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins). Dispatched task order.",
                 timestamp=datetime.now(timezone.utc)
             ))
@@ -439,7 +447,7 @@ class AutonomousAgentEngine:
                 f"Issue: {issue_type} ({severity} Priority)\n"
                 f"Site: {location_data['address']}\n"
                 f"Your Distance: {dist_km} km | Target On-Site Arrival: {eta_mins} mins\n"
-                f"GPS Navigation: https://maps.google.com/?q={location_data['latitude']},{location_data['longitude']}"
+                f"GPS Navigation: {'https://maps.google.com/?q=' + str(location_data['latitude']) + ',' + str(location_data['longitude']) if has_coordinates else 'unavailable: citizen location was not provided.'}\n"
             )
 
         # 10. Push Autonomous Citizen Notification
@@ -447,6 +455,8 @@ class AutonomousAgentEngine:
             citizen_msg = f"Docket #{cid} registered. Currently under municipal supervisor review for photographic evidence verification."
         elif existing_cluster:
             citizen_msg = f"Your report #{cid} was added as supporting evidence to master grievance #{cluster_id}. The existing municipal decision remains in place."
+        elif not has_coordinates:
+            citizen_msg = f"Ticket #{cid} is in the municipal queue. Add a verified address or GPS location so dispatch can assign the nearest field team."
         elif assigned_officer_name:
             citizen_msg = f"Ticket #{cid} assigned to {assigned_officer_name} ({dist_km} km away, ETA {eta_mins} mins)."
         else:
@@ -550,7 +560,19 @@ class AutonomousAgentEngine:
 
             # 2. Autonomous Auto-Follow-up Inquiries to Department
             # In demo mode, or when elapsed > threshold, trigger follow-up inquiry
-            should_followup = (elapsed_hours >= threshold) or (force_demo_trigger and c.follow_up_count < 4)
+            last_followup = (
+                db.query(ComplaintHistory)
+                .filter(ComplaintHistory.complaint_id == c.id)
+                .filter(ComplaintHistory.changed_by == "CivicSeva Autonomous Follow-up Agent")
+                .order_by(desc(ComplaintHistory.timestamp))
+                .first()
+            )
+            followup_cooldown_elapsed = not last_followup or (
+                (now - (last_followup.timestamp.replace(tzinfo=timezone.utc)
+                        if last_followup.timestamp.tzinfo is None else last_followup.timestamp)).total_seconds() >= 24 * 3600
+            )
+            should_followup = ((elapsed_hours >= threshold and followup_cooldown_elapsed)
+                               or (force_demo_trigger and c.follow_up_count < 4 and followup_cooldown_elapsed))
             if should_followup and c.status in ["Assigned", "Acknowledged", "In Progress"]:
                 c.follow_up_count += 1
                 c.updated_at = now
@@ -655,6 +677,16 @@ class AutonomousAgentEngine:
                 })
 
         db.commit()
+
+        for action in actions_taken:
+            if action.get("action_type") == "AUTO_ESCALATION":
+                delivered = deliver_escalation({
+                    "event": "complaint.escalated",
+                    "complaint_id": action["complaint_id"],
+                    "summary": action["summary"],
+                    "occurred_at": now.isoformat(),
+                })
+                action["external_delivery"] = "delivered" if delivered else "not_configured_or_failed"
 
         return {
             "sweep_timestamp": now.isoformat(),

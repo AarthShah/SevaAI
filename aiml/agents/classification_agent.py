@@ -46,7 +46,7 @@ class ClassificationAgent:
             # If user provided generic placeholder or Groq Vision ran, vision leads
             is_generic_text = not text or len(text.strip()) < 15 or "captured via resident photo" in text.lower() or final_issue == "OTHER"
             
-            if is_generic_text or vision_result.get("mode") == "GROQ_QWEN_VISION":
+            if is_generic_text or vision_result.get("mode") in {"GROQ_QWEN_VISION", "GEMINI_VISION"}:
                 final_issue = vis_issue
                 final_category = vis_cat
                 final_confidence = vision_result.get("confidence", 0.94)

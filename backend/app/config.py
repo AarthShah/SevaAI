@@ -83,3 +83,11 @@ ASSISTANT_LLM_MODEL = os.getenv("ASSISTANT_LLM_MODEL", "").strip() or LLM_MODEL
 ASSISTANT_LLM_BASE_URL = os.getenv("ASSISTANT_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "8"))
 ASSISTANT_MAX_TOKENS = int(os.getenv("ASSISTANT_MAX_TOKENS", "600"))
+
+# Optional speech transcription and municipal escalation integrations.
+SPEECH_TO_TEXT_API_KEY = os.getenv("SPEECH_TO_TEXT_API_KEY", "").strip() or os.getenv("GROQ_API_KEY", "").strip()
+SPEECH_TO_TEXT_BASE_URL = os.getenv("SPEECH_TO_TEXT_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+SPEECH_TO_TEXT_MODEL = os.getenv("SPEECH_TO_TEXT_MODEL", "whisper-large-v3-turbo").strip()
+ESCALATION_WEBHOOK_URL = os.getenv("ESCALATION_WEBHOOK_URL", "").strip()
+ESCALATION_WEBHOOK_TOKEN = os.getenv("ESCALATION_WEBHOOK_TOKEN", "").strip()
+AUTONOMOUS_SWEEP_INTERVAL_SECONDS = max(60, int(os.getenv("AUTONOMOUS_SWEEP_INTERVAL_SECONDS", "900")))

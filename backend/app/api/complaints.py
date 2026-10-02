@@ -7,7 +7,7 @@ import io
 import shutil
 import secrets
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from ..models.officer import Officer
 from ..models.user import User
 from ..models.notification import Notification
 from ..models.location_intelligence import LocationIntelligence
+from ..models.complaint_feedback import ComplaintFeedback
 from ..schemas.complaint import (
     ComplaintAnalyzeRequest, ComplaintSubmitRequest, ComplaintStatusUpdate,
     ComplaintFollowupRequest, ComplaintEscalateRequest,
@@ -70,6 +71,7 @@ from ..services.watchdog_service import (
     get_all_recent_watchdog_events,
     mark_watchdog_action_taken
 )
+from ..services.municipal_integrations import deliver_escalation
 
 # Request Models for New Civic AI Features
 class CheckDuplicatesRequest(BaseModel):
@@ -82,6 +84,10 @@ class CheckDuplicatesRequest(BaseModel):
 class DepartmentOverrideRequest(BaseModel):
     department_code: str
     supervisor_notes: Optional[str] = None
+
+class ComplaintFeedbackRequest(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
 
 class ResolutionConfirmRequest(BaseModel):
     remarks: Optional[str] = None
@@ -172,7 +178,7 @@ async def analyze_complaint(
         user_info = {"id": current_user.id, "name": current_user.name, "role": current_user.role}
 
     location_data = {
-        "address": payload.address or "Location verified via GPS / Map selection",
+        "address": payload.address or "Location not provided",
         "latitude": payload.latitude,
         "longitude": payload.longitude
     }
@@ -573,6 +579,23 @@ def api_mark_watchdog_action(event_id: int, payload: WatchdogActionRequest, db: 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.get("/quality-metrics")
+def get_quality_metrics(db: Session = Depends(get_db)):
+    """Report observed outcomes and citizen usability ratings from real records."""
+    feedback_rows = db.query(ComplaintFeedback).all()
+    total_complaints = db.query(Complaint).count()
+    resolved_complaints = db.query(Complaint).filter(Complaint.status == "Resolved").count()
+    ratings = [row.rating for row in feedback_rows]
+    return {
+        "complaint_count": total_complaints,
+        "resolution_rate_percent": round(resolved_complaints * 100 / total_complaints, 1) if total_complaints else None,
+        "citizen_feedback_count": len(ratings),
+        "average_usability_rating_1_to_5": round(sum(ratings) / len(ratings), 2) if ratings else None,
+        "positive_feedback_percent": round(sum(value >= 4 for value in ratings) * 100 / len(ratings), 1) if ratings else None,
+        "feedback_coverage_percent": round(len(ratings) * 100 / resolved_complaints, 1) if resolved_complaints else None,
+        "note": "Usability metrics are unknown until citizens submit feedback; missing feedback is not counted as positive.",
+    }
+
 @router.get("/{complaint_id}", response_model=ComplaintDetailResponse)
 def get_complaint_detail(complaint_id: str, db: Session = Depends(get_db)):
     """
@@ -658,16 +681,52 @@ def escalate_complaint(
             level=payload.level or 1,
             initiated_by=initiated_by
         )
+        delivery_ok = deliver_escalation({
+            "event": "complaint.escalated",
+            "complaint_id": complaint_id,
+            "escalation_id": esc.id,
+            "level": esc.level,
+            "reason": esc.reason,
+            "initiated_by": initiated_by,
+        })
         return {
             "complaint_id": complaint_id,
             "escalation_id": esc.id,
             "level": esc.level,
             "reason": esc.reason,
             "status": "Escalated",
-            "message": f"Complaint #{complaint_id} successfully escalated to Level {esc.level} authority."
+            "message": f"Complaint #{complaint_id} escalated to Level {esc.level} authority.",
+            "external_delivery": "delivered" if delivery_ok else "not_configured_or_failed"
         }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+@router.post("/{complaint_id}/feedback")
+def submit_complaint_feedback(
+    complaint_id: str,
+    payload: ComplaintFeedbackRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    """Capture a citizen's post-resolution usability rating for the service."""
+    complaint = ComplaintService.find_complaint(db, complaint_id)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+    if complaint.status != "Resolved":
+        raise HTTPException(status_code=409, detail="Feedback is available after a complaint is resolved.")
+    if complaint.citizen_id and (not current_user or current_user.id != complaint.citizen_id):
+        raise HTTPException(status_code=403, detail="Only the reporting citizen can submit feedback.")
+
+    feedback = db.query(ComplaintFeedback).filter_by(complaint_id=complaint.id).first()
+    if feedback is None:
+        feedback = ComplaintFeedback(complaint_id=complaint.id)
+        db.add(feedback)
+    feedback.rating = payload.rating
+    feedback.comment = (payload.comment or "").strip()[:1000] or None
+    feedback.submitted_by = current_user.name if current_user else "Anonymous reporter"
+    feedback.created_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"complaint_id": complaint.id, "rating": feedback.rating, "message": "Thank you for your feedback."}
 
 @router.post("/{complaint_id}/auto-inquiry")
 def auto_inquire_complaint(

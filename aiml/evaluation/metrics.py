@@ -21,6 +21,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from aiml.agents.civic_agent import civic_agent
+from aiml.rag.knowledge_base import CIVIC_KNOWLEDGE_DOCUMENTS
 
 DATASET_PATH = os.path.join(os.path.dirname(__file__), "dataset.json")
 
@@ -43,6 +44,13 @@ class EvaluationHarness:
         sev_correct = 0
         workflow_completed = 0
         evidence_grounded = 0
+        expected_agents = {
+            "Input Analyzer", "Classification Agent", "Evidence Agent",
+            "Severity Agent", "Department Agent", "Complaint Generator"
+        }
+        valid_kb_ids = {doc.get("id") for doc in CIVIC_KNOWLEDGE_DOCUMENTS}
+        modality_counts = defaultdict(int)
+        language_counts = defaultdict(int)
 
         # Confusion metrics for classification
         classes = ["POTHOLE", "GARBAGE", "STREETLIGHT", "WATER_LEAKAGE", "DRAINAGE", "ROAD_DAMAGE", "OTHER"]
@@ -58,6 +66,9 @@ class EvaluationHarness:
             exp_issue = item["expected_issue"].upper()
             exp_dept = item["expected_dept"]
             exp_sev = item["expected_severity"]
+            for mode in item.get("input_modes", ["text"]):
+                modality_counts[mode] += 1
+            language_counts[item.get("language", "en")] += 1
 
             # Run CivicSeva Multi-Agent Pipeline
             result = civic_agent.analyze_complaint(
@@ -88,13 +99,22 @@ class EvaluationHarness:
             if is_sev_match:
                 sev_correct += 1
 
-            # Workflow completion: did all 6 steps execute cleanly?
+            # Workflow completion requires all analysis stages and the citizen-review handoff.
             trace = sys_gen.get("decision_trace", [])
-            if len(trace) >= 6:
+            completed_agents = {step.get("agent_name") for step in trace if step.get("status") == "completed"}
+            citizen_review_handoff = any(
+                step.get("agent_name") == "Human-in-the-Loop Gateway"
+                and step.get("status") == "pending_citizen"
+                for step in trace
+            )
+            if expected_agents.issubset(completed_agents) and citizen_review_handoff:
                 workflow_completed += 1
 
-            # Grounding check: does grounded explanation cite a valid KB ID?
-            if "KB_" in pred.get("grounded_explanation", "") or pred.get("rag_source"):
+            # Grounding check: explanation must cite the exact source ID selected from the known KB.
+            source = pred.get("rag_source") or {}
+            source_id = source.get("doc_id") if isinstance(source, dict) else None
+            explanation = pred.get("grounded_explanation", "")
+            if source_id in valid_kb_ids and source_id in explanation:
                 evidence_grounded += 1
 
             case_results.append({
@@ -146,7 +166,13 @@ class EvaluationHarness:
                 "severity_calibration_accuracy": round((sev_correct / total) * 100, 1),
                 "agent_workflow_completion_rate": round((workflow_completed / total) * 100, 1),
                 "evidence_grounding_rate": round((evidence_grounded / total) * 100, 1),
-                "macro_f1_score": round(macro_f1, 3)
+                "macro_f1_score": round(macro_f1, 3),
+                "practical_usability_rating_1_to_5": None
+            },
+            "coverage": {
+                "modalities": dict(modality_counts),
+                "languages": dict(language_counts),
+                "practical_usability": "Not measured by this offline benchmark; collect resolved-case ratings from /api/complaints/{id}/feedback and inspect /api/complaints/quality-metrics.",
             },
             "per_class_metrics": per_class_metrics,
             "cases": case_results

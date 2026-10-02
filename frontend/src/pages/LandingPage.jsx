@@ -237,9 +237,9 @@ export const LandingPage = () => {
               fetchpriority="high"
             />
         </figure>
-        <div aria-hidden="true" className="absolute inset-y-0 left-0 -z-0 w-[72%] bg-gradient-to-r from-white via-white/75 to-transparent" />
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 -z-0 w-full bg-gradient-to-r from-white/95 via-white/80 to-white/35 sm:w-[72%] sm:from-white sm:via-white/75 sm:to-transparent" />
         <div className="relative z-10 mx-auto flex min-h-[min(72svh,520px)] max-w-7xl items-center px-4 sm:px-6 md:min-h-[calc(100svh-92px)] lg:px-8">
-          <div className="w-[68%] max-w-[600px] sm:w-[58%]">
+          <div className="w-full max-w-[600px] sm:w-[58%]">
             <h1 id="landing-heading" className="text-[22px] font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               Report civic issues.<br />
               Get them resolved.

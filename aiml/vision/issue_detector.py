@@ -10,6 +10,7 @@ import io
 import json
 import base64
 import re
+import requests
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from PIL import Image, ImageStat
@@ -26,6 +27,9 @@ class VisionIssueDetector:
     DEFAULT_MODEL = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.gemini_model = os.getenv("GEMINI_VISION_MODEL", "gemini-flash-latest").strip()
+        # VISION_API_KEY remains a backward-compatible Groq key; Gemini uses its own key.
         self.api_key = api_key or os.getenv("GROQ_API_KEY") or os.getenv("VISION_API_KEY") or self.DEFAULT_KEY
         self.model = model or os.getenv("GROQ_VISION_MODEL") or os.getenv("VISION_MODEL") or self.DEFAULT_MODEL
 
@@ -96,17 +100,118 @@ class VisionIssueDetector:
         if pil_image is None:
             return self._local_vision_analysis(None, orig_filename)
 
-        # 1. Primary: Groq Vision with qwen/qwen3.8-27b
+        # 1. Primary: Gemini image understanding when configured.
+        if self.gemini_api_key:
+            try:
+                gemini_result = self._call_gemini_vision(pil_image, orig_filename)
+                if gemini_result:
+                    return gemini_result
+            except Exception as e:
+                print(f"[VisionDetector] Gemini vision failed ({type(e).__name__}); trying Groq/fallback.")
+
+        # 2. Secondary: Groq vision.
         if HAS_GROQ and self.api_key:
             try:
                 groq_result = self._call_groq_vision(pil_image, orig_filename)
                 if groq_result:
                     return groq_result
             except Exception as e:
-                print(f"[VisionDetector] Groq vision error ({e}), falling back to local heuristic analysis")
+                print(f"[VisionDetector] Groq vision failed ({type(e).__name__}); using local fallback.")
 
-        # 2. Fallback: Local Heuristic Computer Vision
+        # 3. Fallback: Local heuristic computer vision.
         return self._local_vision_analysis(pil_image, orig_filename)
+
+    def _call_gemini_vision(self, pil_image: Image.Image, filename: str) -> Dict[str, Any]:
+        """Classify a civic issue photo through Gemini's generateContent image input."""
+        rgb_image = pil_image.convert("RGB")
+        max_dim = 1024
+        if rgb_image.width > max_dim or rgb_image.height > max_dim:
+            rgb_image.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        buffer = io.BytesIO()
+        rgb_image.save(buffer, format="JPEG", quality=88)
+        image_data = base64.b64encode(buffer.getvalue()).decode("ascii")
+
+        prompt = (
+            "Inspect the attached photo for one visible municipal civic issue. "
+            "Classify only what is visually supported; do not infer hidden pipe faults, ownership, "
+            "accident history, or exact dimensions. If the issue is not clearly visible, use other "
+            "with low confidence. Distinguish road pothole/road damage, garbage, streetlight, "
+            "water leakage, drainage/sewage, and other. Severity is visual urgency only; do not "
+            "claim traffic volume or injuries from an image. Return one JSON object only with keys: "
+            "detected_issue (pothole|road_damage|garbage|water_leakage|drainage|streetlight|other), "
+            "category (road_infrastructure|sanitation_waste|water_supply|drainage_sewerage|"
+            "electricity_lighting|public_safety_other), suggested_department, department_id "
+            "(ROAD_DEPT|SOLID_WASTE|WATER_SUPPLY|DRAINAGE|STREET_LIGHT|DEPT_GEN_ADMIN), "
+            "severity (LOW|MEDIUM|HIGH|CRITICAL), severity_reason, confidence (0 to 1), "
+            "description, visual_evidence. Confidence must reflect ambiguity; return under 0.6 "
+            "when the issue cannot be clearly distinguished."
+        )
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent"
+        response = requests.post(
+            endpoint,
+            headers={"Content-Type": "application/json", "X-goog-api-key": self.gemini_api_key},
+            json={
+                "contents": [{"parts": [
+                    {"text": prompt},
+                    {"inlineData": {"mimeType": "image/jpeg", "data": image_data}},
+                ]}],
+                "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"},
+            },
+            timeout=45,
+        )
+        response.raise_for_status()
+        response_data = response.json()
+        content = response_data["candidates"][0]["content"]["parts"][0]["text"]
+        if content.strip().startswith("```"):
+            content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
+        data = json.loads(content)
+
+        issue_aliases = {
+            "pothole": "pothole", "road_damage": "road_damage", "road damage": "road_damage",
+            "garbage": "garbage", "waste": "garbage", "trash": "garbage",
+            "water_leakage": "water_leakage", "water leakage": "water_leakage", "leak": "water_leakage",
+            "drainage": "drainage", "sewage": "drainage", "streetlight": "streetlight",
+            "street_light": "streetlight", "street light": "streetlight", "other": "other",
+        }
+        raw_issue = str(data.get("detected_issue", "other")).strip().lower().replace("-", " ")
+        issue_type = issue_aliases.get(raw_issue, "other")
+        issue_config = {
+            "pothole": ("road_infrastructure", "ROAD_DEPT", "Road Department"),
+            "road_damage": ("road_infrastructure", "ROAD_DEPT", "Road Department"),
+            "garbage": ("sanitation_waste", "SOLID_WASTE", "Sanitation Department"),
+            "water_leakage": ("water_supply", "WATER_SUPPLY", "Water Supply Department"),
+            "drainage": ("drainage_sewerage", "DRAINAGE", "Drainage Board"),
+            "streetlight": ("electricity_lighting", "STREET_LIGHT", "Electricity Department"),
+            "other": ("public_safety_other", "DEPT_GEN_ADMIN", "General Civic Administration"),
+        }
+        category, department_id, department_name = issue_config[issue_type]
+        try:
+            confidence = max(0.0, min(1.0, float(data.get("confidence", 0.0))))
+        except (TypeError, ValueError):
+            confidence = 0.0
+        severity = str(data.get("severity", "MEDIUM")).upper()
+        if severity not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
+            severity = "MEDIUM"
+        reason = str(data.get("severity_reason", ""))
+        if issue_type in {"pothole", "road_damage"} and severity in {"HIGH", "CRITICAL"}:
+            if not any(term in reason.lower() for term in ("accident", "crash", "injury", "fatal", "deep crater", "highway", "caved in")):
+                severity = "MEDIUM"
+
+        return {
+            "detected_issue": issue_type,
+            "display_title": str(data.get("display_title") or issue_type.replace("_", " ").title()),
+            "category": category,
+            "suggested_department": department_name,
+            "department_id": department_id,
+            "severity": severity,
+            "severity_reason": reason or f"Visual review estimates {severity} priority; confirm using location and field context.",
+            "confidence": confidence,
+            "evidence": str(data.get("visual_evidence") or data.get("description") or "No clear visual evidence supplied."),
+            "description": str(data.get("description") or "Civic issue identified from the attached photo."),
+            "mode": "GEMINI_VISION",
+            "forensics": {},
+            "visual_features": {"llm_verified": True, "model": self.gemini_model, "filename": filename},
+        }
 
     def _call_groq_vision(self, pil_image: Image.Image, filename: str) -> Optional[Dict[str, Any]]:
         """Invokes Groq Vision with qwen/qwen3.8-27b for multimodal scene & defect evaluation."""
