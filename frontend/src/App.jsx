@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { AssistantProvider } from './context/AssistantContext';
 import { AssistantPanel } from './components/AssistantPanel';
+import { AssistantLauncher } from './components/AssistantLauncher';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 
@@ -57,6 +58,7 @@ export const App = () => {
         <AssistantProvider>
           <Router>
             <AppContent />
+            <AssistantLauncher />
             <AssistantPanel />
           </Router>
         </AssistantProvider>

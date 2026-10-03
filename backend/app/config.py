@@ -73,3 +73,11 @@ ASSISTANT_LLM_MODEL = os.getenv("ASSISTANT_LLM_MODEL", "").strip() or LLM_MODEL
 ASSISTANT_LLM_BASE_URL = os.getenv("ASSISTANT_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 ASSISTANT_TIMEOUT_SECONDS = float(os.getenv("ASSISTANT_TIMEOUT_SECONDS", "8"))
 ASSISTANT_MAX_TOKENS = int(os.getenv("ASSISTANT_MAX_TOKENS", "600"))
+
+# CCTV AI Integration Service Configuration
+CCTV_SERVICE_KEY = os.getenv("CCTV_SERVICE_KEY", "cctv_secret_service_key_2026_demo").strip()
+CCTV_EVIDENCE_DIR = UPLOAD_DIR / "cctv_evidence"
+try:
+    CCTV_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass

@@ -19,7 +19,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
-import { useAssistant, useAssistantContext } from '../context/AssistantContext';
+import { useAssistantContext } from '../context/AssistantContext';
 
 // 7-Stage End-to-End Municipal Workflow Stages
 // Balanced Color Architecture: Primary Civic Blue for flow + targeted semantic accents (AI: Purple, Escalate: Amber, Resolve: Green)
@@ -218,8 +218,6 @@ export const LandingPage = () => {
     pageName: 'LandingPage',
     activeTab: 'overview'
   });
-
-  const { openAssistant } = useAssistant();
 
   // State for progressive technical disclosure and example visibility
   const [showTechnicalView, setShowTechnicalView] = useState(false);
@@ -431,43 +429,6 @@ export const LandingPage = () => {
                 })}
               </div>
             </div>
-          </div>
-
-          {/* ============================================================ */}
-          {/* CIVICSEVA CONTEXTUAL ASSISTANT (NATIVE CARD STYLE)            */}
-          {/* ============================================================ */}
-          <div className="mt-8 bg-white border border-slate-200 border-l-4 border-l-purple-600 rounded-lg p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 border border-purple-200/80 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                <Bot className="w-5 h-5 text-purple-700" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900">
-                    CivicSeva Assistant
-                  </h3>
-                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                    Contextual Guide
-                  </span>
-                </div>
-                <p className="text-xs font-semibold text-slate-700">
-                  Your guide throughout the journey.
-                </p>
-                <p className="text-xs text-slate-500 italic max-w-xl leading-relaxed">
-                  &ldquo;I&apos;m available at every step to explain what you&apos;re seeing and what to do next.&rdquo;
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={openAssistant}
-              aria-label="Open CivicSeva Assistant Guide"
-              className="px-4 py-2.5 rounded-md bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-medium text-xs shadow-sm hover:shadow transition flex items-center justify-center gap-2 self-start sm:self-auto flex-shrink-0"
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span>Open Assistant Guide</span>
-            </button>
           </div>
         </div>
       </section>

@@ -55,6 +55,8 @@ export const AssistantProvider = ({ children }) => {
 
   // Track user identity (id & role) to detect auth/role changes (e.g. switchDemoRole, logout, login)
   const prevUserRef = useRef({ id: user?.id, role: user?.role });
+  const userHasSentMessageRef = useRef(false);
+  const lastProactiveKeyRef = useRef(null);
 
   useEffect(() => {
     const prev = prevUserRef.current;
@@ -67,6 +69,8 @@ export const AssistantProvider = ({ children }) => {
       setError(null);
       setQuickActions([]);
       setFormContextState(null);
+      userHasSentMessageRef.current = false;
+      lastProactiveKeyRef.current = null;
       setPageContextState((prev) => ({
         ...prev,
         selectedComplaintId: null
@@ -138,11 +142,21 @@ export const AssistantProvider = ({ children }) => {
     setFormContextState(null);
   }, []);
 
+  const actionSubscribersRef = useRef(new Set());
+
+  const subscribeToAction = useCallback((callback) => {
+    actionSubscribersRef.current.add(callback);
+    return () => {
+      actionSubscribersRef.current.delete(callback);
+    };
+  }, []);
+
   // Send message to assistant
   const sendMessage = useCallback(async (text) => {
     const trimmed = (text || '').trim();
     if (!trimmed || loading) return null;
 
+    userHasSentMessageRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -181,8 +195,21 @@ export const AssistantProvider = ({ children }) => {
       if (data.error) {
         setError(data.error);
       }
+
+      // Dispatch controlled action to subscribers
+      if (data.action) {
+        actionSubscribersRef.current.forEach((cb) => {
+          try {
+            cb(data.action);
+          } catch (actionErr) {
+            console.error('[Assistant] Action subscriber error:', actionErr);
+          }
+        });
+      }
+
       return data;
     } catch (err) {
+
       const errorMsg = err.message || 'Unable to connect to CivicSeva Assistant';
       setError(errorMsg);
       // Even if network fails, add a friendly offline message so user isn't stuck
@@ -197,10 +224,65 @@ export const AssistantProvider = ({ children }) => {
     }
   }, [loading, messages, locationPath, pageContext, formContext]);
 
+  // C3.3: Proactive citizen contextual briefing (only for Citizen/Public users)
+  const fetchProactiveBriefing = useCallback(async () => {
+    // Strictly preserve Officer Mode / Authority Dashboard assistant behavior
+    if (user?.role === 'authority' || user?.role === 'admin') return;
+
+    const currentKey = `${pageContext.pageName || locationPath}|${pageContext.selectedComplaintId || ''}`;
+    lastProactiveKeyRef.current = currentKey;
+
+    setLoading(true);
+    setError(null);
+
+    const payload = {
+      message: '__proactive__',
+      page_context: {
+        route: locationPath || '/',
+        page_name: pageContext.pageName || null,
+        active_tab: pageContext.activeTab || null,
+        active_sub_tab: pageContext.activeSubTab || null,
+        ui_section: pageContext.uiSection || null,
+        selected_complaint_id: pageContext.selectedComplaintId || null
+      },
+      form_context: formContext || null,
+      selected_complaint_id: pageContext.selectedComplaintId || null,
+      conversation_history: []
+    };
+
+    try {
+      const data = await assistantApi.sendAssistantMessage(payload);
+      if (data && data.reply) {
+        setMessages([{ role: 'assistant', content: data.reply }]);
+        setQuickActions(data.quick_actions || []);
+        if (data.context_version) {
+          setContextVersion(data.context_version);
+        }
+      }
+    } catch (err) {
+      console.warn('[Assistant] Proactive briefing fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.role, locationPath, pageContext, formContext]);
+
+  // Proactively fetch contextual greeting when opened in Citizen/Public mode if user hasn't typed
+  useEffect(() => {
+    if (!isOpen) return;
+    if (user?.role === 'authority' || user?.role === 'admin') return;
+
+    const currentKey = `${pageContext.pageName || locationPath}|${pageContext.selectedComplaintId || ''}`;
+    if (!userHasSentMessageRef.current && lastProactiveKeyRef.current !== currentKey && !loading) {
+      fetchProactiveBriefing();
+    }
+  }, [isOpen, user?.role, pageContext.pageName, pageContext.selectedComplaintId, locationPath, loading, fetchProactiveBriefing]);
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     setError(null);
     setQuickActions([]);
+    userHasSentMessageRef.current = false;
+    lastProactiveKeyRef.current = null;
   }, []);
 
   const toggleAssistant = useCallback(() => {
@@ -230,12 +312,14 @@ export const AssistantProvider = ({ children }) => {
     // Actions
     sendMessage,
     clearConversation,
+    fetchProactiveBriefing,
     registerContext,
     unregisterContext,
     toggleAssistant,
     openAssistant,
     closeAssistant,
-    setIsOpen
+    setIsOpen,
+    subscribeToAction
   };
 
   return (
@@ -265,12 +349,14 @@ export const useAssistant = () => {
       isOpen: false,
       sendMessage: async () => null,
       clearConversation: () => {},
+      fetchProactiveBriefing: async () => null,
       registerContext: () => {},
       unregisterContext: () => {},
       toggleAssistant: () => {},
       openAssistant: () => {},
       closeAssistant: () => {},
-      setIsOpen: () => {}
+      setIsOpen: () => {},
+      subscribeToAction: () => () => {}
     };
   }
   return context;

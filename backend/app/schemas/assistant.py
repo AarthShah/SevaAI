@@ -1,4 +1,4 @@
-﻿"""
+"""
 CivicSeva Contextual Assistant - Pydantic Schemas
 
 Request/response contracts for POST /api/assistant/chat.
@@ -11,7 +11,7 @@ Design rules enforced here:
   in the current ReportIssuePage implementation.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -122,6 +122,7 @@ class ComplaintContextData(BaseModel):
     follow_up_count: int = 0
     escalation_count: int = 0
     escalation_level: Optional[int] = None
+    escalation_reason: Optional[str] = None
     ai_confidence: Optional[float] = None
     grounded_explanation: Optional[str] = None
     recommended_action: Optional[str] = None
@@ -142,6 +143,10 @@ class AuthorityOpsContextData(BaseModel):
     unassigned_count: int = 0
     autonomous_agent_status: str = "UNKNOWN"
     recent_agent_actions_count: int = 0
+    cctv_pending_count: int = 0
+    cctv_recent_potholes_count: int = 0
+    cctv_high_severity_count: int = 0
+    cctv_latest_detections: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class AssistantContext(BaseModel):
@@ -174,3 +179,4 @@ class AssistantChatResponse(BaseModel):
     quick_actions: List[QuickAction] = Field(default_factory=list)
     context_version: str = ""
     error: Optional[str] = None             # "llm_unavailable" | "rate_limited" | None
+    action: Optional[str] = None            # Controlled frontend action identifier (e.g. "OPEN_REPORT_PAGE")

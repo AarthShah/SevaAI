@@ -1,900 +1,402 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Camera, Radio, Shield, AlertTriangle, CheckCircle2, RefreshCw, 
-  Play, Pause, Upload, MapPin, User, ArrowRight, Volume2, VolumeX,
-  Maximize2, Video, FileVideo, HardDrive, Cpu, Zap, Activity
+import {
+  Camera, Radio, Shield, AlertTriangle, CheckCircle2, RefreshCw,
+  Play, Pause, Upload, Volume2, VolumeX, Cpu, Zap, Activity, XCircle
 } from 'lucide-react';
 import { cctvApi } from '../api/cctvApi';
 
 const DEFAULT_CAMERAS = [
-  { 
-    camera_id: 'CCTV-PN-01', 
-    location: 'Mahatma Gandhi Road Arterial Corridor', 
-    ward: 'Ward 01 (Central Promenade)', 
-    video_url: '/sample_evidence/cctv_feed_1.mp4', 
-    sample_snapshot: '/sample_evidence/pothole.jpg',
-    default_defect: 'Normal Feed - Zero Defects Detected',
-    status: 'NOMINAL',
-    has_defect: false,
-    category: 'All Clear / Safe',
-    severity: 'NONE',
-    confidence: 0.99,
-    department: 'None Required',
-    box: null,
-    coords: '18.5204° N, 73.8567° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-02', 
-    location: 'Market Central Produce & Pedestrian Promenade', 
-    ward: 'Ward 22 (Market Yard)', 
-    video_url: '/sample_evidence/cctv_feed_2.mp4', 
-    sample_snapshot: '/sample_evidence/garbage.jpg',
-    default_defect: 'Normal Feed - Zero Defects Detected',
-    status: 'NOMINAL',
-    has_defect: false,
-    category: 'All Clear / Safe',
-    severity: 'NONE',
-    confidence: 0.99,
-    department: 'None Required',
-    box: null,
-    coords: '18.5280° N, 73.8650° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-03', 
-    location: 'Shivajinagar Junction Arterial Crossing (Test)', 
-    ward: 'Ward 14 (Central Ward)', 
-    video_url: '/sample_evidence/cctv_feed_1.mp4', 
-    sample_snapshot: '/sample_evidence/pothole.jpg',
-    default_defect: 'Road Cavitation / Pothole Defect',
-    category: 'Road Infrastructure',
-    severity: 'HIGH',
-    confidence: 0.96,
-    department: 'Road Department',
-    box: { top: '42%', left: '32%', width: '36%', height: '28%' },
-    coords: '18.5204° N, 73.8567° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-04', 
-    location: 'Mandai Market Waste Collection Perimeter (Test)', 
-    ward: 'Ward 22 (Market Yard)', 
-    video_url: '/sample_evidence/cctv_feed_2.mp4', 
-    sample_snapshot: '/sample_evidence/garbage.jpg',
-    default_defect: 'Solid Waste Accumulation & Sidewalk Hazard',
-    category: 'Waste Management',
-    severity: 'MEDIUM',
-    confidence: 0.93,
-    department: 'Sanitation Department',
-    box: { top: '48%', left: '20%', width: '42%', height: '32%' },
-    coords: '18.5280° N, 73.8650° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-05', 
-    location: 'Riverbank Water Distribution Grid (Test)', 
-    ward: 'Ward 08 (Utility Corridor)', 
-    video_url: '/sample_evidence/cctv_feed_1.mp4', 
-    sample_snapshot: '/sample_evidence/water_leak.jpg',
-    default_defect: 'Pressurized Water Main Pipeline Rupture',
-    category: 'Water Infrastructure',
-    severity: 'CRITICAL',
-    confidence: 0.97,
-    department: 'Water Supply Department',
-    box: { top: '38%', left: '40%', width: '35%', height: '30%' },
-    coords: '18.5150° N, 73.8500° E'
-  },
-  { 
-    camera_id: 'CCTV-PN-06', 
-    location: 'Outer Bypass Highway Night Vision (Test)', 
-    ward: 'Ward 31 (Highway Sector)', 
-    video_url: '/sample_evidence/cctv_feed_2.mp4', 
-    sample_snapshot: '/sample_evidence/streetlight.jpg',
-    default_defect: 'High-Mast Streetlight Array Blackout',
-    category: 'Electrical & Lighting',
-    severity: 'HIGH',
-    confidence: 0.91,
-    department: 'Electricity Department',
-    box: { top: '22%', left: '55%', width: '30%', height: '35%' },
-    coords: '18.5350° N, 73.8400° E'
-  }
+  { camera_id: 'CCTV-PN-01', location: 'MG Road Arterial Corridor', zone: 'Central Ward', video_url: '/sample_evidence/cctv_feed_1.mp4', sample_snapshot: '/sample_evidence/pothole.jpg', status: 'LIVE_MONITORING' },
+  { camera_id: 'CCTV-PN-02', location: 'Central Market Promenade', zone: 'Market Yard', video_url: '/sample_evidence/cctv_feed_2.mp4', sample_snapshot: '/sample_evidence/garbage.jpg', status: 'LIVE_MONITORING' },
+  { camera_id: 'CCTV-PN-03', location: 'Shivajinagar Junction (Test)', zone: 'Deccan Corridor', video_url: '/sample_evidence/cctv_feed_1.mp4', sample_snapshot: '/sample_evidence/pothole.jpg', status: 'TEST_FEED' },
+  { camera_id: 'CCTV-PN-04', location: 'Mandai Market (Test)', zone: 'Market Yard', video_url: '/sample_evidence/cctv_feed_2.mp4', sample_snapshot: '/sample_evidence/garbage.jpg', status: 'TEST_FEED' },
+  { camera_id: 'CCTV-PN-05', location: 'Riverbank Pipeline Hub (Test)', zone: 'Utility Corridor', video_url: '/sample_evidence/cctv_feed_1.mp4', sample_snapshot: '/sample_evidence/pothole.jpg', status: 'TEST_FEED' },
+  { camera_id: 'CCTV-PN-06', location: 'Smart City Safe Corridor', zone: 'Central Ward', video_url: '/sample_evidence/cctv_feed_1.mp4', sample_snapshot: '/sample_evidence/pothole.jpg', status: 'LIVE_MONITORING' },
 ];
 
+const SEV_CLS = { HIGH: 'text-red-700 bg-red-50 border-red-300', MEDIUM: 'text-amber-700 bg-amber-50 border-amber-300', LOW: 'text-blue-700 bg-blue-50 border-blue-300', NONE: 'text-emerald-700 bg-emerald-50 border-emerald-300', CRITICAL: 'text-red-900 bg-red-100 border-red-500' };
 export const CCTVVisionPage = ({ isEmbedded = false }) => {
-  const [cameras, setCameras] = useState(DEFAULT_CAMERAS);
-  const [selectedCamera, setSelectedCamera] = useState(DEFAULT_CAMERAS[0]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const [autoDispatchEnabled, setAutoDispatchEnabled] = useState(true);
-  const [dispatchedTicket, setDispatchedTicket] = useState(null);
-  const [isDispatching, setIsDispatching] = useState(false);
-  
-  // Video player controls state
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const rafRef = useRef(null);
+  const [cameras, setCameras] = useState(DEFAULT_CAMERAS);
+  const [selectedCam, setSelectedCam] = useState(DEFAULT_CAMERAS[0]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [uploadedVideo, setUploadedVideo] = useState(null); // { name, url, size }
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
-  const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
-  const [visionMode, setVisionMode] = useState('AUTO'); // 'AUTO' | 'FORCE_NORMAL' | 'FORCE_DEFECT'
+  const [uploadedVideo, setUploadedVideo] = useState(null);
+  const [clockStr, setClockStr] = useState(new Date().toLocaleTimeString());
+  const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [yoloTelemetry, setYoloTelemetry] = useState(null);
+  const [frameDets, setFrameDets] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
+  const [cctvEvents, setCctvEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [previewEvent, setPreviewEvent] = useState(null);
+  const [actionBusy, setActionBusy] = useState(null);
+  const [actionMsg, setActionMsg] = useState(null);
 
-  // Clock tick for live CCTV OSD
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  useEffect(() => { const t = setInterval(() => setClockStr(new Date().toLocaleTimeString()), 1000); return () => clearInterval(t); }, []);
 
-  // Load cameras from backend or fallback to enriched DEFAULT_CAMERAS
   useEffect(() => {
-    const loadCameras = async () => {
-      try {
-        const data = await cctvApi.getCameras();
-        if (data && data.length > 0) {
-          // Merge API data with video URLs
-          const merged = data.map((cam, idx) => ({
-            ...cam,
-            video_url: cam.video_url || DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].video_url,
-            sample_snapshot: cam.sample_snapshot || DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].sample_snapshot,
-            box: DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].box,
-            coords: DEFAULT_CAMERAS[idx % DEFAULT_CAMERAS.length].coords,
-            has_defect: cam.default_defect !== 'NORMAL'
-          }));
-          setCameras(merged);
-          setSelectedCamera(merged[0]);
-          runScan(merged[0]);
-          return;
-        }
-      } catch (err) {
-        console.warn('Using standard municipal CCTV grid feeds', err);
+    cctvApi.getCameras().then(data => {
+      if (data && data.length) {
+        const merged = data.map((c, i) => ({ ...c, video_url: c.video_url || DEFAULT_CAMERAS[i % DEFAULT_CAMERAS.length].video_url }));
+        setCameras(merged); setSelectedCam(merged[0]);
       }
-      setCameras(DEFAULT_CAMERAS);
-      setSelectedCamera(DEFAULT_CAMERAS[0]);
-      runScan(DEFAULT_CAMERAS[0]);
-    };
-    loadCameras();
+    }).catch(() => {});
   }, []);
 
-  // Handle Video Upload
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
+  const fetchEvents = useCallback(async () => {
+    setEventsLoading(true);
+    try {
+      const params = filterStatus !== 'ALL' ? { status: filterStatus } : {};
+      const data = await cctvApi.getEvents(params);
+      setCctvEvents(data.items || []);
+    } catch (_) {} finally { setEventsLoading(false); }
+  }, [filterStatus]);
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  const doReview = async (id, status) => {
+    setActionBusy(id); setActionMsg(null);
+    try { await cctvApi.updateEventStatus(id, { status, review_notes: 'Officer review' }); setActionMsg({ ok: true, text: 'Event ' + id + ' marked ' + status }); await fetchEvents(); }
+    catch (e) { setActionMsg({ ok: false, text: 'Failed: ' + e.message }); } finally { setActionBusy(null); }
+  };
+  const doConvert = async (id) => {
+    setActionBusy(id); setActionMsg(null);
+    try { const r = await cctvApi.convertToComplaint(id); setActionMsg({ ok: true, text: 'Converted to Complaint #' + r.complaint_id }); await fetchEvents(); }
+    catch (e) { setActionMsg({ ok: false, text: 'Failed: ' + e.message }); } finally { setActionBusy(null); }
+  };
+
+  const syncBoxes = useCallback(() => {
+    if (!yoloTelemetry || !videoRef.current) return;
+    const fps = (yoloTelemetry.metadata && yoloTelemetry.metadata.fps) || 30;
+    const fi = Math.round(videoRef.current.currentTime * fps);
+    const fd = yoloTelemetry.frames && yoloTelemetry.frames.find(f => Math.abs(f.frame_idx - fi) <= 1);
+    setFrameDets((fd && fd.detections) || []);
+    rafRef.current = requestAnimationFrame(syncBoxes);
+  }, [yoloTelemetry]);
+  useEffect(() => {
+    if (yoloTelemetry && videoRef.current && !videoRef.current.paused) rafRef.current = requestAnimationFrame(syncBoxes);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [yoloTelemetry, syncBoxes]);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
-
-    // Create a local blob URL for instant smooth video playback
-    const videoUrl = URL.createObjectURL(file);
-    const videoMeta = {
-      name: file.name,
-      url: videoUrl,
-      size: (file.size / (1024 * 1024)).toFixed(1),
-      type: file.type || 'video/mp4'
-    };
-
-    setUploadedVideo(videoMeta);
-    setSelectedCamera(null); // Deselect preset camera
-    setIsPlaying(true);
-
-    // Run AI scanning immediately on the uploaded video
-    runScanForUploaded(videoMeta);
-  };
-
-  // Run scan on uploaded video with intelligent normal vs defect detection
-  const runScanForUploaded = (videoMeta, forcedMode = visionMode) => {
-    setIsScanning(true);
-    setScanResult(null);
-    setDispatchedTicket(null);
-
-    setTimeout(() => {
-      const fn = (videoMeta.name || '').toLowerCase();
-      // Only explicit defect markers in filename trigger a defect detection
-      // Standard video names (street.mp4, traffic.mp4, my_footage.mp4) default to 0 defects!
-      const hasDefectKeywords = anyKeywordMatch(fn, [
-        'pothole', 'crater', 'garbage_dump', 'illegal_dump', 'trash_pile',
-        'pipe_burst', 'pipeline_leak', 'open_manhole', 'broken_pole'
-      ]);
-
-      const shouldDetectDefect = forcedMode === 'FORCE_DEFECT' || (forcedMode === 'AUTO' && hasDefectKeywords);
-
-      let mockResult;
-      if (!shouldDetectDefect) {
-        // NORMAL FOOTAGE: Zero defects detected!
-        mockResult = {
-          camera_id: 'CUSTOM-UPLOAD-FEED',
-          location: `Uploaded Video Analysis: ${videoMeta.name}`,
-          status: 'NOMINAL',
-          has_defect: false,
-          detected_issue: 'Normal Feed - Zero Defects Detected',
-          category: 'Nominal Municipal Grid',
-          confidence: 0.99,
-          severity: 'NONE',
-          auto_dispatch_recommended: false,
-          suggested_department: 'None Required',
-          description: `Edge YOLOv8 computer vision model analyzed uploaded feed "${videoMeta.name}" (${videoMeta.size} MB). Verified roadway surface intact, clear pedestrian pathways, and normal environmental conditions. Zero potholes, garbage accumulations, or pipeline leaks detected.`,
-          detections: [],
-          box: null,
-          coords: 'GPS Geo-tagged (Municipal Surveillance Grid)'
-        };
+    const localUrl = URL.createObjectURL(file);
+    setUploadedVideo({ name: file.name, url: localUrl, size: (file.size / 1048576).toFixed(1) });
+    setSelectedCam(null); setIsPlaying(true); setYoloTelemetry(null); setFrameDets([]); setScanResult(null); setStats(null);
+    setProcessing(true); setProgress(0);
+    const tick = setInterval(() => setProgress(p => Math.min(p + 1.5, 90)), 400);
+    try {
+      const tel = await cctvApi.processVideo(file, 'CAM-UPLOAD-AI', 0.25, true);
+      clearInterval(tick); setProgress(100); setYoloTelemetry(tel);
+      if (tel.annotated_video_url) setUploadedVideo(prev => ({ ...prev, annotatedUrl: tel.annotated_video_url }));
+      const allDets = (tel.frames || []).reduce((a, f) => a.concat(f.detections || []), []);
+      const confirmed = tel.confirmed_events || [];
+      setStats({ fps: tel.metadata && tel.metadata.overall_fps, lat: tel.metadata && tel.metadata.avg_latency_ms, vram: tel.metadata && tel.metadata.peak_vram_mb, frames: tel.metadata && tel.metadata.total_frames, rawDets: tel.stats && tel.stats.total_raw_detections, confDets: tel.stats && tel.stats.total_confirmed_events, res: ((tel.metadata && tel.metadata.width) || '?') + 'x' + ((tel.metadata && tel.metadata.height) || '?') });
+      if (allDets.length > 0) {
+        const peak = allDets.reduce((b, d) => d.confidence > (b ? b.confidence : 0) ? d : b, allDets[0]);
+        setScanResult({ status: 'DEFECT_DETECTED', has_defect: true, issue: peak.issue_type, conf: peak.confidence, sev: peak.confidence > 0.65 ? 'HIGH' : peak.confidence > 0.40 ? 'MEDIUM' : 'LOW', totalRaw: allDets.length, totalConf: confirmed.length, dets: allDets, confirmed });
       } else {
-        // DEFECT DETECTED: Specific classification
-        let defectName = 'Road Cavitation / Pothole Defect';
-        let dept = 'Road Department';
-        let cat = 'Road Infrastructure';
-        let sev = 'HIGH';
-
-        if (fn.includes('garbage') || fn.includes('trash') || fn.includes('dump')) {
-          defectName = 'Solid Waste / Garbage Overflow';
-          dept = 'Sanitation Department';
-          cat = 'Solid Waste & Sanitation';
-          sev = 'MEDIUM';
-        } else if (fn.includes('burst') || fn.includes('leak')) {
-          defectName = 'Pressurized Water Pipe Burst';
-          dept = 'Water Supply Department';
-          cat = 'Water Supply';
-          sev = 'CRITICAL';
-        } else if (fn.includes('manhole')) {
-          defectName = 'Missing Sewer Manhole Cover Cavity';
-          dept = 'Drainage Department';
-          cat = 'Drainage & Sanitation';
-          sev = 'CRITICAL';
-        }
-
-        mockResult = {
-          camera_id: 'CUSTOM-UPLOAD-FEED',
-          location: `Uploaded Video Analysis: ${videoMeta.name}`,
-          status: 'DEFECT_DETECTED',
-          has_defect: true,
-          detected_issue: defectName,
-          category: cat,
-          confidence: 0.95,
-          severity: sev,
-          auto_dispatch_recommended: true,
-          suggested_department: dept,
-          description: `Edge YOLOv8 model analyzed uploaded feed "${videoMeta.name}" (${videoMeta.size} MB). Identified severe structural anomaly with hazardous vehicle deflection risk.`,
-          detections: [
-            { label: defectName, confidence: 0.95, box: [200, 240, 460, 410] }
-          ],
-          box: { top: '35%', left: '30%', width: '40%', height: '32%' },
-          coords: 'GPS Geo-tagged (Municipal Zone 2)'
-        };
+        setScanResult({ status: 'NOMINAL', has_defect: false, issue: 'Normal — Zero Defects Detected', conf: 0, sev: 'NONE', totalRaw: 0, totalConf: 0, dets: [], confirmed: [] });
       }
-
-      setScanResult(mockResult);
-      setIsScanning(false);
-
-      if (autoDispatchEnabled && mockResult.has_defect) {
-        setTimeout(() => handleAutoDispatch(mockResult), 600);
-      }
-    }, 900);
+    } catch (err) { clearInterval(tick); console.error('YOLO error:', err); setScanResult({ status: 'ERROR', has_defect: false, issue: 'AI Inference Error' }); }
+    finally { setProcessing(false); setTimeout(() => setProgress(0), 800); }
   };
 
-  const anyKeywordMatch = (str, keywords) => keywords.some((kw) => str.includes(kw));
-
-  // Run scan on camera
-  const runScan = async (cam = selectedCamera, forcedMode = visionMode) => {
-    if (!cam && !uploadedVideo) return;
-    if (uploadedVideo) {
-      runScanForUploaded(uploadedVideo, forcedMode);
-      return;
-    }
-
-    setIsScanning(true);
-    setScanResult(null);
-    setDispatchedTicket(null);
-
-    const isNormalCam = cam.has_defect === false || cam.default_defect?.includes('Normal') || forcedMode === 'FORCE_NORMAL';
-
-    if (isNormalCam && forcedMode !== 'FORCE_DEFECT') {
-      setTimeout(() => {
-        const normalResult = {
-          camera_id: cam.camera_id,
-          location: cam.location,
-          status: 'NOMINAL',
-          has_defect: false,
-          detected_issue: 'Normal Feed - Zero Defects Detected',
-          category: 'Nominal Municipal Grid',
-          confidence: 0.99,
-          severity: 'NONE',
-          auto_dispatch_recommended: false,
-          suggested_department: 'None Required',
-          description: `Continuous edge computer vision detection verified normal roadway conditions at ${cam.location}. Zero infrastructure defects or hazard cavities detected.`,
-          detections: [],
-          box: null,
-          coords: cam.coords
-        };
-        setScanResult(normalResult);
-        setIsScanning(false);
-      }, 700);
-      return;
-    }
-
-    try {
-      const res = await cctvApi.scanFeed(cam.camera_id, null);
-      if (res && res.detected_issue) {
-        setScanResult({
-          ...res,
-          box: res.has_defect === false ? null : cam.box,
-          coords: cam.coords
-        });
-        if (autoDispatchEnabled && res.auto_dispatch_recommended && res.has_defect !== false) {
-          setTimeout(() => handleAutoDispatch(res), 800);
-        }
-        setIsScanning(false);
-        return;
-      }
-    } catch {
-      // Graceful fallback
-    }
-
-    setTimeout(() => {
-      const mockResult = {
-        camera_id: cam.camera_id,
-        location: cam.location,
-        status: 'DEFECT_DETECTED',
-        has_defect: true,
-        detected_issue: cam.default_defect || 'Road Cavitation / Pothole Defect',
-        category: cam.category || 'Road Infrastructure',
-        confidence: cam.confidence || 0.94,
-        severity: cam.severity || 'HIGH',
-        auto_dispatch_recommended: true,
-        suggested_department: cam.department || 'Road Department',
-        description: `Continuous edge computer vision detection identified active defect at ${cam.location}. Automated classification verified by CivicSeva YOLOv8 municipal neural network.`,
-        detections: [
-          { label: cam.default_defect || 'Pothole Defect', confidence: cam.confidence || 0.94, box: [180, 220, 480, 420] }
-        ],
-        box: cam.box || { top: '38%', left: '30%', width: '38%', height: '30%' },
-        coords: cam.coords
-      };
-      setScanResult(mockResult);
-      setIsScanning(false);
-
-      if (autoDispatchEnabled) {
-        setTimeout(() => handleAutoDispatch(mockResult), 600);
-      }
-    }, 800);
-  };
-
-  const handleAutoDispatch = async (detection = scanResult) => {
-    if (!detection || isDispatching) return;
-    setIsDispatching(true);
-    try {
-      const payload = {
-        camera_id: detection.camera_id,
-        defect_type: detection.detected_issue,
-        severity: detection.severity,
-        address: detection.location,
-        confidence: detection.confidence || 0.95,
-        description: detection.description
-      };
-      const res = await cctvApi.autoDispatch(payload);
-      setDispatchedTicket(res);
-    } catch {
-      const mockTicket = {
-        ticket_id: 'CS' + Math.floor(1000 + Math.random() * 9000),
-        department: detection.suggested_department || 'Road Department',
-        officer: 'Er. Rajesh Patil (Field Squad A)',
-        status: 'Assigned',
-        eta_minutes: 15,
-        confidence: `${Math.round((detection.confidence || 0.95) * 100)}%`
-      };
-      setDispatchedTicket(mockTicket);
-    } finally {
-      setIsDispatching(false);
-    }
-  };
-
-  // Toggle video play / pause
   const togglePlay = () => {
     if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      videoRef.current.play();
-      setIsPlaying(true);
-    }
+    if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); if (yoloTelemetry) rafRef.current = requestAnimationFrame(syncBoxes); }
+    else { videoRef.current.pause(); setIsPlaying(false); if (rafRef.current) cancelAnimationFrame(rafRef.current); }
   };
+  const toggleMute = () => { if (!videoRef.current) return; videoRef.current.muted = !isMuted; setIsMuted(!isMuted); };
 
-  // Toggle mute
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-    videoRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
-  };
-
-  // Active video source
-  const currentVideoSrc = uploadedVideo 
-    ? uploadedVideo.url 
-    : (selectedCamera?.video_url || '/sample_evidence/cctv_feed_1.mp4');
-
-  const currentCoords = uploadedVideo 
-    ? 'LAT: 18.5204° N • LON: 73.8567° E' 
-    : (selectedCamera?.coords || '18.5204° N, 73.8567° E');
-
-  const currentCamName = uploadedVideo 
-    ? `Uploaded: ${uploadedVideo.name}` 
-    : (selectedCamera ? `${selectedCamera.camera_id} (${selectedCamera.location})` : 'CCTV-PN-01');
+  const videoSrc = (uploadedVideo && (uploadedVideo.annotatedUrl || uploadedVideo.url)) || (selectedCam && selectedCam.video_url) || '/sample_evidence/cctv_feed_1.mp4';
+  const camLabel = uploadedVideo ? 'Uploaded: ' + uploadedVideo.name : selectedCam ? selectedCam.camera_id + ' — ' + (selectedCam.zone || '') : 'CCTV-PN-01';
 
   return (
-    <div className={isEmbedded ? "space-y-6" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 bg-white min-h-[calc(100vh-64px)]"}>
-      {/* Hidden Video Input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/avi"
-        className="hidden"
-      />
+    <div className={isEmbedded ? 'space-y-6' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6'}>
+      <input type='file' ref={fileInputRef} onChange={handleUpload} accept='video/mp4,video/webm,video/quicktime,video/avi' className='hidden' />
 
-      {/* Breadcrumb */}
-      {!isEmbedded && (
-        <div className="text-xs text-slate-400 flex items-center gap-1.5">
-          <Link to="/" className="hover:text-slate-600">Home</Link>
-          <span>&rsaquo;</span>
-          <Link to="/authority" className="hover:text-slate-600">Command Center</Link>
-          <span>&rsaquo;</span>
-          <span className="text-slate-700 font-medium">CCTV AI Vision Grid</span>
-        </div>
-      )}
-
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-md p-5 border border-slate-200 shadow-xs">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200">
-            <Radio className="w-3.5 h-3.5 text-blue-800 animate-pulse" />
-            <span>Smart City Edge Vision Grid &bull; Live Telemetry</span>
+      {/* Header */}
+      <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-xl p-5 border border-slate-200 shadow-sm'>
+        <div className='space-y-1'>
+          <div className='inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200'>
+            <Radio className='w-3.5 h-3.5 text-blue-700 animate-pulse' />
+            <span>Smart City Edge Vision Grid — YOLO11s V2 Real-Time Inference</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-            CCTV AI Defect Scanner & Surveillance Grid
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Continuous municipal surveillance feed inspection detecting potholes, garbage accumulation, water leaks, and street hazards.
-          </p>
+          <h1 className='text-xl sm:text-2xl font-bold text-slate-900'>CCTV AI Vision — Real-Time Road Defect Detection</h1>
+          <p className='text-xs text-slate-500'>Upload any surveillance video. YOLO11s V2 runs real frame-by-frame inference — zero hardcoded results.</p>
         </div>
-
-        {/* Top Controls: Upload Video & Auto-Dispatch Toggle */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Upload Video Button */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
-          >
-            <Upload className="w-3.5 h-3.5 text-slate-300" />
-            <span>Upload Video / CCTV Clip</span>
+        <div className='flex flex-wrap items-center gap-2.5'>
+          <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className='inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold transition shadow'>
+            <Upload className='w-4 h-4' /><span>Upload Video for AI Analysis</span>
           </button>
-
-          {/* Autonomous Watchdog Switch */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded border border-slate-200 text-xs">
-            <div className="text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block leading-none">Auto-Dispatch</span>
-              <strong className="text-blue-900 text-[11px] font-semibold">
-                {autoDispatchEnabled ? 'Active (Auto)' : 'Manual Review'}
-              </strong>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAutoDispatchEnabled(!autoDispatchEnabled)}
-              className={`px-2 py-1 rounded text-[11px] font-bold transition ${
-                autoDispatchEnabled
-                  ? 'bg-blue-800 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {autoDispatchEnabled ? 'ON' : 'OFF'}
-            </button>
-          </div>
+          <button onClick={fetchEvents} className='inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm transition'>
+            <RefreshCw className='w-3.5 h-3.5' /><span>Refresh Events</span>
+          </button>
         </div>
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: CCTV Live Video Feed Viewport (8 cols) */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="bg-white rounded-md border border-slate-200 p-3 sm:p-4 shadow-xs space-y-3">
-            {/* Monitor Top Status Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 border-b border-slate-100 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-                <span className="font-bold text-red-700 text-xs tracking-wider">LIVE FEED</span>
-                <span className="text-slate-300">|</span>
-                <span className="font-bold text-slate-900 font-mono truncate max-w-[220px] sm:max-w-none">
-                  {uploadedVideo ? `FILE: ${uploadedVideo.name}` : (selectedCamera ? selectedCamera.camera_id : 'CCTV-PN-01')}
-                </span>
-                {!uploadedVideo && selectedCamera && (
-                  <span className="text-slate-400 hidden sm:inline truncate max-w-[200px]">
-                    &bull; {selectedCamera.location}
-                  </span>
-                )}
-              </div>
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+        {/* Video Player (2 cols) */}
+        <div className='lg:col-span-2 space-y-4'>
+          <div className='relative bg-black rounded-xl overflow-hidden shadow-xl aspect-video group'>
+            <video ref={videoRef} key={videoSrc} src={videoSrc} autoPlay={isPlaying} muted={isMuted} loop playsInline className='w-full h-full object-contain bg-black'
+              onPlay={() => { setIsPlaying(true); if (yoloTelemetry) rafRef.current = requestAnimationFrame(syncBoxes); }}
+              onPause={() => { setIsPlaying(false); if (rafRef.current) cancelAnimationFrame(rafRef.current); }} />
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
-                {uploadedVideo && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUploadedVideo(null);
-                      setSelectedCamera(cameras[0]);
-                      runScan(cameras[0]);
-                    }}
-                    className="px-2 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded hover:bg-rose-100 transition"
-                  >
-                    Reset to City Grid
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowBoundingBoxes(!showBoundingBoxes)}
-                  className={`px-2 py-1 text-[11px] font-medium rounded border transition ${
-                    showBoundingBoxes 
-                      ? 'bg-blue-50 text-blue-800 border-blue-200 font-semibold' 
-                      : 'bg-slate-50 text-slate-600 border-slate-200'
-                  }`}
-                >
-                  AI Box: {showBoundingBoxes ? 'ON' : 'OFF'}
-                </button>
-
-                {/* Mode Selector for Testing */}
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVisionMode('AUTO');
-                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'AUTO');
-                      else if (selectedCamera) runScan(selectedCamera, 'AUTO');
-                    }}
-                    className={`px-2 py-0.5 rounded font-semibold transition ${
-                      visionMode === 'AUTO' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Auto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVisionMode('FORCE_NORMAL');
-                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'FORCE_NORMAL');
-                      else if (selectedCamera) runScan(selectedCamera, 'FORCE_NORMAL');
-                    }}
-                    className={`px-2 py-0.5 rounded font-semibold transition ${
-                      visionMode === 'FORCE_NORMAL' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Normal (0 Defects)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVisionMode('FORCE_DEFECT');
-                      if (uploadedVideo) runScanForUploaded(uploadedVideo, 'FORCE_DEFECT');
-                      else if (selectedCamera) runScan(selectedCamera, 'FORCE_DEFECT');
-                    }}
-                    className={`px-2 py-0.5 rounded font-semibold transition ${
-                      visionMode === 'FORCE_DEFECT' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Simulate Defect
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (uploadedVideo) runScanForUploaded(uploadedVideo);
-                    else runScan();
-                  }}
-                  disabled={isScanning}
-                  className="px-3 py-1 rounded bg-blue-800 hover:bg-blue-900 text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin' : ''}`} />
-                  <span>{isScanning ? 'Scanning...' : 'Scan Feed'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Video Viewport with Live CCTV HUD */}
-            <div className="relative rounded overflow-hidden bg-slate-950 aspect-video flex items-center justify-center border border-slate-800 select-none group">
-              <video
-                key={currentVideoSrc}
-                ref={videoRef}
-                src={currentVideoSrc}
-                autoPlay
-                loop
-                muted={isMuted}
-                playsInline
-                className="w-full h-full object-cover"
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-              />
-
-              {/* Scanning Laser Sweep Animation */}
-              {isScanning && (
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] animate-[bounce_1.5s_infinite]"></div>
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded bg-slate-900/90 text-cyan-400 border border-cyan-500/50 text-xs font-mono font-bold flex items-center gap-2 shadow-lg backdrop-blur-xs">
-                    <Activity className="w-3.5 h-3.5 animate-spin" />
-                    <span>YOLOv8 Edge Vision Inference Processing...</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Bounding Box Defect Overlay (Only when defects actually detected) */}
-              {showBoundingBoxes && scanResult && scanResult.has_defect !== false && scanResult.status !== 'NOMINAL' && (
-                <div
-                  className="absolute border-2 border-red-500 bg-red-500/15 pointer-events-none rounded transition-all duration-300"
-                  style={scanResult.box || { top: '38%', left: '30%', width: '38%', height: '30%' }}
-                >
-                  {/* Bounding Box Corner Indicators */}
-                  <span className="absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-red-400"></span>
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-red-400"></span>
-                  <span className="absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-red-400"></span>
-                  <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-red-400"></span>
-
-                  {/* Defect Tag Badge */}
-                  <div className="absolute -top-7 left-0 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                    <AlertTriangle className="w-3 h-3 text-white" />
-                    <span>{scanResult.detected_issue} &bull; {Math.round((scanResult.confidence || 0.95) * 100)}%</span>
-                  </div>
-                </div>
-              )}
-
-              {/* CCTV OSD Top HUD */}
-              <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between text-white text-[11px] font-mono pointer-events-none drop-shadow-md">
-                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                  <span className="font-bold text-red-400">REC</span>
-                  <span>{currentCamName}</span>
-                </div>
-                <div className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded border border-white/10 font-bold tracking-wider text-slate-200">
-                  {currentTime} IST
-                </div>
-              </div>
-
-              {/* CCTV OSD Bottom HUD */}
-              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono pointer-events-none drop-shadow-md">
-                <div className="bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded border border-white/10 text-slate-300">
-                  GPS: {currentCoords} &bull; 1080p 60fps
-                </div>
-                <div className="bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded border border-white/10 text-emerald-400 font-semibold">
-                  H.264 &bull; 4120 Kbps &bull; LATENCY: 28ms
-                </div>
-              </div>
-
-              {/* Player Floating Quick Controls */}
-              <div className="absolute bottom-10 right-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-xs p-1 rounded-md border border-white/20 transition opacity-90 hover:opacity-100">
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="p-1.5 text-white hover:text-blue-400 rounded transition"
-                  title={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  className="p-1.5 text-white hover:text-blue-400 rounded transition"
-                  title={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Uploaded Video Banner Notice if present */}
-            {uploadedVideo && (
-              <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200 rounded text-xs">
-                <div className="flex items-center gap-2 text-blue-900">
-                  <FileVideo className="w-4 h-4 text-blue-700" />
-                  <span>
-                    Uploaded Surveillance Clip: <strong>{uploadedVideo.name}</strong> ({uploadedVideo.size} MB)
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-blue-800 font-semibold hover:underline"
-                >
-                  Change Video
-                </button>
-              </div>
-            )}
-
-            {/* Scan Status & AI Defect Report */}
-            {scanResult && (
-              scanResult.has_defect === false || scanResult.status === 'NOMINAL' ? (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <strong className="text-emerald-950 font-bold text-sm">
-                        Feed Nominal • Zero Defects Detected
-                      </strong>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-emerald-800 text-white font-mono text-[10px] font-bold">
-                        Confidence: {Math.round((scanResult.confidence || 0.99) * 100)}%
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        ALL CLEAR
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-emerald-900 text-xs leading-relaxed">
-                    {scanResult.description}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200 text-xs">
-                    <span className="text-emerald-800">
-                      Municipal Jurisdiction: <strong>General Urban Realm / Road Network Intact</strong>
-                    </span>
-                    <span className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>No Work Order Required</span>
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-600"></span>
-                      <strong className="text-slate-900 font-bold text-sm">
-                        Defect Identified: {scanResult.detected_issue}
-                      </strong>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-blue-800 text-white font-mono text-[10px] font-bold">
-                        Confidence: {Math.round((scanResult.confidence || 0.95) * 100)}%
-                      </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        scanResult.severity === 'CRITICAL' 
-                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                          : 'bg-amber-100 text-amber-800 border border-amber-300'
-                      }`}>
-                        {scanResult.severity || 'HIGH'} PRIORITY
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-slate-600 text-xs leading-relaxed">
-                    {scanResult.description}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 text-xs">
-                    <span className="text-slate-700">
-                      Jurisdiction: <strong className="text-slate-900">{scanResult.suggested_department}</strong>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleAutoDispatch(scanResult)}
-                      disabled={isDispatching}
-                      className="px-3 py-1 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded transition flex items-center gap-1.5 shadow-xs"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{isDispatching ? 'Dispatching...' : 'Dispatch Field Squad Work Order'}</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Channels & Dispatched Work Orders (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* Upload Dedicated Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-md p-4 text-xs space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Video className="w-4 h-4 text-blue-800" />
-                <span>Custom Video Scanner</span>
-              </span>
-              <span className="text-[10px] text-slate-500 font-mono">.MP4, .WEBM, .MOV</span>
-            </div>
-            <p className="text-slate-600 text-[11px] leading-relaxed">
-              Upload local drone footage, dashcam, or municipal CCTV surveillance recordings to run immediate AI defect detection.
-            </p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold rounded text-xs transition flex items-center justify-center gap-2 shadow-xs"
-            >
-              <Upload className="w-3.5 h-3.5 text-blue-800" />
-              <span>Select Video File</span>
-            </button>
-          </div>
-
-          {/* Smart City Camera Channels */}
-          <div className="bg-white rounded-md border border-slate-200 p-4 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Smart City Camera Channels
-              </h2>
-              <span className="text-[11px] text-emerald-700 font-semibold">{cameras.length} Active Feeds</span>
-            </div>
-
-            <div className="space-y-2">
-              {cameras.map((cam) => {
-                const isSelected = !uploadedVideo && selectedCamera?.camera_id === cam.camera_id;
-                return (
-                  <div
-                    key={cam.camera_id}
-                    onClick={() => { 
-                      setUploadedVideo(null);
-                      setSelectedCamera(cam); 
-                      runScan(cam); 
-                    }}
-                    className={`p-2.5 rounded border cursor-pointer transition flex items-center gap-3 ${
-                      isSelected
-                        ? 'bg-blue-50 border-blue-700 ring-1 ring-blue-700'
-                        : 'bg-white border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="relative w-12 h-10 rounded overflow-hidden flex-shrink-0 border border-slate-200 bg-slate-900">
-                      <img
-                        src={cam.sample_snapshot || '/sample_evidence/pothole.jpg'}
-                        alt={cam.camera_id}
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 m-0.5"></span>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <strong className="text-xs text-slate-900 block truncate">{cam.camera_id}</strong>
-                        <span className="text-[10px] text-slate-500 font-mono">{cam.ward?.split(' ')[0]}</span>
+            {/* YOLO Bounding Boxes */}
+            {frameDets.length > 0 && yoloTelemetry && (
+              <div className='absolute inset-0 pointer-events-none'>
+                {frameDets.map((det, i) => {
+                  const bb = det.bbox || [0,0,0,0];
+                  const W = (yoloTelemetry.metadata && yoloTelemetry.metadata.width) || 640;
+                  const H = (yoloTelemetry.metadata && yoloTelemetry.metadata.height) || 480;
+                  const style = { left: (bb[0]/W*100).toFixed(2)+'%', top: (bb[1]/H*100).toFixed(2)+'%', width: ((bb[2]-bb[0])/W*100).toFixed(2)+'%', height: ((bb[3]-bb[1])/H*100).toFixed(2)+'%' };
+                  const pct = Math.round((det.confidence||0)*100);
+                  const conf = det.is_confirmed;
+                  return (
+                    <div key={i} className='absolute' style={style}>
+                      <div className={'w-full h-full border-2 rounded-sm ' + (conf ? 'border-red-500 bg-red-500/10' : 'border-amber-400 bg-amber-400/10')} />
+                      <div className={'absolute -top-6 left-0 px-1.5 py-0.5 rounded text-[10px] font-bold text-white ' + (conf ? 'bg-red-600' : 'bg-amber-600')}>
+                        {det.issue_type || 'POTHOLE'} {pct}%{conf && <span className='ml-0.5 text-[8px]'>C</span>}
                       </div>
-                      <span className="text-[11px] text-slate-500 block truncate">{cam.location}</span>
-                      <span className="text-[10px] text-blue-800 font-medium block truncate mt-0.5">
-                        {cam.default_defect}
-                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Processing overlay */}
+            {processing && (
+              <div className='absolute inset-0 bg-black/75 flex flex-col items-center justify-center gap-4 z-20'>
+                <div className='flex items-center gap-3 text-white'>
+                  <Cpu className='w-7 h-7 text-blue-400 animate-spin' />
+                  <div><p className='text-base font-bold'>YOLO11s V2 Processing...</p><p className='text-xs text-slate-400'>Real frame-by-frame inference on GPU</p></div>
+                </div>
+                <div className='w-64 bg-white/10 rounded-full h-2'><div className='bg-blue-400 h-2 rounded-full transition-all duration-300' style={{ width: progress + '%' }} /></div>
+                <p className='text-xs text-blue-300 font-mono'>{Math.round(progress)}% complete...</p>
+              </div>
+            )}
+
+            {/* OSD HUD top */}
+            <div className='absolute top-2 left-3 right-3 flex items-center justify-between pointer-events-none z-10'>
+              <div className='flex items-center gap-2 bg-black/70 px-2.5 py-1 rounded border border-white/10 text-white text-[11px]'>
+                <span className='w-1.5 h-1.5 rounded-full bg-red-500 animate-ping' />
+                <span className='font-bold text-red-400'>REC</span>
+                <span className='text-slate-300'>{camLabel}</span>
+                {stats && <span className='text-emerald-400 font-mono ml-2'>YOLO11s V2 • {stats.fps ? stats.fps.toFixed(1) : '--'} FPS</span>}
+              </div>
+              <div className='bg-black/70 px-2.5 py-1 rounded border border-white/10 text-white text-[11px] font-mono'>{clockStr} IST</div>
+            </div>
+
+            {/* OSD HUD bottom */}
+            <div className='absolute bottom-10 left-3 right-3 flex items-center justify-between pointer-events-none z-10'>
+              <div className='bg-black/70 px-2 py-0.5 rounded border border-white/10 text-slate-300 text-[10px]'>
+                {frameDets.length > 0 ? frameDets.length + ' ACTIVE DETECTION' + (frameDets.length > 1 ? 'S' : '') : 'Scanning frame...'}
+              </div>
+              {stats && <div className='bg-black/70 px-2 py-0.5 rounded border border-white/10 text-emerald-400 text-[10px] font-mono'>{stats.res} | {stats.lat ? stats.lat.toFixed(0) : '--'}ms | {stats.vram ? stats.vram.toFixed(0) : '--'}MB VRAM</div>}
+            </div>
+
+            {/* Controls */}
+            <div className='absolute bottom-2 right-3 flex gap-1.5 bg-black/70 p-1 rounded z-10 opacity-0 group-hover:opacity-100 transition-opacity'>
+              <button onClick={togglePlay} className='p-1.5 text-white hover:text-blue-400'>{isPlaying ? <Pause className='w-3.5 h-3.5' /> : <Play className='w-3.5 h-3.5' />}</button>
+              <button onClick={toggleMute} className='p-1.5 text-white hover:text-blue-400'>{isMuted ? <VolumeX className='w-3.5 h-3.5' /> : <Volume2 className='w-3.5 h-3.5' />}</button>
+            </div>
+          </div>
+
+          {/* Inference Result */}
+          {scanResult && !processing && (
+            <div className={'p-4 rounded-xl border ' + (scanResult.status === 'NOMINAL' ? 'bg-emerald-50 border-emerald-200' : scanResult.status === 'ERROR' ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200')}>
+              <div className='flex items-center justify-between gap-2 mb-2'>
+                <div className='flex items-center gap-2'>
+                  {scanResult.status === 'NOMINAL' ? <CheckCircle2 className='w-5 h-5 text-emerald-600' /> : <AlertTriangle className='w-5 h-5 text-amber-600' />}
+                  <span className='font-bold text-slate-900 text-sm'>{scanResult.status === 'NOMINAL' ? 'YOLO11s V2: No Defects Detected' : scanResult.status === 'ERROR' ? 'Inference Error' : 'YOLO11s V2: ' + scanResult.issue + ' Detected'}</span>
+                </div>
+                {scanResult.has_defect && <span className={'px-2 py-0.5 rounded text-[11px] font-bold border ' + (SEV_CLS[scanResult.sev] || SEV_CLS.MEDIUM)}>{scanResult.sev}</span>}
+              </div>
+              {scanResult.has_defect && (
+                <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2'>
+                  {[['Peak Conf', Math.round((scanResult.conf||0)*100)+'%', 'amber'],['Raw Dets', scanResult.totalRaw||0, 'slate'],['Confirmed', scanResult.totalConf||0, 'blue'],['FPS', stats && stats.fps ? stats.fps.toFixed(1) : '-', 'emerald']].map(([l,v,c]) => (
+                    <div key={l} className='bg-white rounded-lg p-2 border border-amber-200 text-center'>
+                      <div className='text-[10px] text-slate-500 uppercase font-semibold'>{l}</div>
+                      <div className={'text-lg font-bold text-'+c+'-700'}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {stats && <p className='mt-2 text-xs text-slate-500 font-mono bg-white/60 rounded px-2 py-1 border'>YOLO11s V2-Production | {stats.res} | {stats.frames} frames | {stats.lat ? stats.lat.toFixed(0) : '--'}ms | {stats.vram ? stats.vram.toFixed(0) : '--'}MB VRAM</p>}
+            </div>
+          )}
+
+          {/* Camera Grid */}
+          <div className='bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden'>
+            <div className='px-4 py-3 border-b border-slate-100 flex items-center justify-between'>
+              <h3 className='text-sm font-bold text-slate-800 flex items-center gap-1.5'><Camera className='w-4 h-4 text-blue-600' /> Municipal CCTV Grid</h3>
+              <span className='text-xs text-slate-500'>{cameras.length} cameras</span>
+            </div>
+            <div className='grid grid-cols-3 sm:grid-cols-6 gap-2 p-3'>
+              {cameras.map(cam => {
+                const isSel = selectedCam && selectedCam.camera_id === cam.camera_id && !uploadedVideo;
+                return (
+                  <div key={cam.camera_id} onClick={() => { setSelectedCam(cam); setUploadedVideo(null); setScanResult(null); setYoloTelemetry(null); setFrameDets([]); setStats(null); }} className={'relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all ' + (isSel ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-400')}>
+                    <img src={cam.sample_snapshot || '/sample_evidence/pothole.jpg'} alt={cam.location} className='w-full h-16 object-cover' onError={e => { e.target.onerror=null; e.target.src='/sample_evidence/pothole.jpg'; }} />
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/70 to-transparent' />
+                    <div className='absolute bottom-0.5 left-1 right-1'>
+                      <p className='text-white text-[8px] font-bold truncate'>{cam.camera_id}</p>
+                      <p className={'text-[7px] ' + (cam.status === 'LIVE_MONITORING' ? 'text-emerald-400' : 'text-amber-400')}>{cam.status === 'LIVE_MONITORING' ? '● LIVE' : '● TEST'}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
+        </div>
 
-          {/* Autonomous Dispatched Ticket Card */}
-          {dispatchedTicket && (
-            <div className="bg-white rounded-md border border-emerald-300 p-4 shadow-xs space-y-2.5 text-xs">
-              <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Work Order Auto-Dispatched</span>
-                </span>
-                <span className="font-mono font-bold text-emerald-800">
-                  #{dispatchedTicket.ticket_id || 'CS1039'}
-                </span>
+        {/* Right Panel */}
+        <div className='space-y-4'>
+          <div className='bg-gradient-to-br from-blue-900 to-slate-900 rounded-xl p-4 border border-blue-800/40'>
+            <div className='flex items-center gap-2 mb-2'><Zap className='w-4 h-4 text-blue-400' /><span className='text-white font-bold text-sm'>Real-Time YOLO11s V2</span></div>
+            <p className='text-blue-200 text-xs mb-3'>Upload any road/CCTV video. Real frame-by-frame pothole detection — zero hardcoded results, zero mocks.</p>
+            <button onClick={() => fileInputRef.current && fileInputRef.current.click()} disabled={processing} className='w-full py-2.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold transition disabled:opacity-50 flex items-center justify-center gap-2'>
+              {processing ? <><Cpu className='w-4 h-4 animate-spin' /> YOLO Running... {Math.round(progress)}%</> : <><Upload className='w-4 h-4' /> Upload Video for AI Scan</>}
+            </button>
+          </div>
+
+          <div className='bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden'>
+            <div className='px-4 py-3 border-b border-slate-100 flex items-center justify-between'>
+              <h3 className='text-sm font-bold text-slate-800 flex items-center gap-1.5'><Activity className='w-4 h-4 text-amber-500' /> Live Frame Detections</h3>
+              <span className='text-[11px] text-slate-500 font-mono bg-slate-50 px-1.5 py-0.5 rounded border'>{frameDets.length} active</span>
+            </div>
+            <div className='divide-y divide-slate-100 max-h-64 overflow-y-auto'>
+              {frameDets.length > 0 ? frameDets.map((det, i) => {
+                const pct = Math.round((det.confidence||0)*100);
+                return (
+                  <div key={i} className='px-4 py-2.5 flex items-center justify-between gap-2'>
+                    <div>
+                      <div className='flex items-center gap-1.5'>
+                        <span className={'w-1.5 h-1.5 rounded-full ' + (det.is_confirmed ? 'bg-red-500' : 'bg-amber-400')} />
+                        <span className='text-xs font-bold text-slate-800'>{det.issue_type || 'POTHOLE'}</span>
+                        {det.is_confirmed && <span className='text-[9px] bg-red-100 text-red-700 border border-red-200 px-1 rounded font-bold'>CONFIRMED</span>}
+                      </div>
+                      {det.track_id >= 0 && <p className='text-[10px] text-slate-400 font-mono'>Track #{det.track_id}</p>}
+                    </div>
+                    <span className={'text-sm font-bold font-mono ' + (pct > 60 ? 'text-red-600' : pct > 40 ? 'text-amber-600' : 'text-blue-600')}>{pct}%</span>
+                  </div>
+                );
+              }) : <div className='px-4 py-6 text-center text-slate-400 text-xs'>{yoloTelemetry ? 'No detections in current frame' : uploadedVideo ? (processing ? 'YOLO11s V2 processing...' : 'Play video to see live detections') : 'Upload a video to see real YOLO detections'}</div>}
+            </div>
+          </div>
+
+          {scanResult && scanResult.confirmed && scanResult.confirmed.length > 0 && (
+            <div className='bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden'>
+              <div className='px-4 py-3 border-b border-red-100 bg-red-50'>
+                <h3 className='text-sm font-bold text-red-800 flex items-center gap-1.5'><Shield className='w-4 h-4 text-red-600' /> {scanResult.confirmed.length} Confirmed Events</h3>
               </div>
-              <div className="space-y-1.5 text-slate-700">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Department:</span>
-                  <span className="font-semibold text-slate-900">{dispatchedTicket.department || 'Road Department'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Squad Assigned:</span>
-                  <span className="font-semibold text-blue-900">{dispatchedTicket.officer || 'Er. Rajesh Patil (Field Squad A)'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Estimated Arrival:</span>
-                  <span className="font-mono font-bold text-slate-800">{dispatchedTicket.eta_minutes || 15} mins</span>
-                </div>
+              <div className='divide-y divide-slate-100 max-h-48 overflow-y-auto'>
+                {scanResult.confirmed.slice(0,5).map((ev,i) => (
+                  <div key={i} className='px-4 py-2.5'>
+                    <div className='flex items-center justify-between'><span className='text-xs font-bold text-red-700'>{ev.event_type}</span><span className='text-xs font-mono'>{Math.round((ev.confidence||0)*100)}%</span></div>
+                    <p className='text-[10px] text-slate-400 font-mono'>Track #{ev.track_id} | Frame {ev.frame_number} | {ev.persistence_seconds ? ev.persistence_seconds.toFixed(2) : '?'}s</p>
+                  </div>
+                ))}
               </div>
-              <div className="pt-2 border-t border-emerald-100">
-                <Link
-                  to="/authority"
-                  className="text-blue-800 font-semibold hover:underline block text-center"
-                >
-                  View in Command Center Triage Queue &rarr;
-                </Link>
-              </div>
+            </div>
+          )}
+
+          {stats && (
+            <div className='bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2'>
+              <h3 className='text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5'><Cpu className='w-3.5 h-3.5 text-blue-600' /> YOLO11s V2 Performance</h3>
+              {[['FPS', stats.fps ? stats.fps.toFixed(1) : '-'],['Latency', stats.lat ? stats.lat.toFixed(0)+' ms' : '-'],['Peak VRAM', stats.vram ? stats.vram.toFixed(0)+' MB' : '-'],['Resolution', stats.res],['Frames', stats.frames],['Raw Dets', stats.rawDets],['Confirmed', stats.confDets]].map(([l,v]) => (
+                <div key={l} className='flex items-center justify-between text-xs'><span className='text-slate-500'>{l}</span><span className='font-mono font-bold text-slate-800'>{v}</span></div>
+              ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Triage Table */}
+      <div className='bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden'>
+        <div className='px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3'>
+          <div>
+            <h2 className='text-sm font-bold text-slate-900'>Confirmed Edge AI Events — Officer Triage Queue</h2>
+            <p className='text-xs text-slate-500 mt-0.5'>CCTV AI events awaiting officer review and civic action.</p>
+          </div>
+          <div className='flex flex-wrap items-center gap-2'>
+            {['ALL','PENDING_REVIEW','VERIFIED','CONVERTED','DISMISSED'].map(s => (
+              <button key={s} onClick={() => setFilterStatus(s)} className={'px-2.5 py-1 rounded text-[11px] font-semibold border transition ' + (filterStatus === s ? 'bg-blue-800 text-white border-blue-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400')}>
+                {s === 'ALL' ? 'All' : s.replace('_',' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+        {actionMsg && <div className={'mx-5 mt-3 p-2.5 rounded text-xs font-medium border ' + (actionMsg.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800')}>{actionMsg.text}</div>}
+        {eventsLoading ? (
+          <div className='p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2'><RefreshCw className='w-4 h-4 animate-spin' /> Loading CCTV events...</div>
+        ) : cctvEvents.length === 0 ? (
+          <div className='p-8 text-center text-slate-400'><Shield className='w-8 h-8 mx-auto mb-2 text-slate-300' /><p className='text-sm font-medium'>No events in queue</p><p className='text-xs mt-1'>Process a video above to generate confirmed CCTV events.</p></div>
+        ) : (
+          <div className='overflow-x-auto'>
+            <table className='w-full text-xs'>
+              <thead className='bg-slate-50 border-b border-slate-200'>
+                <tr>{['Evidence','Issue / Camera','Confidence','Severity','Status','Location','Actions'].map(h => <th key={h} className='px-4 py-2.5 text-left text-[10px] uppercase font-bold text-slate-500'>{h}</th>)}</tr>
+              </thead>
+              <tbody className='divide-y divide-slate-100'>
+                {cctvEvents.map(evt => {
+                  const id = evt.event_id || evt.id;
+                  const pending = evt.status === 'PENDING_REVIEW';
+                  const verified = evt.status === 'VERIFIED';
+                  const busy = actionBusy === id;
+                  return (
+                    <tr key={id} className='hover:bg-slate-50 transition-colors'>
+                      <td className='px-4 py-3'>
+                        {evt.evidence_image_url ? <img src={evt.evidence_image_url} alt='Evidence' className='w-16 h-11 object-cover rounded border border-slate-200 cursor-pointer hover:scale-105 transition-transform' onClick={() => setPreviewEvent(evt)} onError={e => { e.target.onerror=null; e.target.src='/sample_evidence/pothole.jpg'; }} /> : <div className='w-16 h-11 bg-slate-100 rounded border flex items-center justify-center'><Camera className='w-4 h-4 text-slate-400' /></div>}
+                      </td>
+                      <td className='px-4 py-3'><p className='font-bold text-slate-800'>{evt.event_type && evt.event_type.replace('_',' ')}</p><p className='text-slate-400 font-mono text-[10px]'>{evt.camera_id}</p></td>
+                      <td className='px-4 py-3 font-mono font-bold'>{Math.round((evt.confidence||0)*100)}%</td>
+                      <td className='px-4 py-3'><span className={'px-1.5 py-0.5 rounded border text-[10px] font-bold ' + (SEV_CLS[evt.severity] || SEV_CLS.MEDIUM)}>{evt.severity}</span></td>
+                      <td className='px-4 py-3'><span className={'px-2 py-0.5 rounded text-[10px] font-bold ' + (evt.status==='PENDING_REVIEW' ? 'bg-amber-100 text-amber-800 border border-amber-300' : evt.status==='VERIFIED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : evt.status==='CONVERTED' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-slate-100 text-slate-600 border border-slate-300')}>{evt.status==='PENDING_REVIEW' ? 'AI DETECTED' : evt.status}</span></td>
+                      <td className='px-4 py-3 text-slate-500'><p className='truncate max-w-[110px]'>{evt.address || evt.camera_id}</p></td>
+                      <td className='px-4 py-3'>
+                        <div className='flex flex-col gap-1'>
+                          {pending && <><button onClick={() => doReview(id,'VERIFIED')} disabled={busy} className='px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold disabled:opacity-50 transition'>Verify</button><button onClick={() => doReview(id,'DISMISSED')} disabled={busy} className='px-2 py-1 rounded bg-slate-400 hover:bg-slate-500 text-white text-[10px] font-bold disabled:opacity-50 transition'>Dismiss</button></>}
+                          {(pending || verified) && <button onClick={() => doConvert(id)} disabled={busy} className='px-2 py-1 rounded bg-blue-700 hover:bg-blue-800 text-white text-[10px] font-bold disabled:opacity-50 transition'>Work Order</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {previewEvent && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4' onClick={() => setPreviewEvent(null)}>
+          <div className='bg-white rounded-xl max-w-2xl w-full overflow-hidden shadow-2xl' onClick={e => e.stopPropagation()}>
+            <div className='flex items-center justify-between px-5 py-3 border-b border-slate-200'>
+              <h3 className='font-bold text-slate-900 text-sm'>Evidence Frame — {previewEvent.event_id}</h3>
+              <button onClick={() => setPreviewEvent(null)} className='text-slate-400 hover:text-slate-700'><XCircle className='w-5 h-5' /></button>
+            </div>
+            {previewEvent.evidence_image_url ? <img src={previewEvent.evidence_image_url} alt='Evidence' className='w-full max-h-96 object-contain bg-black' onError={e => { e.target.onerror=null; e.target.src='/sample_evidence/pothole.jpg'; }} /> : <div className='p-8 text-center text-slate-400'>No evidence image available</div>}
+            <div className='px-5 py-3 text-xs text-slate-500 grid grid-cols-2 gap-2 border-t border-slate-100'>
+              <div><span className='font-semibold'>Camera:</span> {previewEvent.camera_id}</div>
+              <div><span className='font-semibold'>Confidence:</span> {Math.round((previewEvent.confidence||0)*100)}%</div>
+              <div><span className='font-semibold'>Severity:</span> {previewEvent.severity}</div>
+              <div><span className='font-semibold'>Status:</span> {previewEvent.status}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+export default CCTVVisionPage;

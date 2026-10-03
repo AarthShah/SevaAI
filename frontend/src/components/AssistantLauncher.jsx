@@ -1,46 +1,53 @@
 import React from 'react';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useAssistant } from '../context/AssistantContext';
 
 /**
  * AssistantLauncher
  *
- * Compact launcher button embedded in the CivicSeva Navbar.
- * Matches the existing rectangular utility button style (Citizen View / Municipal Portal).
- *
- * @param {Object} props
- * @param {'authority' | 'citizen'} [props.variant='citizen'] - Navbar color theme
- * @param {string} [props.className] - Optional extra class overrides
+ * Single global floating action button for the CivicSeva contextual AI assistant.
+ * Positioned in the bottom-right corner, accessible across all application views.
  */
-export const AssistantLauncher = ({ variant = 'citizen', className = '' }) => {
+export const AssistantLauncher = () => {
   const { isOpen, toggleAssistant } = useAssistant();
 
-  const isAuthority = variant === 'authority';
-
-  const baseClasses = isAuthority
-    ? 'border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white'
-    : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50';
-
-  const activeClasses = isOpen
-    ? isAuthority
-      ? 'ring-2 ring-purple-500/60 bg-slate-700 text-white'
-      : 'ring-2 ring-purple-500/40 bg-purple-50 text-purple-900 border-purple-300'
-    : '';
+  // Hide the floating launcher when the assistant panel is open to avoid overlapping the chat interface
+  if (isOpen) {
+    return null;
+  }
 
   return (
-    <button
-      type="button"
-      onClick={toggleAssistant}
-      aria-label={isOpen ? 'Close CivicSeva Assistant' : 'Open CivicSeva Assistant'}
-      aria-expanded={isOpen}
-      aria-controls="civicseva-assistant-panel"
-      className={`px-2.5 py-1 text-xs font-medium border rounded transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${baseClasses} ${activeClasses} ${className}`}
-      title="Open Contextual CivicSeva Assistant"
-    >
-      <Bot className={`w-3.5 h-3.5 ${isOpen ? 'text-purple-400' : isAuthority ? 'text-purple-300' : 'text-purple-600'}`} />
-      <span className="font-medium">Assistant</span>
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Assistant ready" />
-    </button>
+    <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 group">
+      {/* Accessible hover tooltip */}
+      <div
+        role="tooltip"
+        id="assistant-launcher-tooltip"
+        className="pointer-events-none absolute right-full top-1/2 -translate-y-1/2 mr-3 whitespace-nowrap rounded-md bg-slate-900/95 text-white text-xs font-medium px-2.5 py-1.5 shadow-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 hidden sm:block"
+      >
+        <span>Open CivicSeva Assistant</span>
+        <div className="absolute top-1/2 -translate-y-1/2 -right-1 border-4 border-transparent border-l-slate-900/95" />
+      </div>
+
+      {/* Floating Action Button */}
+      <button
+        type="button"
+        onClick={toggleAssistant}
+        aria-label="Open CivicSeva Assistant"
+        aria-expanded={isOpen}
+        aria-controls="civicseva-assistant-panel"
+        aria-describedby="assistant-launcher-tooltip"
+        title="Open CivicSeva Assistant"
+        className="relative w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-full bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+      >
+        <Bot className="w-6 h-6 text-white" />
+
+        {/* Online / Available status indicator */}
+        <span
+          className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white absolute top-0.5 right-0.5"
+          title="Assistant online"
+        />
+      </button>
+    </div>
   );
 };
 

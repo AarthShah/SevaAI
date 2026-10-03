@@ -11,6 +11,7 @@ from ..models.complaint_history import ComplaintHistory
 from ..models.agent_action import AgentAction
 from ..models.escalation import Escalation
 from ..models.notification import Notification
+from ..models.cctv_event import CctvEvent
 
 __all__ = [
     "Base",
@@ -21,5 +22,6 @@ __all__ = [
     "ComplaintHistory",
     "AgentAction",
     "Escalation",
-    "Notification"
+    "Notification",
+    "CctvEvent"
 ]

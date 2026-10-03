@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bot, X, Send, AlertCircle, RefreshCw, Sparkles, HelpCircle } from 'lucide-react';
 import { useAssistant } from '../context/AssistantContext';
 
@@ -42,6 +43,7 @@ const getEmptyStateHint = (pageContext) => {
 };
 
 export const AssistantPanel = () => {
+  const navigate = useNavigate();
   const {
     isOpen,
     closeAssistant,
@@ -51,12 +53,53 @@ export const AssistantPanel = () => {
     quickActions,
     pageContext,
     selectedComplaintId,
-    sendMessage
+    sendMessage,
+    subscribeToAction
   } = useAssistant();
 
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Controlled Action Mapping (Strictly Whitelisted Routes)
+  const ASSISTANT_ACTIONS = useMemo(() => ({
+    OPEN_REPORT_PAGE: () => {
+      navigate('/report');
+    },
+    OPEN_DASHBOARD_PAGE: () => {
+      navigate('/dashboard');
+    },
+    OPEN_TRACK_PAGE: () => {
+      navigate('/track');
+    }
+  }), [navigate]);
+
+  const executeAction = useCallback((actionName) => {
+    if (!actionName) return;
+    const actionFn = ASSISTANT_ACTIONS[actionName];
+    if (actionFn) {
+      actionFn();
+      return;
+    }
+    if (actionName.startsWith('OPEN_TRACK_COMPLAINT:')) {
+      const cid = actionName.split(':')[1]?.trim();
+      // Strict whitelist format check: CS followed by 3-6 digits
+      if (cid && /^CS\d{3,6}$/i.test(cid)) {
+        navigate(`/track/${cid.toUpperCase()}`);
+        return;
+      }
+    }
+    console.warn(`[Assistant] Unknown or unauthorized action: ${actionName}`);
+  }, [ASSISTANT_ACTIONS, navigate]);
+
+  // Subscribe to controlled actions dispatched by AssistantContext
+  useEffect(() => {
+    if (!subscribeToAction) return;
+    const unsubscribe = subscribeToAction((action) => {
+      executeAction(action);
+    });
+    return unsubscribe;
+  }, [subscribeToAction, executeAction]);
 
   const subtitle = useMemo(
     () => getContextSubtitle(pageContext, selectedComplaintId),
@@ -86,13 +129,23 @@ export const AssistantPanel = () => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const text = inputMessage.trim();
     if (!text || loading) return;
 
     setInputMessage('');
-    sendMessage(text);
+    const res = await sendMessage(text);
+    if (res && res.action) {
+      executeAction(res.action);
+    }
+  };
+
+  const handleQuickActionClick = async (prompt) => {
+    const res = await sendMessage(prompt);
+    if (res && res.action) {
+      executeAction(res.action);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -224,7 +277,7 @@ export const AssistantPanel = () => {
               key={`qa-${idx}`}
               type="button"
               disabled={loading}
-              onClick={() => sendMessage(qa.prompt)}
+              onClick={() => handleQuickActionClick(qa.prompt)}
               className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 hover:bg-purple-50 hover:text-purple-800 hover:border-purple-300 border border-slate-200 transition text-left truncate max-w-full disabled:opacity-50"
               title={qa.prompt}
             >

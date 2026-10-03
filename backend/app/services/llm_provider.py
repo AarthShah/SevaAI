@@ -173,6 +173,11 @@ _FALLBACK_RESPONSES: Dict[str, str] = {
         "When a defect is detected above the confidence threshold, a work order is created. "
         "You can also manually upload a camera frame to test detection."
     ),
+    "how_to_report": (
+        "You can report civic issues like potholes, garbage, or water leaks through the Report Issue form. "
+        "Upload a photo of the problem, and our AI will detect the issue and route it to the right department. "
+        "When you are ready, you can ask me to 'Open the Report Issue tab' and I will open it for you."
+    ),
 }
 
 
@@ -183,13 +188,25 @@ def _pick_deterministic_response(message: str, ctx) -> Tuple[str, str]:
     """
     msg_lower = message.lower()
 
-    # Mutation detection
+    # Mutation detection (with guard for read-only queries and CCTV queries)
     mutation_keywords = [
         "assign", "escalate", "change status", "update status", "mark as",
         "resolve", "reject", "close", "dispatch", "send", "submit for me"
     ]
+    is_read_query = any(k in msg_lower for k in ["show", "list", "what", "which", "view", "how many", "display", "unresolved", "ready for dispatch"])
+    is_cctv_inquiry = any(k in msg_lower for k in ["cctv", "camera", "pothole", "defect", "detection"])
+
     if any(kw in msg_lower for kw in mutation_keywords):
-        return _FALLBACK_RESPONSES["mutation_request"], "llm_unavailable"
+        if not (is_read_query and is_cctv_inquiry) and "unresolved" not in msg_lower:
+            return _FALLBACK_RESPONSES["mutation_request"], "llm_unavailable"
+
+    # Informational questions about reporting
+    report_inquiry_keywords = [
+        "how to report", "how do i report", "how can i report", "how do we report",
+        "report a pothole", "reporting process", "steps to report", "how to file"
+    ]
+    if any(kw in msg_lower for kw in report_inquiry_keywords):
+        return _FALLBACK_RESPONSES["how_to_report"], "llm_unavailable"
 
     # Page-specific routing
     page = ctx.page if ctx else None
@@ -222,15 +239,115 @@ def _pick_deterministic_response(message: str, ctx) -> Tuple[str, str]:
         if "resolv" in status:
             return _FALLBACK_RESPONSES["status_resolved"], "llm_unavailable"
 
-    if role in ("authority", "admin") and page:
-        tab = (page.active_tab or "").lower()
-        if "analytic" in tab or "report" in tab:
-            return _FALLBACK_RESPONSES["authority_analytics"], "llm_unavailable"
-        if "cctv" in tab:
-            return _FALLBACK_RESPONSES["authority_cctv"], "llm_unavailable"
-        if "agent" in msg_lower or "autonomous" in msg_lower or "sweep" in msg_lower:
-            return _FALLBACK_RESPONSES["authority_agent"], "llm_unavailable"
-        return _FALLBACK_RESPONSES["authority_triage"], "llm_unavailable"
+    # Citizen Isolation for CCTV queries
+    if role == "citizen" and any(k in msg_lower for k in ["cctv", "camera feed", "edge ai", "surveillance grid"]):
+        return (
+            "Municipal CCTV surveillance feeds and edge detection telemetry are restricted to authorized municipal officers. "
+            "As a citizen, you can report potholes or road hazards directly through the Report Issue page.",
+            "llm_unavailable"
+        )
+
+    if role in ("authority", "admin"):
+        cctv_keywords = ["pothole", "cctv", "detection", "road issue", "road defect", "camera", "cameras", "evidence", "defect", "unresolved", "pending review"]
+        if any(k in msg_lower for k in cctv_keywords):
+            a = getattr(ctx, "authority_ops", None) if ctx else None
+            if a and (getattr(a, "cctv_pending_count", 0) or getattr(a, "cctv_recent_potholes_count", 0) or getattr(a, "cctv_latest_detections", None)):
+                dets = getattr(a, "cctv_latest_detections", []) or []
+
+                # Query: Show evidence
+                if "evidence" in msg_lower:
+                    lines = ["**CCTV Defect Evidence Verification:**\n"]
+                    ev_found = False
+                    for d in dets:
+                        if d.get("evidence_url") and d.get("evidence_url") != "N/A":
+                            ev_found = True
+                            lines.append(f"- **Event #{d['event_id']}** ({d['camera_id']}): Severity {d['severity']}, Confidence {d['confidence']} → [View Evidence Frame]({d['evidence_url']})")
+                    if not ev_found:
+                        lines.append("Evidence snapshots captured on edge camera nodes are being synced.")
+                    return "\n".join(lines), "llm_unavailable"
+
+                # Query: Which cameras detected potholes?
+                if "which camera" in msg_lower or "which cameras" in msg_lower or "cameras detected" in msg_lower:
+                    cams = sorted(list(set(d.get("camera_id") for d in dets if d.get("camera_id"))))
+                    if cams:
+                        cam_str = ", ".join(f"`{c}`" for c in cams)
+                        return (
+                            f"**Active Cameras with Confirmed Pothole Detections:**\n"
+                            f"Potholes were detected across {len(cams)} camera node(s): {cam_str}.\n"
+                            f"Total detections: {a.cctv_recent_potholes_count} ({a.cctv_pending_count} pending review).",
+                            "llm_unavailable"
+                        )
+
+                # Query: Show me the latest CCTV event
+                if "latest cctv event" in msg_lower or "latest event" in msg_lower or "single event" in msg_lower:
+                    if dets:
+                        latest = dets[0]
+                        return (
+                            f"**Latest Confirmed CCTV Defect Event:**\n"
+                            f"- **Event ID:** `{latest['event_id']}`\n"
+                            f"- **Camera:** `{latest['camera_id']}`\n"
+                            f"- **Video Timestamp:** {latest['timestamp']}\n"
+                            f"- **Confidence:** {latest['confidence']}\n"
+                            f"- **Severity:** {latest['severity']}\n"
+                            f"- **Review Status:** {latest['status']}\n"
+                            f"- **Location:** {latest['address']}\n"
+                            f"- **Evidence Frame:** [Inspect Evidence]({latest['evidence_url']})",
+                            "llm_unavailable"
+                        )
+
+                # Query: Unresolved CCTV events or Pending Review
+                if "unresolved" in msg_lower or "pending review" in msg_lower or "pending" in msg_lower:
+                    pending_dets = [d for d in dets if d.get("status") == "PENDING_REVIEW"]
+                    lines = [
+                        f"**Unresolved CCTV Detections Pending Officer Review ({a.cctv_pending_count} active):**",
+                    ]
+                    if pending_dets:
+                        for d in pending_dets:
+                            lines.append(f"- **{d['event_id']}**: Camera `{d['camera_id']}` | Conf: {d['confidence']} | Sev: {d['severity']} | Video Time: {d['timestamp']}")
+                        lines.append("\nAction required: Open the CCTV Triage section to Verify or Dismiss these events.")
+                    else:
+                        lines.append("All recent detections have been reviewed or converted to work orders.")
+                    return "\n".join(lines), "llm_unavailable"
+
+                # Query: Severe potholes active
+                if "severe" in msg_lower or "critical" in msg_lower or "high severity" in msg_lower:
+                    high_dets = [d for d in dets if d.get("severity") in ("HIGH", "CRITICAL")]
+                    lines = [
+                        f"**High & Critical Severity CCTV Pothole Alerts:**",
+                        f"- Total Severe Incidents: **{a.cctv_high_severity_count}**",
+                    ]
+                    for d in high_dets:
+                        lines.append(f"- **{d['event_id']}** (`{d['camera_id']}`): Confidence {d['confidence']} | Status: {d['status']}")
+                    return "\n".join(lines), "llm_unavailable"
+
+                # General CCTV / Pothole Overview Query
+                lines = [
+                    "**CCTV Infrastructure Defect Telemetry (Real-Time Database):**",
+                    f"- **Pending Officer Review:** {a.cctv_pending_count} events",
+                    f"- **Total Potholes Detected:** {a.cctv_recent_potholes_count}",
+                    f"- **High Severity Incidents:** {a.cctv_high_severity_count}",
+                ]
+                if dets:
+                    lines.append("\n**Recent Confirmed Detections:**")
+                    for d in dets:
+                        lines.append(f"- **{d['event_id']}**: Camera `{d['camera_id']}` | Conf: {d['confidence']} | Sev: {d['severity']} | Status: {d['status']} | Video Time: {d['timestamp']}")
+                return "\n".join(lines), "llm_unavailable"
+            else:
+                return (
+                    "No pending CCTV pothole detections are currently recorded in the database. "
+                    "The CCTV AI edge perception pipeline is actively monitoring surveillance nodes.",
+                    "llm_unavailable"
+                )
+
+        if page:
+            tab = (page.active_tab or "").lower()
+            if "analytic" in tab or "report" in tab:
+                return _FALLBACK_RESPONSES["authority_analytics"], "llm_unavailable"
+            if "cctv" in tab:
+                return _FALLBACK_RESPONSES["authority_cctv"], "llm_unavailable"
+            if "agent" in msg_lower or "autonomous" in msg_lower or "sweep" in msg_lower:
+                return _FALLBACK_RESPONSES["authority_agent"], "llm_unavailable"
+            return _FALLBACK_RESPONSES["authority_triage"], "llm_unavailable"
 
     if "track" in msg_lower or "status" in msg_lower:
         return _FALLBACK_RESPONSES["track_general"], "llm_unavailable"

@@ -340,6 +340,14 @@ def _serialize_context(ctx) -> str:
         lines.append(f"QUEUE_UNASSIGNED: {a.unassigned_count}")
         lines.append(f"AGENT_STATUS: {a.autonomous_agent_status}")
         lines.append(f"AGENT_RECENT_ACTIONS: {a.recent_agent_actions_count}")
+        if getattr(a, "cctv_pending_count", 0) or getattr(a, "cctv_recent_potholes_count", 0) or getattr(a, "cctv_latest_detections", None):
+            lines.append(f"CCTV_PENDING_REVIEW: {a.cctv_pending_count}")
+            lines.append(f"CCTV_TOTAL_POTHOLES: {a.cctv_recent_potholes_count}")
+            lines.append(f"CCTV_HIGH_SEVERITY: {a.cctv_high_severity_count}")
+            if getattr(a, "cctv_latest_detections", None):
+                lines.append("CCTV_LATEST_DETECTIONS:")
+                for det in a.cctv_latest_detections:
+                    lines.append(f"  - [{det.get('event_id')}] Cam: {det.get('camera_id')}, Conf: {det.get('confidence')}, Sev: {det.get('severity')}, Status: {det.get('status')}")
 
     lines.append("=== END CONTEXT BLOCK ===")
     return "\n".join(lines)
